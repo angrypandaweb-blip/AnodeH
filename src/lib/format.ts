@@ -1,3 +1,9 @@
+export function normalizeAdsAccount(raw: string): string | null {
+  const digits = raw.replace(/\D/g, "");
+  if (!/^\d{10}$/.test(digits)) return null;
+  return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
 export function money(value: number): string {
   return value.toLocaleString("en-US", { style: "currency", currency: "USD" });
 }

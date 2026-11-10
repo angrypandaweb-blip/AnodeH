@@ -51,6 +51,11 @@ export default async function RegisterPage({
             Password
             <input type="password" name="password" autoComplete="new-password" minLength={8} required />
           </label>
+          <label>
+            Google Ads account number
+            <input type="text" name="adsAccount" inputMode="numeric" autoComplete="off" placeholder="123-456-7890" required />
+          </label>
+          <p className="note">The 10-digit customer ID of the Google Ads account you want to keep track of.</p>
           <button className="btn" type="submit">Create account</button>
         </form>
       </section>

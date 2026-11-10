@@ -100,6 +100,7 @@ h1, h2, .metric strong, .brand-name, .price {
 .plan-link span { color: var(--muted); }
 .side-foot { margin-top: 12px; padding: 0 8px; color: var(--muted); font-size: 12px; line-height: 1.4; }
 .side-foot strong { color: var(--ink); font-weight: 600; display: block; }
+.side-foot a, .banner a { color: inherit; font-weight: 600; }
 
 .main { padding: 28px 32px 64px; max-width: 1180px; }
 .page-head { display: flex; justify-content: space-between; gap: 24px; align-items: flex-end; margin-bottom: 22px; }
@@ -293,6 +294,7 @@ td { padding: 10px 10px 10px 0; border-top: 1px solid var(--line); vertical-alig
 .form-extra { margin: 0; font-size: 14px; }
 .form-extra a { color: var(--moss); }
 label { display: grid; gap: 6px; font-size: 14px; }
+label small { color: var(--muted); font-size: 12px; }
 input[type="text"], input[type="number"], select {
   border: 1px solid var(--line);
   background: white;

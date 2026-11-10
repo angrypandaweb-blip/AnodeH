@@ -11,7 +11,8 @@ import {
   removeBlock,
   savePolicy,
 } from "@/lib/engine";
-import { authReturn, clearSession, hashPassword, safeNext, setSession, verifyPassword } from "@/lib/auth";
+import { authReturn, clearSession, getUser, hashPassword, safeNext, setSession, verifyPassword } from "@/lib/auth";
+import { normalizeAdsAccount } from "@/lib/format";
 import { createPayPalCheckout } from "@/lib/billing";
 import { execute, getDb, queryOne } from "@/lib/db";
 import { resetDemo, simulateScenario } from "@/lib/seed";
@@ -41,6 +42,18 @@ export async function restoreSample() {
   await resetDemo();
   refresh();
   redirect("/dashboard?notice=reset&n=1");
+}
+
+export async function saveAdsAccount(formData: FormData) {
+  const user = await getUser();
+  if (!user) redirect("/login?next=/settings");
+  const adsAccount = normalizeAdsAccount(String(formData.get("adsAccount") || ""));
+  if (!adsAccount) {
+    redirect(withError("/settings", "Enter a 10-digit Google Ads account number, like 123-456-7890."));
+  }
+  await execute(await getDb(), "UPDATE users SET ads_account = ? WHERE id = ?", [adsAccount, user.id]);
+  refresh();
+  redirect("/settings?saved=1");
 }
 
 export async function updateSettings(formData: FormData) {
@@ -117,20 +130,19 @@ export async function registerAccount(formData: FormData) {
   const name = String(formData.get("name") || "").trim();
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
-  if (name.length < 1 || name.length > 80 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 8) {
-    redirect(withError(back, "Enter your name, a valid email, and a password of at least 8 characters."));
+  const adsAccount = normalizeAdsAccount(String(formData.get("adsAccount") || ""));
+  if (name.length < 1 || name.length > 80 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 8 || !adsAccount) {
+    redirect(withError(back, "Enter your name, a valid email, a password of at least 8 characters, and a 10-digit Google Ads account number."));
   }
   const db = await getDb();
   const existing = await queryOne<{ id: string }>(db, "SELECT id FROM users WHERE email = ?", [email]);
   if (existing) redirect(withError(back, "That email already has an account. Log in instead."));
   const id = `u${randomBytes(6).toString("hex")}`;
-  await execute(db, "INSERT INTO users (id, email, name, password_hash, created_at) VALUES (?, ?, ?, ?, ?)", [
-    id,
-    email,
-    name,
-    await hashPassword(password),
-    Math.floor(Date.now() / 1000),
-  ]);
+  await execute(
+    db,
+    "INSERT INTO users (id, email, name, password_hash, created_at, ads_account) VALUES (?, ?, ?, ?, ?, ?)",
+    [id, email, name, await hashPassword(password), Math.floor(Date.now() / 1000), adsAccount],
+  );
   await setSession(id);
   redirect("/dashboard");
 }

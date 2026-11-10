@@ -64,10 +64,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <button className="btn ghost" type="submit">Log out</button>
             </form>
             <p className="side-foot">
-              <strong>Google Ads · demo</strong>
-              482-193-7741
-              <br />
-              Exclusions stay in this workspace.
+              <strong>Google Ads</strong>
+              {user.adsAccount ? (
+                <>
+                  {user.adsAccount}
+                  <br />
+                  This is the account AnodeH is watching.
+                </>
+              ) : (
+                <a href="/settings">Add the account number you want to track</a>
+              )}
             </p>
           </aside>
           <main className="main">{children}</main>

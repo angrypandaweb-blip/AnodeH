@@ -143,6 +143,11 @@ async function migrate(db: Client) {
     CREATE INDEX IF NOT EXISTS blocks_status ON blocks (status, campaign);
   `);
 
+  const userColumns = await queryAll<{ name: string }>(db, "PRAGMA table_info(users)");
+  if (!userColumns.some((column) => column.name === "ads_account")) {
+    await execute(db, "ALTER TABLE users ADD COLUMN ads_account TEXT NOT NULL DEFAULT ''");
+  }
+
   const defaults: Record<string, string> = {
     sensitivity: "balanced",
     blockDays: "30",

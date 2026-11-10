@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
-import { createAllow, deleteAllow, restoreSample, updateSettings } from "@/app/actions";
+import { createAllow, deleteAllow, restoreSample, saveAdsAccount, updateSettings } from "@/app/actions";
+import { getUser } from "@/lib/auth";
 import { getPolicy } from "@/lib/engine";
 import { allowlist } from "@/lib/queries";
 import { THRESHOLDS } from "@/lib/score";
@@ -19,7 +20,7 @@ export default async function SettingsPage({
   searchParams: Promise<{ saved?: string; error?: string }>;
 }) {
   const params = await searchParams;
-  const [policy, allowed, headerList] = await Promise.all([getPolicy(), allowlist(), headers()]);
+  const [policy, allowed, headerList, user] = await Promise.all([getPolicy(), allowlist(), headers(), getUser()]);
   const host = headerList.get("x-forwarded-host") || headerList.get("host") || "localhost:3000";
   const proto = headerList.get("x-forwarded-proto") || "http";
   const snippet = `<script src="${proto}://${host}/cf.js" data-key="${policy.domainKey}" async></script>`;
@@ -38,6 +39,34 @@ export default async function SettingsPage({
 
       {params.saved ? <p className="banner">Saved.</p> : null}
       {params.error ? <p className="banner warn">{params.error}</p> : null}
+
+      <article className="card">
+        <span className="card-label">Google Ads account</span>
+        <p className="note">
+          {user?.adsAccount
+            ? `AnodeH is watching ${user.adsAccount}. Enter a different customer ID to switch accounts.`
+            : "Enter the 10-digit customer ID of the Google Ads account you want to keep track of."}
+        </p>
+        <form action={saveAdsAccount} className="form-grid">
+          <label>
+            Account number
+            <input
+              type="text"
+              name="adsAccount"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="123-456-7890"
+              defaultValue={user?.adsAccount || ""}
+              aria-label="Google Ads account number"
+              required
+            />
+            <small>Ten digits, with or without dashes. This is the customer ID in Google Ads.</small>
+          </label>
+          <div>
+            <button type="submit">{user?.adsAccount ? "Update account" : "Track this account"}</button>
+          </div>
+        </form>
+      </article>
 
       <article className="card">
         <span className="card-label">Scoring</span>

@@ -1,4 +1,5 @@
 import { clearAlerts, runScenario } from "@/app/actions";
+import { getUser } from "@/lib/auth";
 import { reasonText } from "@/lib/score";
 import { compact, dayLabel, money, percent, scoreBand, when } from "@/lib/format";
 import { getPolicy } from "@/lib/engine";
@@ -20,7 +21,7 @@ export default async function OverviewPage({
   searchParams: Promise<{ notice?: string; n?: string }>;
 }) {
   const params = await searchParams;
-  const policy = await getPolicy();
+  const [policy, user] = await Promise.all([getPolicy(), getUser()]);
   const stats = await weekStats();
   const series = await dailySeries();
   const risky = await recentRisky();
@@ -36,7 +37,7 @@ export default async function OverviewPage({
     <div>
       <header className="page-head">
         <div>
-          <p className="eyebrow">{policy.domain}</p>
+          <p className="eyebrow">{user?.adsAccount ? `Google Ads ${user.adsAccount}` : policy.domain}</p>
           <h1>Spend watched this week</h1>
           <p className="sub">
             Invalid clicks are scored as they arrive. Search and Display exclusions are written onto the ad account.
@@ -52,6 +53,11 @@ export default async function OverviewPage({
       </header>
 
       {notice ? <p className="banner">{notice(n)}</p> : null}
+      {!user?.adsAccount ? (
+        <p className="banner warn">
+          Add the Google Ads account you want to watch. <a href="/settings">Enter the account number</a>
+        </p>
+      ) : null}
 
       <section className="metrics">
         <article className="metric">

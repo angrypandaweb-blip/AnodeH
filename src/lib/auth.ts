@@ -7,7 +7,7 @@ const scrypt = promisify(scryptCb);
 const COOKIE = "anodeh_session";
 const MONTH = 60 * 60 * 24 * 30;
 
-export type Account = { id: string; email: string; name: string };
+export type Account = { id: string; email: string; name: string; adsAccount: string };
 
 export function safePlan(value: string | undefined): "month" | "year" | "" {
   return value === "month" || value === "year" ? value : "";
@@ -59,7 +59,7 @@ export async function getUser(): Promise<Account | null> {
   if (!id) return null;
   const row = await queryOne<Account>(
     await getDb(),
-    `SELECT u.id, u.email, u.name
+    `SELECT u.id, u.email, u.name, u.ads_account AS adsAccount
      FROM sessions s JOIN users u ON u.id = s.user_id
      WHERE s.id = ? AND s.expires_at > ?`,
     [id, Math.floor(Date.now() / 1000)],
