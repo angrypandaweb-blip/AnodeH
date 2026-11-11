@@ -135,14 +135,21 @@ export async function registerAccount(formData: FormData) {
     redirect(withError(back, "Enter your name, a valid email, a password of at least 8 characters, and a 10-digit Google Ads account number."));
   }
   const db = await getDb();
-  const existing = await queryOne<{ id: string }>(db, "SELECT id FROM users WHERE email = ?", [email]);
-  if (existing) redirect(withError(back, "That email already has an account. Log in instead."));
+  const existing = await queryOne<{ id: string }>(db, "SELECT id FROM users WHERE lower(email) = ?", [email]);
+  if (existing) redirect(withError(back, "That email already has an account. Log in with it. Each person needs their own email."));
   const id = `u${randomBytes(6).toString("hex")}`;
-  await execute(
-    db,
-    "INSERT INTO users (id, email, name, password_hash, created_at, ads_account) VALUES (?, ?, ?, ?, ?, ?)",
-    [id, email, name, await hashPassword(password), Math.floor(Date.now() / 1000), adsAccount],
-  );
+  try {
+    await execute(
+      db,
+      "INSERT INTO users (id, email, name, password_hash, created_at, ads_account, domain_key) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [id, email, name, await hashPassword(password), Math.floor(Date.now() / 1000), adsAccount, `cf_${randomBytes(8).toString("hex")}`],
+    );
+  } catch (error) {
+    if (String(error).includes("UNIQUE")) {
+      redirect(withError(back, "That email already has an account. Log in with it. Each person needs their own email."));
+    }
+    throw error;
+  }
   await setSession(id);
   redirect("/dashboard");
 }
@@ -154,7 +161,7 @@ export async function loginAccount(formData: FormData) {
   const next = safeNext(String(formData.get("next") || "/dashboard"));
   const row = await queryOne<{ id: string; password_hash: string }>(
     await getDb(),
-    "SELECT id, password_hash FROM users WHERE email = ?",
+    "SELECT id, password_hash FROM users WHERE lower(email) = ?",
     [email],
   );
   if (!row || !(await verifyPassword(password, row.password_hash))) {
@@ -180,7 +187,7 @@ export async function requestPasswordReset(formData: FormData) {
     redirect(withError(back, "Enter the email on the account."));
   }
   const db = await getDb();
-  const user = await queryOne<{ id: string }>(db, "SELECT id FROM users WHERE email = ?", [email]);
+  const user = await queryOne<{ id: string }>(db, "SELECT id FROM users WHERE lower(email) = ?", [email]);
   if (!user) redirect(withError(back, "No account uses that email."));
   const token = randomBytes(24).toString("hex");
   const now = Math.floor(Date.now() / 1000);

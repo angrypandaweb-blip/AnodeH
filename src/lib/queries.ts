@@ -1,5 +1,11 @@
+import { getUser } from "./auth";
 import { getDb, queryAll, queryOne } from "./db";
 import { EXCLUSION_CAP } from "./engine";
+
+async function mine() {
+  const user = await getUser();
+  return user?.id ?? "";
+}
 
 export type ClickRow = {
   id: string;
@@ -28,6 +34,7 @@ export type ClickRow = {
 
 export async function weekStats() {
   const db = await getDb();
+  const userId = await mine();
   const since = Math.floor(Date.now() / 1000) - 7 * 86400;
   const row = await queryOne<{
     clicks: number;
@@ -43,8 +50,8 @@ export async function weekStats() {
        SUM(CASE WHEN action != 'allow' THEN cost ELSE 0 END) AS waste,
        SUM(cost) AS spend,
        SUM(CASE WHEN action = 'block' THEN 1 ELSE 0 END) AS blocked
-     FROM clicks WHERE ts >= ?`,
-    [since],
+     FROM clicks WHERE user_id = ? AND ts >= ?`,
+    [userId, since],
   );
   return {
     clicks: row?.clicks ?? 0,
@@ -61,8 +68,8 @@ export async function dailySeries() {
   const start = Math.floor(now.getTime() / 1000) - 6 * 86400;
   const rows = await queryAll<{ ts: number; action: string }>(
     await getDb(),
-    "SELECT ts, action FROM clicks WHERE ts >= ?",
-    [start],
+    "SELECT ts, action FROM clicks WHERE user_id = ? AND ts >= ?",
+    [await mine(), start],
   );
   const days: { ts: number; allow: number; other: number }[] = [];
   for (let i = 0; i < 7; i++) {
@@ -81,20 +88,20 @@ export async function recentRisky(limit = 6): Promise<ClickRow[]> {
   return queryAll<ClickRow>(
     await getDb(),
     `SELECT c.*, NULL AS block_id FROM clicks c
-     WHERE action != 'allow' ORDER BY ts DESC LIMIT ?`,
-    [limit],
+     WHERE user_id = ? AND action != 'allow' ORDER BY ts DESC LIMIT ?`,
+    [await mine(), limit],
   );
 }
 
 export async function activityCounts(query: string) {
-  const where: string[] = [];
-  const params: string[] = [];
+  const where = ["user_id = ?"];
+  const params: string[] = [await mine()];
   if (query) {
     where.push("(ip LIKE ? OR campaign LIKE ? OR keyword LIKE ? OR placement LIKE ?)");
     const like = `%${query}%`;
     params.push(like, like, like, like);
   }
-  const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
+  const clause = `WHERE ${where.join(" AND ")}`;
   const rows = await queryAll<{ action: string; c: number; cost: number | null }>(
     await getDb(),
     `SELECT action, COUNT(*) AS c, SUM(CASE WHEN action = 'allow' THEN 0 ELSE cost END) AS cost
@@ -112,8 +119,9 @@ export async function activityCounts(query: string) {
 
 export async function listClicks(action: string, query: string, page: number, pageSize = 40) {
   const db = await getDb();
-  const where: string[] = [];
-  const params: (string | number)[] = [];
+  const userId = await mine();
+  const where = ["c.user_id = ?"];
+  const params: (string | number)[] = [userId];
   if (action === "allow" || action === "flag" || action === "block") {
     where.push("c.action = ?");
     params.push(action);
@@ -123,21 +131,21 @@ export async function listClicks(action: string, query: string, page: number, pa
     const like = `%${query}%`;
     params.push(like, like, like, like);
   }
-  const clause = where.length ? `WHERE ${where.join(" AND ")}` : "";
+  const clause = `WHERE ${where.join(" AND ")}`;
   const total = await queryOne<{ c: number }>(db, `SELECT COUNT(*) AS c FROM clicks c ${clause}`, params);
   const offset = Math.max(0, page) * pageSize;
   const rows = await queryAll<ClickRow>(
     db,
     `SELECT c.*, (
        SELECT b.id FROM blocks b
-       WHERE b.status = 'active' AND b.campaign = c.campaign
+       WHERE b.user_id = ? AND b.status = 'active' AND b.campaign = c.campaign
          AND (b.target = c.ip OR (b.kind = 'subnet' AND c.ip LIKE substr(b.target, 1, length(b.target) - 4) || '%'))
        LIMIT 1
      ) AS block_id
      FROM clicks c ${clause}
      ORDER BY c.ts DESC
      LIMIT ? OFFSET ?`,
-    [...params, pageSize, offset],
+    [userId, ...params, pageSize, offset],
   );
   return { rows, total: total?.c ?? 0, pageSize };
 }
@@ -145,7 +153,8 @@ export async function listClicks(action: string, query: string, page: number, pa
 export async function blockCounts() {
   const rows = await queryAll<{ status: string; c: number }>(
     await getDb(),
-    "SELECT status, COUNT(*) AS c FROM blocks GROUP BY status",
+    "SELECT status, COUNT(*) AS c FROM blocks WHERE user_id = ? GROUP BY status",
+    [await mine()],
   );
   const counts = { active: 0, covered: 0, expired: 0, evicted: 0, removed: 0 };
   for (const row of rows) {
@@ -159,11 +168,12 @@ export async function blockCounts() {
 export async function listBlocks(status: string, page: number, pageSize = 20) {
   const db = await getDb();
   const safe = ["active", "expired", "evicted", "removed", "covered"].includes(status) ? status : "active";
-  const total = await queryOne<{ c: number }>(db, "SELECT COUNT(*) AS c FROM blocks WHERE status = ?", [safe]);
+  const userId = await mine();
+  const total = await queryOne<{ c: number }>(db, "SELECT COUNT(*) AS c FROM blocks WHERE user_id = ? AND status = ?", [userId, safe]);
   const rows = await queryAll<BlockRow>(
     db,
-    `SELECT * FROM blocks WHERE status = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`,
-    [safe, pageSize, Math.max(0, page) * pageSize],
+    `SELECT * FROM blocks WHERE user_id = ? AND status = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+    [userId, safe, pageSize, Math.max(0, page) * pageSize],
   );
   return { rows, total: total?.c ?? 0, status: safe, pageSize };
 }
@@ -185,8 +195,9 @@ export async function capacity() {
   const rows = await queryAll<{ campaign: string; c: number }>(
     await getDb(),
     `SELECT campaign, COUNT(*) AS c FROM blocks
-     WHERE status = 'active' AND kind IN ('ip', 'subnet')
+     WHERE user_id = ? AND status = 'active' AND kind IN ('ip', 'subnet')
      GROUP BY campaign ORDER BY c DESC`,
+    [await mine()],
   );
   const fullest = rows[0]?.c ?? 0;
   return { rows, fullest, cap: EXCLUSION_CAP };
@@ -194,19 +205,21 @@ export async function capacity() {
 
 export async function alerts(unreadOnly = false) {
   const sql = unreadOnly
-    ? "SELECT * FROM alerts WHERE read = 0 ORDER BY ts DESC LIMIT 8"
-    : "SELECT * FROM alerts ORDER BY ts DESC LIMIT 8";
+    ? "SELECT * FROM alerts WHERE user_id = ? AND read = 0 ORDER BY ts DESC LIMIT 8"
+    : "SELECT * FROM alerts WHERE user_id = ? ORDER BY ts DESC LIMIT 8";
   return queryAll<{
     id: string;
     ts: number;
     level: string;
     message: string;
     read: number;
-  }>(await getDb(), sql);
+  }>(await getDb(), sql, [await mine()]);
 }
 
 export async function unreadCount() {
-  const row = await queryOne<{ c: number }>(await getDb(), "SELECT COUNT(*) AS c FROM alerts WHERE read = 0");
+  const row = await queryOne<{ c: number }>(await getDb(), "SELECT COUNT(*) AS c FROM alerts WHERE user_id = ? AND read = 0", [
+    await mine(),
+  ]);
   return row?.c ?? 0;
 }
 
@@ -217,8 +230,9 @@ export async function topIps() {
        COUNT(*) AS clicks,
        SUM(CASE WHEN action != 'allow' THEN 1 ELSE 0 END) AS invalid,
        SUM(cost) AS cost
-     FROM clicks GROUP BY ip
+     FROM clicks WHERE user_id = ? GROUP BY ip
      ORDER BY invalid DESC, clicks DESC LIMIT 8`,
+    [await mine()],
   );
 }
 
@@ -230,9 +244,10 @@ export async function topDevices() {
        COUNT(*) AS clicks,
        MAX(network) AS network,
        SUM(CASE WHEN action != 'allow' THEN 1 ELSE 0 END) AS invalid
-     FROM clicks GROUP BY device_hash
+     FROM clicks WHERE user_id = ? GROUP BY device_hash
      HAVING ips > 1
      ORDER BY ips DESC, invalid DESC LIMIT 6`,
+    [await mine()],
   );
 }
 
@@ -243,9 +258,10 @@ export async function topPlacements() {
        COUNT(*) AS clicks,
        SUM(CASE WHEN action != 'allow' THEN 1 ELSE 0 END) AS invalid,
        SUM(cost) AS cost
-     FROM clicks WHERE placement != ''
+     FROM clicks WHERE user_id = ? AND placement != ''
      GROUP BY placement
      ORDER BY invalid DESC, clicks DESC LIMIT 6`,
+    [await mine()],
   );
 }
 
@@ -254,5 +270,5 @@ export async function allowlist() {
     id: string;
     value: string;
     note: string;
-  }>(await getDb(), "SELECT id, value, note FROM allowlist ORDER BY value");
+  }>(await getDb(), "SELECT id, value, note FROM allowlist WHERE user_id = ? ORDER BY value", [await mine()]);
 }

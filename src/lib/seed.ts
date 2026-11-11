@@ -1,3 +1,4 @@
+import { getUser } from "./auth";
 import { type Db, execute, getDb, queryOne } from "./db";
 import { recordClick, OFFICE_IP, COMPETITOR_IP, nid } from "./engine";
 import type { IncomingClick, Network } from "./types";
@@ -29,13 +30,14 @@ const CITIES: Record<string, string[]> = {
 
 export async function resetDemo() {
   const db = await getDb();
+  const userId = (await getUser())?.id ?? "";
   const tx = await db.transaction("write");
   try {
-    await execute(tx, "DELETE FROM clicks");
-    await execute(tx, "DELETE FROM blocks");
-    await execute(tx, "DELETE FROM alerts");
-    await execute(tx, "DELETE FROM allowlist");
-    await seedIfEmpty(tx);
+    await execute(tx, "DELETE FROM clicks WHERE user_id = ?", [userId]);
+    await execute(tx, "DELETE FROM blocks WHERE user_id = ?", [userId]);
+    await execute(tx, "DELETE FROM alerts WHERE user_id = ?", [userId]);
+    await execute(tx, "DELETE FROM allowlist WHERE user_id = ?", [userId]);
+    await seedIfEmpty(tx, userId);
     await tx.commit();
   } catch (error) {
     await tx.rollback();
@@ -45,12 +47,15 @@ export async function resetDemo() {
   }
 }
 
-export async function seedIfEmpty(db: Db) {
-  const count = await queryOne<{ c: number }>(db, "SELECT COUNT(*) AS c FROM clicks");
-  if ((count?.c ?? 0) > 0) return;
+export async function seedIfEmpty(db: Db, userId = "") {
+  if (!userId) {
+    const count = await queryOne<{ c: number }>(db, "SELECT COUNT(*) AS c FROM clicks");
+    if ((count?.c ?? 0) > 0) return;
+  }
 
-  await execute(db, "INSERT OR IGNORE INTO allowlist (id, value, note) VALUES (?, ?, ?)", [
-    "w_office",
+  await execute(db, "INSERT OR IGNORE INTO allowlist (id, user_id, value, note) VALUES (?, ?, ?, ?)", [
+    userId ? `w_office_${userId}` : "w_office",
+    userId,
     OFFICE_IP,
     "Northwind office",
   ]);
@@ -188,7 +193,7 @@ export async function seedIfEmpty(db: Db) {
   }
 
   events.sort((a, b) => (a.ts ?? 0) - (b.ts ?? 0));
-  for (const event of events) await recordClick(db, event);
+  for (const event of events) await recordClick(db, event, userId);
 }
 
 export async function simulateScenario(scenario: string): Promise<number> {
@@ -266,6 +271,6 @@ export async function simulateScenario(scenario: string): Promise<number> {
     }
   }
 
-  for (const event of made) await recordClick(db, event);
+  for (const event of made) await recordClick(db, event, (await getUser())?.id);
   return made.length;
 }

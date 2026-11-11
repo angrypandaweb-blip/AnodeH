@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { getUser } from "@/lib/auth";
 import { execute, getDb, queryOne } from "@/lib/db";
 
 export const PERIOD_DAYS = 30;
@@ -44,24 +45,45 @@ export function dayPhrase(days: number) {
   return days === 1 ? "1 day" : `${days} days`;
 }
 
-async function setting(key: string) {
+function sharedSetting(key: string) {
+  return key.startsWith("paypal_product_") || key.startsWith("paypal_plan_");
+}
+
+async function setting(key: string, userId?: string) {
   const db = await getDb();
-  const row = await queryOne<{ value: string }>(db, "SELECT value FROM settings WHERE key = ?", [key]);
+  if (sharedSetting(key)) {
+    const row = await queryOne<{ value: string }>(db, "SELECT value FROM settings WHERE key = ?", [key]);
+    return row?.value;
+  }
+  const id = userId || (await getUser())?.id;
+  if (!id) return undefined;
+  const row = await queryOne<{ value: string }>(db, "SELECT value FROM user_settings WHERE user_id = ? AND key = ?", [id, key]);
   return row?.value;
 }
 
-async function saveSetting(key: string, value: string) {
+async function saveSetting(key: string, value: string, userId?: string) {
+  const db = await getDb();
+  if (sharedSetting(key)) {
+    await execute(
+      db,
+      "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+      [key, value],
+    );
+    return;
+  }
+  const id = userId || (await getUser())?.id;
+  if (!id) return;
   await execute(
-    await getDb(),
-    "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-    [key, value],
+    db,
+    "INSERT INTO user_settings (user_id, key, value) VALUES (?, ?, ?) ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value",
+    [id, key, value],
   );
 }
 
-export async function getAccess(): Promise<Access> {
-  await syncPayPalSubscription();
-  const paidUntil = Number((await setting("paid_until")) || 0);
-  const introUsed = (await setting("intro_used")) === "1";
+export async function getAccess(userId?: string): Promise<Access> {
+  await syncPayPalSubscription(userId);
+  const paidUntil = Number((await setting("paid_until", userId)) || 0);
+  const introUsed = (await setting("intro_used", userId)) === "1";
   const now = nowSec();
   if (paidUntil > now) {
     return { status: "active", endsAt: paidUntil, daysLeft: daysLeft(paidUntil, now), paidUntil, introUsed };
@@ -131,7 +153,9 @@ async function grantPaidPeriod(paymentId: string, plan: PlanId, amountCents: num
   const existing = await queryOne<{ id: string }>(db, "SELECT id FROM payments WHERE id = ?", [paymentId]);
   if (existing) return;
 
-  const access = await getAccess();
+  const userId = (await getUser())?.id;
+  if (!userId) return;
+  const access = await getAccess(userId);
   if (plan === "intro" && access.introUsed) return;
   if (PLANS[plan].cents !== amountCents) return;
 
@@ -141,18 +165,19 @@ async function grantPaidPeriod(paymentId: string, plan: PlanId, amountCents: num
   try {
     await execute(
       tx,
-      "INSERT INTO payments (id, amount, created_at, period_end) VALUES (?, ?, ?, ?)",
-      [paymentId, amountCents, now, periodEnd],
+      "INSERT INTO payments (id, user_id, amount, created_at, period_end) VALUES (?, ?, ?, ?, ?)",
+      [paymentId, userId, amountCents, now, periodEnd],
     );
     await execute(
       tx,
-      "INSERT INTO settings (key, value) VALUES ('paid_until', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-      [String(periodEnd)],
+      "INSERT INTO user_settings (user_id, key, value) VALUES (?, 'paid_until', ?) ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value",
+      [userId, String(periodEnd)],
     );
     if (plan === "intro") {
       await execute(
         tx,
-        "INSERT INTO settings (key, value) VALUES ('intro_used', '1') ON CONFLICT(key) DO UPDATE SET value = '1'",
+        "INSERT INTO user_settings (user_id, key, value) VALUES (?, 'intro_used', '1') ON CONFLICT(user_id, key) DO UPDATE SET value = '1'",
+        [userId],
       );
     }
     await tx.commit();
@@ -371,7 +396,7 @@ async function createMonthlySubscription(token: string, plan: "intro" | "month",
   const current = await setting("paypal_subscription");
   if (current) {
     const state = await applySubscription(current);
-    if (state.active) return { error: "This workspace already renews automatically on PayPal." };
+    if (state.active) return { error: "This account already renews automatically on PayPal." };
   }
 
   const planId = await monthlyPlanId(token, plan === "intro");
@@ -413,7 +438,10 @@ function isoToSec(value?: string) {
   return Number.isFinite(ms) ? Math.floor(ms / 1000) : 0;
 }
 
-async function applySubscription(id: string): Promise<{ ok: true; active: boolean } | { ok: false; error: string; active: boolean }> {
+async function applySubscription(
+  id: string,
+  userId?: string,
+): Promise<{ ok: true; active: boolean } | { ok: false; error: string; active: boolean }> {
   const token = await paypalToken();
   if (!token) return { ok: false, error: "PayPal did not accept the client id and secret.", active: false };
 
@@ -424,7 +452,8 @@ async function applySubscription(id: string): Promise<{ ok: true; active: boolea
   if (!response.ok || !subscription?.status) {
     return { ok: false, error: "PayPal could not confirm the subscription.", active: false };
   }
-  await saveSetting("paypal_synced_at", String(nowSec()));
+  const owner = userId || (await getUser())?.id;
+  await saveSetting("paypal_synced_at", String(nowSec()), owner);
 
   const active = subscription.status === "ACTIVE";
   const payment = subscription.billing_info?.last_payment;
@@ -439,15 +468,15 @@ async function applySubscription(id: string): Promise<{ ok: true; active: boolea
     };
   }
 
-  const currentPaid = Number((await setting("paid_until")) || 0);
-  await saveSetting("paid_until", String(Math.max(currentPaid, periodEnd)));
-  await saveSetting("paypal_subscription", id);
-  if (paidCents === INTRO_CENTS) await saveSetting("intro_used", "1");
+  const currentPaid = Number((await setting("paid_until", owner)) || 0);
+  await saveSetting("paid_until", String(Math.max(currentPaid, periodEnd)), owner);
+  await saveSetting("paypal_subscription", id, owner);
+  if (paidCents === INTRO_CENTS) await saveSetting("intro_used", "1", owner);
   const paymentId = `${id}:${payment?.time || periodEnd}`;
   await execute(
     await getDb(),
-    "INSERT OR IGNORE INTO payments (id, amount, created_at, period_end) VALUES (?, ?, ?, ?)",
-    [paymentId, paidCents, nowSec(), periodEnd],
+    "INSERT OR IGNORE INTO payments (id, user_id, amount, created_at, period_end) VALUES (?, ?, ?, ?, ?)",
+    [paymentId, owner || "", paidCents, nowSec(), periodEnd],
   );
   return { ok: true, active: true };
 }
@@ -461,13 +490,13 @@ export async function confirmPayPalSubscription(subscriptionId: string) {
   return { ok: true as const };
 }
 
-export async function syncPayPalSubscription() {
+export async function syncPayPalSubscription(userId?: string) {
   if (!paymentsConfigured()) return;
-  const id = await setting("paypal_subscription");
+  const id = await setting("paypal_subscription", userId);
   if (!id) return;
-  const synced = Number((await setting("paypal_synced_at")) || 0);
-  const paidUntil = Number((await setting("paid_until")) || 0);
+  const synced = Number((await setting("paypal_synced_at", userId)) || 0);
+  const paidUntil = Number((await setting("paid_until", userId)) || 0);
   const now = nowSec();
   if (now - synced < 6 * 60 * 60 && paidUntil > now + 2 * DAY) return;
-  await applySubscription(id);
+  await applySubscription(id, userId);
 }

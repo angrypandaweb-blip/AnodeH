@@ -1,4 +1,5 @@
 import { randomBytes } from "crypto";
+import { getUser } from "./auth";
 import { CAMPAIGNS, findCampaign } from "./campaigns";
 import { type Db, execute, getDb, queryAll, queryOne } from "./db";
 import { enforcementFor, evaluate, guessIsp, guessNetwork } from "./score";
@@ -17,10 +18,17 @@ type SettingRow = { key: string; value: string };
 type CountRow = { c: number };
 type IpRow = { ip: string };
 
-export async function getPolicy(db?: Db): Promise<Policy> {
+async function ownerId(explicit?: string) {
+  if (explicit) return explicit;
+  return (await getUser())?.id ?? "";
+}
+
+export async function getPolicy(db?: Db, userId?: string): Promise<Policy> {
   const database = db ?? (await getDb());
-  const rows = await queryAll<SettingRow>(database, "SELECT key, value FROM settings");
+  const id = await ownerId(userId);
+  const rows = await queryAll<SettingRow>(database, "SELECT key, value FROM user_settings WHERE user_id = ?", [id]);
   const map = Object.fromEntries(rows.map((row) => [row.key, row.value]));
+  const account = await queryOne<{ domain_key: string }>(database, "SELECT domain_key FROM users WHERE id = ?", [id]);
   const sensitivity = map.sensitivity;
   const safeSensitivity: Sensitivity =
     sensitivity === "conservative" || sensitivity === "aggressive" ? sensitivity : "balanced";
@@ -30,27 +38,28 @@ export async function getPolicy(db?: Db): Promise<Policy> {
     blockDays: Number.isFinite(days) ? Math.min(90, Math.max(1, Math.round(days))) : 30,
     autoBlock: map.autoBlock !== "false",
     domain: map.domain || "AnodeH.com",
-    domainKey: map.domainKey || "cf_live_nw_4k9m2p",
+    domainKey: account?.domain_key || "cf_live_nw_4k9m2p",
   };
 }
 
 export async function savePolicy(patch: Partial<Policy>) {
   const db = await getDb();
-  const current = await getPolicy(db);
+  const userId = await ownerId();
+  const current = await getPolicy(db, userId);
   const next = { ...current, ...patch };
   if (patch.blockDays !== undefined) {
     next.blockDays = Math.min(90, Math.max(1, Math.round(patch.blockDays)));
   }
   const sql =
-    "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value";
-  await execute(db, sql, ["sensitivity", next.sensitivity]);
-  await execute(db, sql, ["blockDays", String(next.blockDays)]);
-  await execute(db, sql, ["autoBlock", next.autoBlock ? "true" : "false"]);
-  await execute(db, sql, ["domain", next.domain]);
+    "INSERT INTO user_settings (user_id, key, value) VALUES (?, ?, ?) ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value";
+  await execute(db, sql, [userId, "sensitivity", next.sensitivity]);
+  await execute(db, sql, [userId, "blockDays", String(next.blockDays)]);
+  await execute(db, sql, [userId, "autoBlock", next.autoBlock ? "true" : "false"]);
+  await execute(db, sql, [userId, "domain", next.domain]);
 }
 
-async function allowValues(db: Db): Promise<string[]> {
-  const rows = await queryAll<{ value: string }>(db, "SELECT value FROM allowlist");
+async function allowValues(db: Db, userId: string): Promise<string[]> {
+  const rows = await queryAll<{ value: string }>(db, "SELECT value FROM allowlist WHERE user_id = ?", [userId]);
   return rows.map((row) => row.value);
 }
 
@@ -71,60 +80,62 @@ export function to24(ip: string): string | null {
   return `${parts[0]}.${parts[1]}.${parts[2]}.0/24`;
 }
 
-async function historyFor(db: Db, input: IncomingClick, ts: number) {
+async function historyFor(db: Db, input: IncomingClick, ts: number, userId: string) {
   const since = ts - 86400;
   const ipCount = await queryOne<CountRow>(
     db,
-    "SELECT COUNT(*) AS c FROM clicks WHERE ip = ? AND ts > ? AND ts <= ?",
-    [input.ip, since, ts],
+    "SELECT COUNT(*) AS c FROM clicks WHERE user_id = ? AND ip = ? AND ts > ? AND ts <= ?",
+    [userId, input.ip, since, ts],
   );
   const deviceIps = await queryAll<IpRow>(
     db,
-    "SELECT DISTINCT ip FROM clicks WHERE device_hash = ? AND ts > ? AND ts <= ?",
-    [input.deviceHash, ts - 7 * 86400, ts],
+    "SELECT DISTINCT ip FROM clicks WHERE user_id = ? AND device_hash = ? AND ts > ? AND ts <= ?",
+    [userId, input.deviceHash, ts - 7 * 86400, ts],
   );
   const known = new Set(deviceIps.map((row) => row.ip));
   known.add(input.ip);
   return { ipClicks24h: (ipCount?.c ?? 0) + 1, deviceIpCount: known.size };
 }
 
-async function checkCapacity(db: Db, ts: number) {
+async function checkCapacity(db: Db, ts: number, userId: string) {
   const rows = await queryAll<{ campaign: string; c: number }>(
     db,
     `SELECT campaign, COUNT(*) AS c FROM blocks
-     WHERE status = 'active' AND kind IN ('ip', 'subnet')
+     WHERE user_id = ? AND status = 'active' AND kind IN ('ip', 'subnet')
      GROUP BY campaign`,
+    [userId],
   );
   for (const row of rows) {
     if (row.c < ALERT_AT) continue;
     const recent = await queryOne<{ id: string }>(
       db,
-      "SELECT id FROM alerts WHERE message LIKE ? AND ts > ?",
-      [`%${row.campaign}%full%`, ts - 86400],
+      "SELECT id FROM alerts WHERE user_id = ? AND message LIKE ? AND ts > ?",
+      [userId, `%${row.campaign}%full%`, ts - 86400],
     );
     if (recent) continue;
-    await execute(db, "INSERT INTO alerts (id, ts, level, message, read) VALUES (?, ?, 'warning', ?, 0)", [
+    await execute(db, "INSERT INTO alerts (id, ts, level, message, read, user_id) VALUES (?, ?, 'warning', ?, 0, ?)", [
       nid("a"),
       ts,
       `${row.campaign} exclusion list is ${row.c} of ${EXCLUSION_CAP} full. Older addresses will be released when the ceiling is reached.`,
+      userId,
     ]);
   }
 }
 
-async function makeRoom(db: Db, campaign: string) {
+async function makeRoom(db: Db, campaign: string, userId: string) {
   const count = await queryOne<CountRow>(
     db,
     `SELECT COUNT(*) AS c FROM blocks
-     WHERE campaign = ? AND status = 'active' AND kind IN ('ip', 'subnet')`,
-    [campaign],
+     WHERE user_id = ? AND campaign = ? AND status = 'active' AND kind IN ('ip', 'subnet')`,
+    [userId, campaign],
   );
   if ((count?.c ?? 0) < EXCLUSION_CAP) return;
   const victim = await queryOne<{ id: string }>(
     db,
     `SELECT id FROM blocks
-     WHERE campaign = ? AND status = 'active' AND kind IN ('ip', 'subnet')
+     WHERE user_id = ? AND campaign = ? AND status = 'active' AND kind IN ('ip', 'subnet')
      ORDER BY score ASC, created_at ASC LIMIT 1`,
-    [campaign],
+    [userId, campaign],
   );
   if (victim) {
     await execute(db, "UPDATE blocks SET status = 'evicted' WHERE id = ?", [victim.id]);
@@ -143,26 +154,28 @@ async function upsertBlock(
     expires: number;
     source: string;
   },
+  userId: string,
 ) {
   const existing = await queryOne<{ id: string }>(
     db,
-    `SELECT id FROM blocks WHERE target = ? AND campaign = ? AND status = 'active' AND kind = ?`,
-    [block.target, block.campaign, block.kind],
+    `SELECT id FROM blocks WHERE user_id = ? AND target = ? AND campaign = ? AND status = 'active' AND kind = ?`,
+    [userId, block.target, block.campaign, block.kind],
   );
   if (existing) {
-    await execute(db, "UPDATE blocks SET expires_at = ?, score = MAX(score, ?), reason = ? WHERE id = ?", [
+    await execute(db, "UPDATE blocks SET expires_at = ?, score = MAX(score, ?), reason = ? WHERE id = ? AND user_id = ?", [
       block.expires,
       block.score,
       block.reason,
       existing.id,
+      userId,
     ]);
     return;
   }
-  await makeRoom(db, block.campaign);
+  await makeRoom(db, block.campaign, userId);
   await execute(
     db,
-    `INSERT INTO blocks (id, target, kind, campaign, reason, score, created_at, expires_at, status, source)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)`,
+    `INSERT INTO blocks (id, target, kind, campaign, reason, score, created_at, expires_at, status, source, user_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`,
     [
       nid("b"),
       block.target,
@@ -173,9 +186,10 @@ async function upsertBlock(
       block.ts,
       block.expires,
       block.source,
+      userId,
     ],
   );
-  await checkCapacity(db, block.ts);
+  await checkCapacity(db, block.ts, userId);
 }
 
 async function considerBlock(
@@ -191,6 +205,7 @@ async function considerBlock(
     ts: number;
   },
   policy: Policy,
+  userId: string,
 ) {
   if (row.enforcement !== "ip_exclusion") return;
   const expires = row.ts + policy.blockDays * 86400;
@@ -202,8 +217,8 @@ async function considerBlock(
       const peers = await queryOne<CountRow>(
         db,
         `SELECT COUNT(DISTINCT ip) AS c FROM clicks
-         WHERE campaign = ? AND network = 'datacenter' AND ip LIKE ? AND ts > ?`,
-        [row.campaign, prefix + "%", row.ts - 7 * 86400],
+         WHERE user_id = ? AND campaign = ? AND network = 'datacenter' AND ip LIKE ? AND ts > ?`,
+        [userId, row.campaign, prefix + "%", row.ts - 7 * 86400],
       );
       if ((peers?.c ?? 0) >= 3) {
         await upsertBlock(db, {
@@ -215,12 +230,12 @@ async function considerBlock(
           ts: row.ts,
           expires,
           source: "auto",
-        });
+        }, userId);
         await execute(
           db,
           `UPDATE blocks SET status = 'covered'
-           WHERE campaign = ? AND status = 'active' AND kind = 'ip' AND target LIKE ?`,
-          [row.campaign, prefix + "%"],
+           WHERE user_id = ? AND campaign = ? AND status = 'active' AND kind = 'ip' AND target LIKE ?`,
+          [userId, row.campaign, prefix + "%"],
         );
         return;
       }
@@ -235,7 +250,7 @@ async function considerBlock(
     ts: row.ts,
     expires,
     source: "auto",
-  });
+  }, userId);
 }
 
 export type StoredClick = VerdictShape & {
@@ -253,15 +268,16 @@ type VerdictShape = {
   reasons: string[];
 };
 
-export async function recordClick(db: Db, input: IncomingClick): Promise<StoredClick> {
-  const policy = await getPolicy(db);
+export async function recordClick(db: Db, input: IncomingClick, explicitUserId?: string): Promise<StoredClick> {
+  const userId = await ownerId(explicitUserId);
+  const policy = await getPolicy(db, userId);
   const campaign = findCampaign(input.campaign);
   const campaignName = campaign?.name ?? (input.campaign || "Unassigned");
   const campaignType = campaign?.type ?? "search";
   const countries = campaign?.countries ?? ["US"];
   const ts = input.ts ?? Math.floor(Date.now() / 1000);
-  const allowed = isAllowed(input.ip, await allowValues(db));
-  const history = await historyFor(db, input, ts);
+  const allowed = isAllowed(input.ip, await allowValues(db, userId));
+  const history = await historyFor(db, input, ts, userId);
   const scored = evaluate(input, history, policy, allowed, countries);
   const enforcement =
     scored.action === "block" ? enforcementFor(scored.action, campaignType) : scored.enforcement;
@@ -273,8 +289,8 @@ export async function recordClick(db: Db, input: IncomingClick): Promise<StoredC
     `INSERT INTO clicks (
       id, ts, click_id, campaign, campaign_type, keyword, placement, ip, device_hash,
       country, city, isp, network, user_agent, time_on_page, engaged, converted, cost,
-      score, reasons, action, enforcement
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      score, reasons, action, enforcement, user_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id,
       ts,
@@ -298,6 +314,7 @@ export async function recordClick(db: Db, input: IncomingClick): Promise<StoredC
       JSON.stringify(verdict.reasons),
       verdict.action,
       verdict.enforcement,
+      userId,
     ],
   );
   await considerBlock(
@@ -313,6 +330,7 @@ export async function recordClick(db: Db, input: IncomingClick): Promise<StoredC
       ts,
     },
     policy,
+    userId,
   );
   return {
     id,
@@ -329,7 +347,8 @@ export async function recordClick(db: Db, input: IncomingClick): Promise<StoredC
 
 export async function blockManually(ip: string, campaign: string, score: number) {
   const db = await getDb();
-  const policy = await getPolicy(db);
+  const userId = await ownerId();
+  const policy = await getPolicy(db, userId);
   const ts = Math.floor(Date.now() / 1000);
   const known = findCampaign(campaign);
   if (known?.type === "pmax") return { ok: false as const, error: "Performance Max cannot take an IP exclusion." };
@@ -342,13 +361,13 @@ export async function blockManually(ip: string, campaign: string, score: number)
     ts,
     expires: ts + policy.blockDays * 86400,
     source: "manual",
-  });
+  }, userId);
   return { ok: true as const };
 }
 
 export async function removeBlock(id: string) {
   const db = await getDb();
-  await execute(db, "UPDATE blocks SET status = 'removed' WHERE id = ? AND status = 'active'", [id]);
+  await execute(db, "UPDATE blocks SET status = 'removed' WHERE id = ? AND user_id = ? AND status = 'active'", [id, await ownerId()]);
 }
 
 export async function addAllow(value: string, note: string) {
@@ -357,27 +376,30 @@ export async function addAllow(value: string, note: string) {
     return { ok: false as const, error: "Enter an IPv4 address or a /24 range." };
   }
   const db = await getDb();
+  const userId = await ownerId();
   await execute(
     db,
-    "INSERT INTO allowlist (id, value, note) VALUES (?, ?, ?) ON CONFLICT(value) DO UPDATE SET note = excluded.note",
-    [nid("w"), clean, note.trim() || "Allowed"],
+    `INSERT INTO allowlist (id, user_id, value, note) VALUES (?, ?, ?, ?)
+     ON CONFLICT(user_id, value) DO UPDATE SET note = excluded.note`,
+    [nid("w"), userId, clean, note.trim() || "Allowed"],
   );
   return { ok: true as const };
 }
 
 export async function removeAllow(id: string) {
   const db = await getDb();
-  await execute(db, "DELETE FROM allowlist WHERE id = ?", [id]);
+  await execute(db, "DELETE FROM allowlist WHERE id = ? AND user_id = ?", [id, await ownerId()]);
 }
 
 export async function dismissAlerts() {
   const db = await getDb();
-  await execute(db, "UPDATE alerts SET read = 1 WHERE read = 0");
+  await execute(db, "UPDATE alerts SET read = 1 WHERE user_id = ? AND read = 0", [await ownerId()]);
 }
 
 export async function previewCeiling() {
   const db = await getDb();
-  const policy = await getPolicy(db);
+  const userId = await ownerId();
+  const policy = await getPolicy(db, userId);
   const campaign = "Brand — Exact";
   const ts = Math.floor(Date.now() / 1000);
   let active =
@@ -385,8 +407,8 @@ export async function previewCeiling() {
       await queryOne<CountRow>(
         db,
         `SELECT COUNT(*) AS c FROM blocks
-         WHERE campaign = ? AND status = 'active' AND kind IN ('ip', 'subnet')`,
-        [campaign],
+         WHERE user_id = ? AND campaign = ? AND status = 'active' AND kind IN ('ip', 'subnet')`,
+        [userId, campaign],
       )
     )?.c ?? 0;
   let cursor = 0;
@@ -397,8 +419,8 @@ export async function previewCeiling() {
     if (!to24(ip)) continue;
     const existing = await queryOne<{ id: string }>(
       db,
-      "SELECT id FROM blocks WHERE target = ? AND campaign = ? AND status = 'active'",
-      [ip, campaign],
+      "SELECT id FROM blocks WHERE user_id = ? AND target = ? AND campaign = ? AND status = 'active'",
+      [userId, ip, campaign],
     );
     if (existing) continue;
     await upsertBlock(db, {
@@ -410,7 +432,7 @@ export async function previewCeiling() {
       ts,
       expires: ts + policy.blockDays * 86400,
       source: "manual",
-    });
+    }, userId);
     active += 1;
     added += 1;
   }

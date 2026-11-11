@@ -1,3 +1,4 @@
+import { randomBytes } from "crypto";
 import { createClient, type Client, type InArgs, type Transaction } from "@libsql/client";
 
 export type Db = Client | Transaction;
@@ -143,9 +144,65 @@ async function migrate(db: Client) {
     CREATE INDEX IF NOT EXISTS blocks_status ON blocks (status, campaign);
   `);
 
-  const userColumns = await queryAll<{ name: string }>(db, "PRAGMA table_info(users)");
-  if (!userColumns.some((column) => column.name === "ads_account")) {
-    await execute(db, "ALTER TABLE users ADD COLUMN ads_account TEXT NOT NULL DEFAULT ''");
+  await addColumn(db, "users", "ads_account", "TEXT NOT NULL DEFAULT ''");
+  await addColumn(db, "users", "domain_key", "TEXT NOT NULL DEFAULT ''");
+  await addColumn(db, "clicks", "user_id", "TEXT NOT NULL DEFAULT ''");
+  await addColumn(db, "blocks", "user_id", "TEXT NOT NULL DEFAULT ''");
+  await addColumn(db, "alerts", "user_id", "TEXT NOT NULL DEFAULT ''");
+  await addColumn(db, "allowlist", "user_id", "TEXT NOT NULL DEFAULT ''");
+  const allowSql = await queryOne<{ sql: string }>(db, "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'allowlist'");
+  if (allowSql?.sql.includes("UNIQUE")) {
+    await db.executeMultiple(`
+      CREATE TABLE allowlist_v2 (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL DEFAULT '',
+        value TEXT NOT NULL,
+        note TEXT NOT NULL
+      );
+      INSERT INTO allowlist_v2 (id, user_id, value, note)
+        SELECT id, user_id, value, note FROM allowlist;
+      DROP TABLE allowlist;
+      ALTER TABLE allowlist_v2 RENAME TO allowlist;
+      CREATE UNIQUE INDEX allowlist_user_value ON allowlist (user_id, value);
+    `);
+  }
+  await addColumn(db, "payments", "user_id", "TEXT NOT NULL DEFAULT ''");
+  await addColumn(db, "checkouts", "user_id", "TEXT NOT NULL DEFAULT ''");
+  await execute(
+    db,
+    `CREATE TABLE IF NOT EXISTS user_settings (
+      user_id TEXT NOT NULL,
+      key TEXT NOT NULL,
+      value TEXT NOT NULL,
+      PRIMARY KEY (user_id, key)
+    )`,
+  );
+  await execute(db, "CREATE INDEX IF NOT EXISTS clicks_user_ts ON clicks (user_id, ts)");
+  await execute(db, "CREATE INDEX IF NOT EXISTS blocks_user_status ON blocks (user_id, status, campaign)");
+  await execute(db, "CREATE UNIQUE INDEX IF NOT EXISTS users_domain_key ON users (domain_key) WHERE domain_key != ''");
+
+  const unsigned = await queryAll<{ id: string }>(db, "SELECT id FROM users WHERE domain_key = ''");
+  for (const row of unsigned) {
+    await execute(db, "UPDATE users SET domain_key = ? WHERE id = ?", [`cf_${randomBytes(8).toString("hex")}`, row.id]);
+  }
+
+  const scoped = await queryOne<{ value: string }>(db, "SELECT value FROM settings WHERE key = 'accounts_scoped'");
+  if (!scoped) {
+    const shared = await queryAll<{ key: string; value: string }>(
+      db,
+      "SELECT key, value FROM settings WHERE key IN ('paid_until', 'intro_used', 'paypal_subscription', 'paypal_synced_at')",
+    );
+    const people = await queryAll<{ id: string }>(db, "SELECT id FROM users");
+    for (const person of people) {
+      for (const row of shared) {
+        await execute(
+          db,
+          "INSERT INTO user_settings (user_id, key, value) VALUES (?, ?, ?) ON CONFLICT(user_id, key) DO NOTHING",
+          [person.id, row.key, row.value],
+        );
+      }
+    }
+    await execute(db, "INSERT INTO settings (key, value) VALUES ('accounts_scoped', '1')");
   }
 
   const defaults: Record<string, string> = {
@@ -157,6 +214,13 @@ async function migrate(db: Client) {
   };
   for (const [key, value] of Object.entries(defaults)) {
     await execute(db, "INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", [key, value]);
+  }
+}
+
+async function addColumn(db: Client, table: string, column: string, definition: string) {
+  const columns = await queryAll<{ name: string }>(db, `PRAGMA table_info(${table})`);
+  if (!columns.some((item) => item.name === column)) {
+    await execute(db, `ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
   }
 }
 
