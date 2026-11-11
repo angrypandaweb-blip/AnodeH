@@ -39,6 +39,7 @@ export default async function LandingPage() {
           <span className="brand-name">AnodeH</span>
         </a>
         <nav className="site-nav">
+          <a href="#preview">Dashboard</a>
           <a href="#threats">Threats</a>
           <a href="#pricing">Pricing</a>
           <a href="#account">{user ? "Account" : "Log in"}</a>
@@ -61,6 +62,123 @@ export default async function LandingPage() {
           <li>Then {dollars(STANDARD_CENTS)} every 30 days</li>
           <li>Cancel anytime in PayPal</li>
         </ul>
+      </section>
+
+      <section id="preview" className="preview">
+        <h2>The dashboard you get</h2>
+        <p className="lede">A sample week, in the same layout subscribers open. Spend, invalid cost, and the clicks worth blocking are on one screen.</p>
+        <div className="preview-frame">
+          <div className="preview-top">
+            <div>
+              <strong>Google Ads 123-456-7890</strong>
+              <span>Sample week · not your live account</span>
+            </div>
+            <span className="offer-tag">What you see after you subscribe</span>
+          </div>
+          <section className="metrics">
+            <article className="metric">
+              <span>Clicks</span>
+              <strong>1,284</strong>
+              <em>Last 7 days</em>
+            </article>
+            <article className="metric">
+              <span>Invalid rate</span>
+              <strong>18%</strong>
+              <em>231 flagged or blocked · 22 today</em>
+            </article>
+            <article className="metric">
+              <span>Invalid cost</span>
+              <strong>$642</strong>
+              <em>of $4,180 monitored</em>
+            </article>
+            <article className="metric">
+              <span>Exclusions</span>
+              <strong>86</strong>
+              <em>Fullest campaign 214/500</em>
+            </article>
+          </section>
+          <section className="split">
+            <article className="card">
+              <span className="card-label">Clicks by day</span>
+              <div className="chart" aria-hidden>
+                {[
+                  ["Mon", 42, 8],
+                  ["Tue", 51, 6],
+                  ["Wed", 38, 19],
+                  ["Thu", 46, 11],
+                  ["Fri", 55, 7],
+                  ["Sat", 29, 14],
+                  ["Sun", 33, 9],
+                ].map(([day, allow, bad]) => (
+                  <div className="bar-col" key={String(day)}>
+                    <span className="bar-count">{bad}</span>
+                    <div className="stack" style={{ height: Math.round(((Number(allow) + Number(bad)) / 74) * 150) }}>
+                      <div className="ok" style={{ flex: Number(allow) }} />
+                      <div className="bad" style={{ flex: Number(bad) }} />
+                    </div>
+                    <span>{day}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="legend">
+                <span><i className="swatch ok" /> Allowed</span>
+                <span><i className="swatch bad" /> Flagged or blocked</span>
+              </div>
+            </article>
+            <article className="card">
+              <span className="card-label">Exclusion room</span>
+              <div className="capacity">
+                <div className="track">
+                  <span style={{ width: "43%" }} />
+                </div>
+                <p className="note">Google Ads keeps about 500 IP exclusions per campaign. AnodeH uses that room on addresses likely to return.</p>
+              </div>
+              <div className="cap-row"><span>Brand — Exact</span><span className="mono">214/500</span></div>
+              <div className="cap-row"><span>Nonbrand — Hiking</span><span className="mono">96/500</span></div>
+              <div className="cap-row"><span>Display — Prospecting</span><span className="mono">41/500</span></div>
+            </article>
+          </section>
+          <article className="card preview-table">
+            <span className="card-label">Latest risky clicks</span>
+            <table>
+              <thead>
+                <tr>
+                  <th>When</th>
+                  <th>Campaign</th>
+                  <th>Source</th>
+                  <th>Score</th>
+                  <th>Why</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Today, 2:14 PM</td>
+                  <td>Nonbrand — Hiking<div className="muted">hiking backpack sale</div></td>
+                  <td><div className="mono">34.201.88.24</div><div className="muted">Amazon · US</div></td>
+                  <td><span className="pill stop">82</span></td>
+                  <td>Datacenter, instant bounce</td>
+                </tr>
+                <tr>
+                  <td>Today, 11:02 AM</td>
+                  <td>Brand — Exact<div className="muted">northwind tents</div></td>
+                  <td><div className="mono">73.184.22.10</div><div className="muted">Comcast · US</div></td>
+                  <td><span className="pill watch">71</span></td>
+                  <td>Repeat address, short visit</td>
+                </tr>
+                <tr>
+                  <td>Yesterday, 6:40 PM</td>
+                  <td>Performance Max<div className="muted">Conversion held when blocked</div></td>
+                  <td><div className="mono">185.220.101.33</div><div className="muted">Mullvad · DE</div></td>
+                  <td><span className="pill stop">88</span></td>
+                  <td>VPN, off-target country</td>
+                </tr>
+              </tbody>
+            </table>
+          </article>
+        </div>
+        <div className="hero-actions">
+          <a className="btn" href={startHref}>{startLabel}</a>
+        </div>
       </section>
 
       <section id="threats" className="band">

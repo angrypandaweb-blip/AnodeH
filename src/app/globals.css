@@ -394,6 +394,22 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 .lede { color: var(--cc-muted); font-size: 18px; line-height: 1.5; max-width: 40rem; margin: 16px auto 0; }
 .hero-actions { display: flex; justify-content: center; gap: 12px; margin-top: 26px; flex-wrap: wrap; }
 .reassure { display: flex; justify-content: center; gap: 18px; flex-wrap: wrap; margin: 22px 0 0; padding: 0; list-style: none; color: var(--cc-muted); font-size: 14px; }
+.preview { padding: 12px 24px 56px; }
+.preview-frame {
+  max-width: 1040px;
+  margin: 28px auto 0;
+  background: var(--cc-wash);
+  border: 1px solid var(--cc-line);
+  border-radius: 18px;
+  padding: 18px;
+  text-align: left;
+  box-shadow: 0 18px 50px rgba(11, 61, 145, 0.08);
+}
+.preview-top { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 14px; }
+.preview-top strong { display: block; font-size: 16px; }
+.preview-top span { color: var(--cc-muted); font-size: 13px; }
+.preview-table { overflow-x: auto; }
+.preview .hero-actions { margin-bottom: 0; }
 .band, .benefits, .faq { padding: 56px 24px; }
 .band { background: var(--cc-wash); }
 .band h2, .benefits h2, .faq h2, .close h2 { font-size: 36px; text-align: center; margin: 0 auto 8px; }
@@ -429,6 +445,7 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
   .hero { padding: 40px 16px 20px; }
   .hero h1, .band h2, .benefits h2, .faq h2, .close h2 { font-size: 32px; }
   .threat-grid, .benefit-grid, .plans { grid-template-columns: 1fr; }
+  .preview-top { align-items: flex-start; flex-direction: column; }
   .site-bar { padding: 12px 16px; align-items: flex-start; }
   .site-nav { gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
   .main { padding: 20px 16px 48px; }
