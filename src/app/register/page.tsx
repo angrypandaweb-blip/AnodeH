@@ -6,8 +6,8 @@ import { ANNUAL_CENTS, dollars, INTRO_CENTS, STANDARD_CENTS } from "@/lib/billin
 export const dynamic = "force-dynamic";
 
 const PLAN_COPY = {
-  month: `Monthly plan. ${dollars(INTRO_CENTS)} for the first 30 days, then ${dollars(STANDARD_CENTS)} every 30 days. The dashboard opens after the account is created.`,
-  year: `Annual plan. ${dollars(ANNUAL_CENTS)} for 365 days, with no renewal. The dashboard opens after the account is created.`,
+  month: `Monthly plan. ${dollars(INTRO_CENTS)} for the first 30 days, then ${dollars(STANDARD_CENTS)} every 30 days. Billing opens after the account is created.`,
+  year: `Annual plan. ${dollars(ANNUAL_CENTS)} for 365 days, with no renewal. Billing opens after the account is created.`,
 };
 
 export default async function RegisterPage({
@@ -32,13 +32,14 @@ export default async function RegisterPage({
       </header>
       <section className="hero" style={{ textAlign: "left", maxWidth: 480 }}>
         <p className="kicker">Create an account</p>
-        <h1>Open the dashboard.</h1>
+        <h1>Billing is next.</h1>
         <p className="lede" style={{ marginLeft: 0 }}>
-          {plan ? PLAN_COPY[plan] : "Create an account and the scored clicks, exclusions, and settings are on the next page."}
+          {plan ? PLAN_COPY[plan] : "Create an account. The billing page opens next, where you choose monthly or annual."}
         </p>
         {params.error ? <p className="banner warn">{params.error}</p> : null}
         <form action={registerAccount} className="form-grid">
           <input type="hidden" name="return" value={back} />
+          {plan ? <input type="hidden" name="plan" value={plan} /> : null}
           <label>
             Name
             <input type="text" name="name" autoComplete="name" required />

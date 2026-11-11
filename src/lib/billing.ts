@@ -117,7 +117,7 @@ function isPlan(value: string | undefined): value is PlanId {
 }
 
 function paypalBase() {
-  return process.env.PAYPAL_ENV === "live" ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com";
+  return paypalLive() ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com";
 }
 
 export function paymentsConfigured() {
@@ -125,7 +125,7 @@ export function paymentsConfigured() {
 }
 
 export function paypalLive() {
-  return process.env.PAYPAL_ENV === "live";
+  return process.env.PAYPAL_ENV !== "sandbox";
 }
 
 function usd(cents: number) {
