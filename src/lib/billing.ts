@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { getUser } from "@/lib/auth";
 import { execute, getDb, queryOne } from "@/lib/db";
+import { sendPurchaseReceipt } from "@/lib/email-reports";
 
 export const PERIOD_DAYS = 30;
 export const YEAR_DAYS = 365;
@@ -187,6 +188,8 @@ async function grantPaidPeriod(paymentId: string, plan: PlanId, amountCents: num
   } finally {
     tx.close();
   }
+  const label = plan === "intro" ? "First 30 days" : plan === "year" ? "1 year" : "30 days";
+  await sendPurchaseReceipt({ userId, paymentId, amountCents, periodEnd, planName: label }).catch(() => undefined);
 }
 
 type PayPalOrder = {
@@ -473,11 +476,22 @@ async function applySubscription(
   await saveSetting("paypal_subscription", id, owner);
   if (paidCents === INTRO_CENTS) await saveSetting("intro_used", "1", owner);
   const paymentId = `${id}:${payment?.time || periodEnd}`;
+  const existingPayment = await queryOne<{ id: string }>(await getDb(), "SELECT id FROM payments WHERE id = ?", [paymentId]);
   await execute(
     await getDb(),
     "INSERT OR IGNORE INTO payments (id, user_id, amount, created_at, period_end) VALUES (?, ?, ?, ?, ?)",
     [paymentId, owner || "", paidCents, nowSec(), periodEnd],
   );
+  if (!existingPayment && owner) {
+    const label = paidCents === INTRO_CENTS ? "First 30 days" : "30 days";
+    await sendPurchaseReceipt({
+      userId: owner,
+      paymentId,
+      amountCents: paidCents,
+      periodEnd,
+      planName: label,
+    }).catch(() => undefined);
+  }
   return { ok: true, active: true };
 }
 
