@@ -306,6 +306,10 @@ export default async function LandingPage() {
         <h2>Put the budget back on real clicks.</h2>
         <a className="btn" href={startHref}>{startLabel}</a>
       </section>
+      <footer className="site-legal">
+        <a href="/privacy">Privacy</a>
+        <a href="/terms">Terms</a>
+      </footer>
     </div>
   );
 }
