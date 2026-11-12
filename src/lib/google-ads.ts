@@ -27,7 +27,6 @@ export function googleAdsSetupError() {
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
     return "Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET on Vercel, then redeploy.";
   }
-  if (!developerToken()) return "Add GOOGLE_ADS_DEVELOPER_TOKEN on Vercel, then redeploy.";
   return null;
 }
 
@@ -36,10 +35,9 @@ function developerToken() {
 }
 
 function adsHeaders(accessToken: string, loginCustomerId = "") {
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${accessToken}`,
-    "developer-token": developerToken(),
-  };
+  const headers: Record<string, string> = { Authorization: `Bearer ${accessToken}` };
+  const token = developerToken();
+  if (token) headers["developer-token"] = token;
   if (loginCustomerId) headers["login-customer-id"] = loginCustomerId;
   return headers;
 }
@@ -117,7 +115,6 @@ async function accessTokenFor(refreshToken: string): Promise<{ ok: true; accessT
 }
 
 async function adsSearch(accessToken: string, customerId: string, query: string, loginCustomerId = ""): Promise<SearchResult> {
-  if (!developerToken()) return { ok: false, error: "Add GOOGLE_ADS_DEVELOPER_TOKEN on Vercel, then redeploy.", rows: [] };
   if (!/^\d{10}$/.test(customerId)) return { ok: false, error: "Google Ads customer ID must be 10 digits.", rows: [] };
   if (loginCustomerId && !/^\d{10}$/.test(loginCustomerId)) return { ok: false, error: "Manager customer ID must be 10 digits.", rows: [] };
   const rows: unknown[] = [];
@@ -139,7 +136,6 @@ async function adsSearch(accessToken: string, customerId: string, query: string,
 }
 
 async function listAccessible(accessToken: string): Promise<{ ok: true; ids: string[] } | { ok: false; error: string }> {
-  if (!developerToken()) return { ok: false, error: "Add GOOGLE_ADS_DEVELOPER_TOKEN on Vercel, then redeploy." };
   const response = await fetch(`${API}/customers:listAccessibleCustomers`, {
     headers: adsHeaders(accessToken),
   });

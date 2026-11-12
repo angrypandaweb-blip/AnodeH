@@ -5,14 +5,14 @@ async function main() {
   process.env.GOOGLE_CLIENT_SECRET = "secret";
   delete process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
 
-  const { googleAdsConfigured, googleAdsSetupError } = await import("../src/lib/google-ads.ts");
+  const { googleAdsConfigured, googleAdsSetupError } = await import("../src/lib/google-ads");
 
-  assert.equal(googleAdsConfigured(), false);
-  assert.match(googleAdsSetupError() || "", /GOOGLE_ADS_DEVELOPER_TOKEN/);
-
-  process.env.GOOGLE_ADS_DEVELOPER_TOKEN = " sample-token ";
   assert.equal(googleAdsSetupError(), null);
   assert.equal(googleAdsConfigured(), true);
+
+  delete process.env.GOOGLE_CLIENT_SECRET;
+  assert.match(googleAdsSetupError() || "", /GOOGLE_CLIENT_SECRET/);
+  assert.equal(googleAdsConfigured(), false);
 
   console.log("google ads setup tests passed");
 }
