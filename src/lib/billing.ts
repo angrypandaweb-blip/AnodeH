@@ -202,25 +202,31 @@ function paypalError(payload: { message?: string; details?: { description?: stri
   return payload?.details?.[0]?.description || payload?.message || fallback;
 }
 
-export async function createPayPalCheckout(choice: "month" | "year") {
+type CheckoutResult = { ok: true; url: string } | { ok: false; error: string };
+
+function checkoutError(error: string): CheckoutResult {
+  return { ok: false, error };
+}
+
+export async function createPayPalCheckout(choice: "month" | "year"): Promise<CheckoutResult> {
   if (!paymentsConfigured()) {
-    return { error: "Add PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET to .env.local, then restart the app." };
+    return checkoutError("Add PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET to .env.local, then restart the app.");
   }
   const token = await paypalToken();
-  if (!token) return { error: "PayPal did not accept the client id and secret." };
+  if (!token) return checkoutError("PayPal did not accept the client id and secret.");
 
   const access = await getAccess();
   const plan: PlanId = choice === "year" ? "year" : access.introUsed ? "month" : "intro";
   if (plan !== "year") {
     const origin = await siteOrigin();
-    if (!origin) return { error: "Could not determine the site address for checkout." };
+    if (!origin) return checkoutError("Could not determine the site address for checkout.");
     return createMonthlySubscription(token, plan, origin);
   }
 
   const spec = PLANS[plan];
 
   const origin = await siteOrigin();
-  if (!origin) return { error: "Could not determine the site address for checkout." };
+  if (!origin) return checkoutError("Could not determine the site address for checkout.");
 
   const response = await fetch(`${paypalBase()}/v2/checkout/orders`, {
     method: "POST",
@@ -254,19 +260,19 @@ export async function createPayPalCheckout(choice: "month" | "year") {
   } | null;
   const approve = payload?.links?.find((link) => link.rel === "approve" || link.rel === "payer-action")?.href;
   if (!response.ok || !payload?.id || !approve) {
-    return { error: paypalError(payload, "PayPal could not start the payment.") };
+    return checkoutError(paypalError(payload, "PayPal could not start the payment."));
   }
 
   const redirectUrl = new URL(approve);
   const allowed = redirectUrl.protocol === "https:" && (redirectUrl.hostname === "www.paypal.com" || redirectUrl.hostname === "www.sandbox.paypal.com");
-  if (!allowed) return { error: "PayPal returned an unexpected payment link." };
+  if (!allowed) return checkoutError("PayPal returned an unexpected payment link.");
 
   await execute(
     await getDb(),
     "INSERT INTO checkouts (id, plan, amount, created_at) VALUES (?, ?, ?, ?)",
     [payload.id, plan, spec.cents, nowSec()],
   );
-  return { url: approve };
+  return { ok: true, url: approve };
 }
 
 export async function capturePayPalOrder(orderId: string) {
@@ -392,15 +398,15 @@ async function monthlyPlanId(token: string, intro: boolean) {
   return created.payload.id;
 }
 
-async function createMonthlySubscription(token: string, plan: "intro" | "month", origin: string) {
+async function createMonthlySubscription(token: string, plan: "intro" | "month", origin: string): Promise<CheckoutResult> {
   const current = await setting("paypal_subscription");
   if (current) {
     const state = await applySubscription(current);
-    if (state.active) return { error: "This account already renews automatically on PayPal." };
+    if (state.active) return checkoutError("This account already renews automatically on PayPal.");
   }
 
   const planId = await monthlyPlanId(token, plan === "intro");
-  if (!planId) return { error: "PayPal could not prepare the monthly plan." };
+  if (!planId) return checkoutError("PayPal could not prepare the monthly plan.");
 
   const created = await paypalJson(token, "/v1/billing/subscriptions", {
     plan_id: planId,
@@ -415,12 +421,12 @@ async function createMonthlySubscription(token: string, plan: "intro" | "month",
   });
   const approve = created.payload?.links?.find((link) => link.rel === "approve")?.href;
   if (!created.ok || !created.payload?.id || !approve) {
-    return { error: paypalError(created.payload, "PayPal could not start the monthly subscription.") };
+    return checkoutError(paypalError(created.payload, "PayPal could not start the monthly subscription."));
   }
   const redirectUrl = new URL(approve);
   const allowed = redirectUrl.protocol === "https:" && (redirectUrl.hostname === "www.paypal.com" || redirectUrl.hostname === "www.sandbox.paypal.com");
-  if (!allowed) return { error: "PayPal returned an unexpected payment link." };
-  return { url: approve };
+  if (!allowed) return checkoutError("PayPal returned an unexpected payment link.");
+  return { ok: true, url: approve };
 }
 
 type PayPalSubscription = {
