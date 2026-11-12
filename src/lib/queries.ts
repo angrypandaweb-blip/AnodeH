@@ -265,6 +265,61 @@ export async function topPlacements() {
   );
 }
 
+export type GoogleLink = {
+  customerId: string;
+  loginCustomerId: string;
+  connectedAt: number;
+  syncedAt: number;
+  lastError: string;
+};
+
+export async function googleLink(): Promise<GoogleLink | null> {
+  const row = await queryOne<{
+    customer_id: string;
+    login_customer_id: string;
+    connected_at: number;
+    synced_at: number;
+    last_error: string;
+  }>(
+    await getDb(),
+    "SELECT customer_id, login_customer_id, connected_at, synced_at, last_error FROM google_ads WHERE user_id = ?",
+    [await mine()],
+  );
+  if (!row) return null;
+  return {
+    customerId: row.customer_id,
+    loginCustomerId: row.login_customer_id,
+    connectedAt: row.connected_at,
+    syncedAt: row.synced_at,
+    lastError: row.last_error,
+  };
+}
+
+export async function googleCampaigns() {
+  return queryAll<{ campaign_id: string; name: string; channel: string; status: string }>(
+    await getDb(),
+    "SELECT campaign_id, name, channel, status FROM google_campaigns WHERE user_id = ? ORDER BY name",
+    [await mine()],
+  );
+}
+
+export async function googleDaily() {
+  return queryAll<{ day: string; clicks: number; cost_micros: number }>(
+    await getDb(),
+    `SELECT day, SUM(clicks) AS clicks, SUM(cost_micros) AS cost_micros
+     FROM google_daily WHERE user_id = ? GROUP BY day ORDER BY day`,
+    [await mine()],
+  );
+}
+
+export async function googleClickList(limit = 12) {
+  return queryAll<{ id: string; gclid: string; ts: number; campaign: string; keyword: string; device: string; ad_group: string }>(
+    await getDb(),
+    "SELECT id, gclid, ts, campaign, keyword, device, ad_group FROM google_clicks WHERE user_id = ? ORDER BY ts DESC, gclid LIMIT ?",
+    [await mine(), limit],
+  );
+}
+
 export async function allowlist() {
   return queryAll<{
     id: string;

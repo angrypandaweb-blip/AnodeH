@@ -15,6 +15,7 @@ import { authReturn, clearSession, getUser, hashPassword, safeNext, setSession, 
 import { normalizeAdsAccount } from "@/lib/format";
 import { createPayPalCheckout } from "@/lib/billing";
 import { execute, getDb, queryOne } from "@/lib/db";
+import { disconnectGoogleAds, pullGoogleAds } from "@/lib/google-ads";
 import { resetDemo, simulateScenario } from "@/lib/seed";
 import type { Sensitivity } from "@/lib/types";
 import { createHash, randomBytes } from "crypto";
@@ -42,6 +43,24 @@ export async function restoreSample() {
   await resetDemo();
   refresh();
   redirect("/dashboard?notice=reset&n=1");
+}
+
+export async function syncGoogleAds(formData: FormData) {
+  const user = await getUser();
+  if (!user) redirect("/login?next=/settings");
+  const back = String(formData.get("return") || "") === "/dashboard" ? "/dashboard" : "/settings";
+  const result = await pullGoogleAds(user.id);
+  refresh();
+  if (!result.ok) redirect(`${back}?error=${encodeURIComponent(result.error)}`);
+  redirect(`${back}?notice=google&n=${result.clicks}`);
+}
+
+export async function disconnectGoogle() {
+  const user = await getUser();
+  if (!user) redirect("/login?next=/settings");
+  await disconnectGoogleAds(user.id);
+  refresh();
+  redirect("/settings?saved=1");
 }
 
 export async function saveAdsAccount(formData: FormData) {
