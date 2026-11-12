@@ -20,7 +20,28 @@ const CLICK_LIMIT = 500;
 type SearchResult = { ok: true; rows: unknown[] } | { ok: false; error: string; rows: unknown[] };
 
 export function googleAdsConfigured() {
-  return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+  return googleAdsSetupError() === null;
+}
+
+export function googleAdsSetupError() {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    return "Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET on Vercel, then redeploy.";
+  }
+  if (!developerToken()) return "Add GOOGLE_ADS_DEVELOPER_TOKEN on Vercel, then redeploy.";
+  return null;
+}
+
+function developerToken() {
+  return (process.env.GOOGLE_ADS_DEVELOPER_TOKEN || "").trim();
+}
+
+function adsHeaders(accessToken: string, loginCustomerId = "") {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${accessToken}`,
+    "developer-token": developerToken(),
+  };
+  if (loginCustomerId) headers["login-customer-id"] = loginCustomerId;
+  return headers;
 }
 
 export function requestOrigin(headerList: { get(name: string): string | null }) {
@@ -96,6 +117,7 @@ async function accessTokenFor(refreshToken: string): Promise<{ ok: true; accessT
 }
 
 async function adsSearch(accessToken: string, customerId: string, query: string, loginCustomerId = ""): Promise<SearchResult> {
+  if (!developerToken()) return { ok: false, error: "Add GOOGLE_ADS_DEVELOPER_TOKEN on Vercel, then redeploy.", rows: [] };
   if (!/^\d{10}$/.test(customerId)) return { ok: false, error: "Google Ads customer ID must be 10 digits.", rows: [] };
   if (loginCustomerId && !/^\d{10}$/.test(loginCustomerId)) return { ok: false, error: "Manager customer ID must be 10 digits.", rows: [] };
   const rows: unknown[] = [];
@@ -103,11 +125,7 @@ async function adsSearch(accessToken: string, customerId: string, query: string,
   for (let page = 0; page < 5; page++) {
     const response = await fetch(`${API}/customers/${customerId}/googleAds:search`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        ...(loginCustomerId ? { "login-customer-id": loginCustomerId } : {}),
-      },
+      headers: { ...adsHeaders(accessToken, loginCustomerId), "Content-Type": "application/json" },
       body: JSON.stringify({ query, ...(pageToken ? { pageToken } : {}) }),
     });
     const payload = await response.json().catch(() => null);
@@ -121,8 +139,9 @@ async function adsSearch(accessToken: string, customerId: string, query: string,
 }
 
 async function listAccessible(accessToken: string): Promise<{ ok: true; ids: string[] } | { ok: false; error: string }> {
+  if (!developerToken()) return { ok: false, error: "Add GOOGLE_ADS_DEVELOPER_TOKEN on Vercel, then redeploy." };
   const response = await fetch(`${API}/customers:listAccessibleCustomers`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
+    headers: adsHeaders(accessToken),
   });
   const payload = await response.json().catch(() => null);
   if (!response.ok) return { ok: false, error: googleErrorMessage(payload, "Google Ads did not list the accounts for this login.") };
@@ -256,9 +275,10 @@ export async function pullGoogleAds(userId: string) {
   const db = await getDb();
   const link = await queryOne<{ refresh_token: string }>(db, "SELECT refresh_token FROM google_ads WHERE user_id = ?", [userId]);
   if (!link) return { ok: false as const, error: "Connect Google Ads first." };
-  if (!googleAdsConfigured()) {
-    await remember(db, userId, { error: "Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET, then redeploy." });
-    return { ok: false as const, error: "Google Ads credentials are not configured." };
+  const setupError = googleAdsSetupError();
+  if (setupError) {
+    await remember(db, userId, { error: setupError });
+    return { ok: false as const, error: setupError };
   }
 
   const token = await accessTokenFor(link.refresh_token);

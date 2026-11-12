@@ -3,7 +3,7 @@ import { createAllow, deleteAllow, disconnectGoogle, restoreSample, saveAdsAccou
 import { getUser } from "@/lib/auth";
 import { getPolicy } from "@/lib/engine";
 import { when } from "@/lib/format";
-import { googleAdsConfigured, requestOrigin } from "@/lib/google-ads";
+import { googleAdsConfigured, googleAdsSetupError, requestOrigin } from "@/lib/google-ads";
 import { allowlist, googleLink } from "@/lib/queries";
 import { mailConfigured } from "@/lib/mail";
 import { THRESHOLDS } from "@/lib/score";
@@ -75,8 +75,7 @@ export default async function SettingsPage({
           </>
         ) : (
           <p className="note">
-            Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET on Vercel for Production, then redeploy.
-            The Google OAuth client needs the scope https://www.googleapis.com/auth/adwords and this redirect URI: {origin}/api/google-ads/callback
+            {googleAdsSetupError()} The OAuth client needs the scope https://www.googleapis.com/auth/adwords and this redirect URI: {origin}/api/google-ads/callback. The developer token is the token from the Google Ads API Center.
           </p>
         )}
       </article>
