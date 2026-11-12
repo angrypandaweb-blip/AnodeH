@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 240" role="img" aria-label="Haggies AI Software Engineer">
+  <rect width="640" height="240" fill="#F8FAFC"/>
+  <!-- Mark -->
+  <g transform="translate(36,48)">
+    <path d="M8 8 L36 8 L36 128 L8 128 Z" fill="#0F172A"/>
+    <path d="M76 8 L104 8 L104 128 L76 128 Z" fill="#0F172A"/>
+    <rect x="28" y="62" width="56" height="12" rx="2" fill="#0D9488"/>
+    <circle cx="56" cy="68" r="10" fill="#0D9488"/>
+    <circle cx="56" cy="68" r="4" fill="#F8FAFC"/>
+  </g>
+  <!-- Wordmark -->
+  <text x="168" y="118" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="56" font-weight="700" letter-spacing="-1.2">
+    <tspan fill="#0F172A">Haggies </tspan><tspan fill="#0D9488">AI</tspan>
+  </text>
+  <text x="170" y="158" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="18" font-weight="600" letter-spacing="4.5" fill="#0D9488">SOFTWARE ENGINEER</text>
+</svg>
