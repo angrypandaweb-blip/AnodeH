@@ -218,6 +218,14 @@ async function migrate(db: Client) {
       ad_group TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS google_clicks_user_ts ON google_clicks (user_id, ts);
+    CREATE TABLE IF NOT EXISTS email_log (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      ref TEXT NOT NULL,
+      sent_at INTEGER NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS email_log_kind_ref ON email_log (kind, ref);
   `);
 
   const unsigned = await queryAll<{ id: string }>(db, "SELECT id FROM users WHERE domain_key = ''");

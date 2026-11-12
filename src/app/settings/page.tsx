@@ -5,6 +5,7 @@ import { getPolicy } from "@/lib/engine";
 import { when } from "@/lib/format";
 import { googleAdsConfigured, requestOrigin } from "@/lib/google-ads";
 import { allowlist, googleLink } from "@/lib/queries";
+import { mailConfigured } from "@/lib/mail";
 import { THRESHOLDS } from "@/lib/score";
 import type { Sensitivity } from "@/lib/types";
 
@@ -139,6 +140,16 @@ export default async function SettingsPage({
             <button type="submit">Save</button>
           </div>
         </form>
+      </article>
+
+      <article className="card">
+        <span className="card-label">Email</span>
+        <h2 style={{ marginTop: 10 }}>Receipts and the morning report</h2>
+        <p className="note">
+          {mailConfigured()
+            ? "A receipt goes out when PayPal confirms a payment. A click report for the previous day goes out every morning at 7:00am SAST."
+            : "Receipts and the daily click report are ready. Add RESEND_API_KEY, MAIL_FROM, and CRON_SECRET on Vercel, then redeploy, before those emails can leave."}
+        </p>
       </article>
 
       <article className="card">
