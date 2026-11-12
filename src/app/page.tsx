@@ -231,7 +231,7 @@ export default async function LandingPage() {
         <p className="lede">
           {user
             ? "Your account opens the dashboard, where the scored clicks and exclusions live."
-            : "Choosing a plan starts here. Create an account and the dashboard opens next."}
+            : "Choosing a plan starts here. Create an account and billing opens next."}
         </p>
         {user ? (
           <div className="hero-actions">
@@ -241,7 +241,7 @@ export default async function LandingPage() {
           <div className="plans">
             <article className="offer featured">
               <h3>Create an account</h3>
-              <p>Use the name and email you want on the workspace. The dashboard opens as soon as the account exists.</p>
+              <p>Use the name and email you want on the workspace. Billing opens as soon as the account exists.</p>
               <form action={registerAccount} className="form-grid">
                 <input type="hidden" name="return" value="/register" />
                 <label>

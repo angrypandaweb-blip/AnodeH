@@ -13,6 +13,7 @@ import {
   planDate,
   STANDARD_CENTS,
 } from "@/lib/billing";
+import { safePlan } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -20,9 +21,10 @@ export const dynamic = "force-dynamic";
 export default async function BillingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ token?: string; subscription_id?: string; canceled?: string; error?: string; paid?: string }>;
+  searchParams: Promise<{ token?: string; subscription_id?: string; canceled?: string; error?: string; paid?: string; plan?: string }>;
 }) {
   const params = await searchParams;
+  const chosen = safePlan(params.plan);
   let payError = params.error || "";
 
   if (params.subscription_id) {
@@ -53,6 +55,8 @@ export default async function BillingPage({
       </header>
 
       {params.paid ? <p className="banner">Payment received. This workspace is covered through {planDate(access.endsAt)}.</p> : null}
+      {chosen === "month" ? <p className="banner">Account created. Subscribe below to open the dashboard.</p> : null}
+      {chosen === "year" ? <p className="banner">Account created. Pay for the year below to open the dashboard.</p> : null}
       {params.canceled ? <p className="banner warn">Payment canceled. Access is unchanged.</p> : null}
       {payError ? <p className="banner warn">{payError}</p> : null}
 
@@ -88,14 +92,14 @@ export default async function BillingPage({
           {ready
             ? paypalLive()
               ? " Live payments are on."
-              : " Sandbox payments are on. Set PAYPAL_ENV=live for real charges."
-            : " Add PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET to .env.local, then restart the app. Set PAYPAL_ENV=live when you are ready to charge real cards."}
+              : " Sandbox payments are on."
+            : " Add the live PayPal client id and secret, then restart the app."}
         </p>
       </article>
 
       <section className="plans">
-        <article className="card">
-          <span className="card-label">{access.introUsed ? "30 days" : "First 30 days"}</span>
+        <article className="card" style={chosen === "month" ? { border: "2px solid var(--cc-orange)" } : undefined}>
+          <span className="card-label">{chosen === "month" ? "Selected · monthly" : access.introUsed ? "30 days" : "First 30 days"}</span>
           <p className="price">
             {dollars(monthCents)}
             {access.introUsed ? null : <s className="was">{dollars(STANDARD_CENTS)}</s>}
@@ -113,8 +117,8 @@ export default async function BillingPage({
           </form>
         </article>
 
-        <article className="card">
-          <span className="card-label">Annual</span>
+        <article className="card" style={chosen === "year" ? { border: "2px solid var(--cc-orange)" } : undefined}>
+          <span className="card-label">{chosen === "year" ? "Selected · annual" : "Annual"}</span>
           <p className="price">{dollars(ANNUAL_CENTS)}</p>
           <p className="note">One payment for 365 days. This plan does not renew.</p>
           <form action={beginCheckout}>
