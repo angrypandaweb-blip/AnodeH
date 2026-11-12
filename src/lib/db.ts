@@ -1,6 +1,7 @@
 import { randomBytes } from "crypto";
 import { createClient, type Client, type InArgs, type Transaction } from "@libsql/client";
 
+export type { Client };
 export type Db = Client | Transaction;
 
 const globalForDb = globalThis as unknown as { AnodeH?: Promise<Client> };
@@ -180,6 +181,44 @@ async function migrate(db: Client) {
   await execute(db, "CREATE INDEX IF NOT EXISTS clicks_user_ts ON clicks (user_id, ts)");
   await execute(db, "CREATE INDEX IF NOT EXISTS blocks_user_status ON blocks (user_id, status, campaign)");
   await execute(db, "CREATE UNIQUE INDEX IF NOT EXISTS users_domain_key ON users (domain_key) WHERE domain_key != ''");
+  await db.executeMultiple(`
+    CREATE TABLE IF NOT EXISTS google_ads (
+      user_id TEXT PRIMARY KEY,
+      refresh_token TEXT NOT NULL,
+      customer_id TEXT NOT NULL DEFAULT '',
+      login_customer_id TEXT NOT NULL DEFAULT '',
+      connected_at INTEGER NOT NULL,
+      synced_at INTEGER NOT NULL DEFAULT 0,
+      last_error TEXT NOT NULL DEFAULT ''
+    );
+    CREATE TABLE IF NOT EXISTS google_campaigns (
+      user_id TEXT NOT NULL,
+      campaign_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      channel TEXT NOT NULL,
+      status TEXT NOT NULL,
+      PRIMARY KEY (user_id, campaign_id)
+    );
+    CREATE TABLE IF NOT EXISTS google_daily (
+      user_id TEXT NOT NULL,
+      day TEXT NOT NULL,
+      campaign TEXT NOT NULL,
+      clicks INTEGER NOT NULL,
+      cost_micros INTEGER NOT NULL,
+      PRIMARY KEY (user_id, day, campaign)
+    );
+    CREATE TABLE IF NOT EXISTS google_clicks (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      gclid TEXT NOT NULL,
+      ts INTEGER NOT NULL,
+      campaign TEXT NOT NULL,
+      keyword TEXT NOT NULL,
+      device TEXT NOT NULL,
+      ad_group TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS google_clicks_user_ts ON google_clicks (user_id, ts);
+  `);
 
   const unsigned = await queryAll<{ id: string }>(db, "SELECT id FROM users WHERE domain_key = ''");
   for (const row of unsigned) {

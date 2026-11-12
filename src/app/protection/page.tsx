@@ -1,7 +1,9 @@
 import { unblock } from "@/app/actions";
+import { getUser } from "@/lib/auth";
 import { CAMPAIGNS } from "@/lib/campaigns";
 import { compact, scoreBand, when } from "@/lib/format";
-import { blockCounts, capacity, listBlocks } from "@/lib/queries";
+import { refreshGoogleAdsIfStale } from "@/lib/google-ads";
+import { blockCounts, capacity, googleCampaigns, googleLink, listBlocks } from "@/lib/queries";
 import { REASON_LABELS } from "@/lib/score";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +16,12 @@ const FILTERS = [
   { id: "removed", label: "Removed" },
 ] as const;
 
-const TYPE_LABEL = { search: "Search", display: "Display", pmax: "Performance Max" } as const;
+const TYPE_LABEL: Record<string, string> = {
+  search: "Search",
+  display: "Display",
+  pmax: "Performance Max",
+  other: "Other",
+};
 
 function protectionHref(status: string, page = 0) {
   const params = new URLSearchParams();
@@ -51,6 +58,18 @@ export default async function ProtectionPage({
   const here = protectionHref(status, page);
   const used = new Map(caps.rows.map((row) => [row.campaign, row.c]));
   const added = Math.max(0, Math.min(10000, Number(params.n) || 0));
+  const user = await getUser();
+  if (user) await refreshGoogleAdsIfStale(user.id);
+  const link = await googleLink();
+  const liveCampaigns = link ? await googleCampaigns() : [];
+  const cards = link
+    ? liveCampaigns.map((campaign) => ({
+        slug: campaign.campaign_id,
+        name: campaign.name,
+        type: campaign.channel,
+        status: campaign.status === "ENABLED" ? "" : campaign.status.toLowerCase(),
+      }))
+    : CAMPAIGNS.map((campaign) => ({ slug: campaign.slug, name: campaign.name, type: campaign.type, status: "" }));
 
   return (
     <div>
@@ -68,14 +87,24 @@ export default async function ProtectionPage({
         <p className="banner">Added {compact(added)} addresses to Brand — Exact so the list can be seen near its ceiling.</p>
       ) : null}
 
+      {link ? (
+        <p className="note">
+          These campaign names were downloaded from Google Ads{link.customerId ? ` ${link.customerId.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3")}` : ""}.
+          {link.lastError ? ` ${link.lastError}` : ""}
+        </p>
+      ) : (
+        <p className="note">These are the sample campaigns. Connect Google Ads in Settings to replace them with the account you watch.</p>
+      )}
+
       <section className="campaign-grid">
-        {CAMPAIGNS.map((campaign) => {
+        {cards.length === 0 ? <article className="card"><p className="note">Google Ads returned no campaigns.</p></article> : null}
+        {cards.map((campaign) => {
           const count = used.get(campaign.name) ?? 0;
           const share = count / caps.cap;
-          const kind = TYPE_LABEL[campaign.type];
+          const kind = TYPE_LABEL[campaign.type] || "Other";
           return (
             <article className="card campaign-card" key={campaign.slug}>
-              <span className="card-label">{kind}</span>
+              <span className="card-label">{campaign.status ? `${kind} · ${campaign.status}` : kind}</span>
               <strong>{campaign.name}</strong>
               {campaign.type === "pmax" ? (
                 <p className="note">Conversion held. This campaign has no IP exclusion list.</p>

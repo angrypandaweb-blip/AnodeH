@@ -1,8 +1,10 @@
 import { headers } from "next/headers";
-import { createAllow, deleteAllow, restoreSample, saveAdsAccount, updateSettings } from "@/app/actions";
+import { createAllow, deleteAllow, disconnectGoogle, restoreSample, saveAdsAccount, syncGoogleAds, updateSettings } from "@/app/actions";
 import { getUser } from "@/lib/auth";
 import { getPolicy } from "@/lib/engine";
-import { allowlist } from "@/lib/queries";
+import { when } from "@/lib/format";
+import { googleAdsConfigured, requestOrigin } from "@/lib/google-ads";
+import { allowlist, googleLink } from "@/lib/queries";
 import { THRESHOLDS } from "@/lib/score";
 import type { Sensitivity } from "@/lib/types";
 
@@ -20,10 +22,12 @@ export default async function SettingsPage({
   searchParams: Promise<{ saved?: string; error?: string }>;
 }) {
   const params = await searchParams;
-  const [policy, allowed, headerList, user] = await Promise.all([getPolicy(), allowlist(), headers(), getUser()]);
+  const [policy, allowed, headerList, user, link] = await Promise.all([getPolicy(), allowlist(), headers(), getUser(), googleLink()]);
   const host = headerList.get("x-forwarded-host") || headerList.get("host") || "localhost:3000";
   const proto = headerList.get("x-forwarded-proto") || "http";
   const snippet = `<script src="${proto}://${host}/cf.js" data-key="${policy.domainKey}" async></script>`;
+  const origin = requestOrigin(headerList);
+  const googleReady = googleAdsConfigured();
 
   return (
     <div>
@@ -41,11 +45,47 @@ export default async function SettingsPage({
       {params.error ? <p className="banner warn">{params.error}</p> : null}
 
       <article className="card">
+        <span className="card-label">Google Ads</span>
+        <h2 style={{ marginTop: 10 }}>Pull campaigns and clicks</h2>
+        {link ? (
+          <>
+            <p className="note">
+              Connected{link.customerId ? ` to ${link.customerId.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3")}` : ""}.
+              {link.syncedAt ? ` Last pull ${when(link.syncedAt)}.` : " The first pull has not finished."}
+              {" "}Google Ads does not include the visitor IP, so exclusions still come from the site tag.
+            </p>
+            {link.lastError ? <p className="banner warn">{link.lastError}</p> : null}
+            <div className="hero-actions">
+              <form action={syncGoogleAds}>
+                <input type="hidden" name="return" value="/settings" />
+                <button type="submit">Pull clicks now</button>
+              </form>
+              <form action={disconnectGoogle}>
+                <button className="ghost" type="submit">Disconnect</button>
+              </form>
+            </div>
+          </>
+        ) : googleReady ? (
+          <>
+            <p className="note">
+              Sign in with the Google account that can open this Ads account. AnodeH then downloads the campaign list and the last 7 days of clicks.
+            </p>
+            <a className="btn" href="/api/google-ads/start">Connect Google Ads</a>
+          </>
+        ) : (
+          <p className="note">
+            Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET on Vercel for Production, then redeploy.
+            The Google OAuth client needs the scope https://www.googleapis.com/auth/adwords and this redirect URI: {origin}/api/google-ads/callback
+          </p>
+        )}
+      </article>
+
+      <article className="card">
         <span className="card-label">Google Ads account</span>
         <p className="note">
           {user?.adsAccount
-            ? `AnodeH is watching ${user.adsAccount}. Enter a different customer ID to switch accounts.`
-            : "Enter the 10-digit customer ID of the Google Ads account you want to keep track of."}
+            ? `AnodeH is watching ${user.adsAccount}. Enter a different customer ID to switch accounts. A manager login needs this client ID before the pull.`
+            : "Enter the 10-digit customer ID when the Google login is a manager account. A direct login can be discovered from Connect Google Ads."}
         </p>
         <form action={saveAdsAccount} className="form-grid">
           <label>
