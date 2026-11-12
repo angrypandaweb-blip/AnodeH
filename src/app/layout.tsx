@@ -18,6 +18,9 @@ export const dynamic = "force-dynamic";
 export const metadata = {
   title: "AnodeH",
   description: "Click fraud protection for paid traffic.",
+  verification: {
+    google: "jDX_WTdutPb1ZMxbs55K_XFQtc0xrytxYSfb4gW9bj0",
+  },
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
