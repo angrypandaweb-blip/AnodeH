@@ -1,0 +1,12 @@
+{
+  "name": "Monday",
+  "short_name": "Monday",
+  "description": "Collect ideas, decide them every Monday, and hand each task to a person with a due date.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f3ecdf",
+  "theme_color": "#241c16",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
