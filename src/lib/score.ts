@@ -103,7 +103,7 @@ export function evaluate(
     reasons.push("instant_bounce");
   }
 
-  if (!countries.includes(input.country)) {
+  if (countries.length > 0 && /^[A-Z]{2}$/.test(input.country) && !countries.includes(input.country)) {
     score += 25;
     reasons.push("geo_mismatch");
   }

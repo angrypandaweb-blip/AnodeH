@@ -1,6 +1,7 @@
 import { getAccess } from "@/lib/billing";
 import { getDb, queryOne } from "@/lib/db";
 import { parseIncoming, recordClick } from "@/lib/engine";
+import { lookupIpSource } from "@/lib/ip-source";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +45,15 @@ export async function POST(request: Request) {
 
     const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
     const peer = forwarded || "127.0.0.1";
+    const source = await lookupIpSource(typeof body.ip === "string" && body.ip ? body.ip : peer);
+    if (source) {
+      body.country = source.country;
+      body.isp = source.isp;
+      if (source.city) body.city = source.city;
+    } else if (!body.isp) {
+      body.isp = "Unknown";
+      body.country = "";
+    }
     const parsed = parseIncoming(body, peer);
     if (!parsed.ok) return reply({ error: parsed.error }, 400);
 

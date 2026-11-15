@@ -244,7 +244,7 @@ export default async function OverviewPage({
                     </td>
                     <td>
                       <div className="mono">{click.ip}</div>
-                      <div className="muted">{click.isp} · {click.country}</div>
+                      <div className="muted">{[click.isp, click.country].filter(Boolean).join(" · ")}</div>
                     </td>
                     <td><span className={`pill ${scoreBand(click.score)}`}>{click.score}</span></td>
                     <td>{reasonText(JSON.parse(click.reasons) as string[])}</td>
