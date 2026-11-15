@@ -4,37 +4,58 @@ import { parseIncoming, recordClick } from "@/lib/engine";
 
 export const dynamic = "force-dynamic";
 
+const CORS = {
+  "access-control-allow-origin": "*",
+  "access-control-allow-methods": "POST, OPTIONS",
+  "access-control-allow-headers": "content-type",
+  "access-control-max-age": "86400",
+};
+
+function reply(body: unknown, status = 200) {
+  return Response.json(body, { status, headers: CORS });
+}
+
+export function OPTIONS() {
+  return new Response(null, { status: 204, headers: CORS });
+}
+
 export async function POST(request: Request) {
-  let body: Record<string, unknown>;
   try {
-    body = (await request.json()) as Record<string, unknown>;
+    let body: Record<string, unknown>;
+    try {
+      const parsed = JSON.parse(await request.text()) as unknown;
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("not an object");
+      body = parsed as Record<string, unknown>;
+    } catch {
+      return reply({ error: "Send a JSON body." }, 400);
+    }
+
+    const db = await getDb();
+    const owner = await queryOne<{ id: string }>(db, "SELECT id FROM users WHERE domain_key = ?", [String(body.key || "")]);
+    if (!owner) return reply({ error: "Unknown domain key." }, 401);
+
+    const access = await getAccess(owner.id);
+    if (access.status === "unpaid") {
+      return reply(
+        { error: "Plan unpaid. The first 30 days are $34.50, then $69 every 30 days or $759 for the year." },
+        402,
+      );
+    }
+
+    const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+    const peer = forwarded || "127.0.0.1";
+    const parsed = parseIncoming(body, peer);
+    if (!parsed.ok) return reply({ error: parsed.error }, 400);
+
+    const stored = await recordClick(db, parsed.click, owner.id);
+    return reply({
+      id: stored.id,
+      score: stored.score,
+      action: stored.action,
+      enforcement: stored.enforcement,
+      reasons: stored.reasons,
+    });
   } catch {
-    return Response.json({ error: "Send a JSON body." }, { status: 400 });
+    return reply({ error: "Could not record the click." }, 500);
   }
-
-  const db = await getDb();
-  const owner = await queryOne<{ id: string }>(db, "SELECT id FROM users WHERE domain_key = ?", [String(body.key || "")]);
-  if (!owner) return Response.json({ error: "Unknown domain key." }, { status: 401 });
-
-  const access = await getAccess(owner.id);
-  if (access.status === "unpaid") {
-    return Response.json(
-      { error: "Plan unpaid. The first 30 days are $34.50, then $69 every 30 days or $759 for the year." },
-      { status: 402 },
-    );
-  }
-
-  const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  const peer = forwarded || "127.0.0.1";
-  const parsed = parseIncoming(body, peer);
-  if (!parsed.ok) return Response.json({ error: parsed.error }, { status: 400 });
-
-  const stored = await recordClick(db, parsed.click, owner.id);
-  return Response.json({
-    id: stored.id,
-    score: stored.score,
-    action: stored.action,
-    enforcement: stored.enforcement,
-    reasons: stored.reasons,
-  });
 }

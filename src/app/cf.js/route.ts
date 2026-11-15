@@ -26,8 +26,9 @@ export function GET() {
       converted: false
     };
     var body = JSON.stringify(payload);
-    if (!navigator.sendBeacon(endpoint, new Blob([body], { type: "application/json" }))) {
-      fetch(endpoint, { method: "POST", headers: { "content-type": "application/json" }, body: body, keepalive: true });
+    var plain = new Blob([body], { type: "text/plain;charset=UTF-8" });
+    if (!navigator.sendBeacon(endpoint, plain)) {
+      fetch(endpoint, { method: "POST", headers: { "content-type": "text/plain;charset=UTF-8" }, body: body, keepalive: true });
     }
   }
   addEventListener("pagehide", send);
