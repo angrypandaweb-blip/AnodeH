@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   accessibleCustomerIds,
   dayTimestamp,
+  customerAccessError,
   googleErrorMessage,
   isManagerAccount,
   mapChannel,
@@ -43,6 +44,15 @@ assert.equal(parseClick({ clickView: { gclid: "" }, segments: { date: "2026-11-1
 assert.equal(isManagerAccount({ customer: { manager: true } }), true);
 assert.equal(isManagerAccount({ customer: { manager: false } }), false);
 assert.equal(googleErrorMessage({ error: { message: "outer", details: [{ errors: [{ message: "inner" }] }] } }, "fallback"), "inner");
+assert.match(
+  customerAccessError("9537148890", ["9537148890"], "The Google Cloud project is only approved for use with test accounts."),
+  /still on Test access/,
+);
+assert.match(
+  customerAccessError("9537148890", ["9537148890"], "The customer account can't be accessed because it is not yet enabled."),
+  /read was refused/,
+);
+assert.match(customerAccessError("1111111111", ["9537148890"], ""), /cannot open 111-111-1111/);
 assert.equal(dayTimestamp("2026-11-11"), Math.floor(Date.parse("2026-11-11T12:00:00Z") / 1000));
 
 console.log("google ads parse tests passed");
