@@ -75,7 +75,7 @@ export default async function SettingsPage({
           </>
         ) : (
           <p className="note">
-            {googleAdsSetupError()} The OAuth client needs the scope https://www.googleapis.com/auth/adwords and this redirect URI: {origin}/api/google-ads/callback. In that same Google Cloud project, enable the Google Ads API and apply for Explorer access on its API overview page.
+            {googleAdsSetupError()} The OAuth client needs the scope https://www.googleapis.com/auth/adwords and this redirect URI: {origin}/api/google-ads/callback. On the Google Ads API overview page, upgrade access from Test to Explorer.
           </p>
         )}
       </article>
