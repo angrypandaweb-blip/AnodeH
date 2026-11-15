@@ -327,6 +327,7 @@ input[type="text"], input[type="number"], select {
 .accounts { list-style: none; padding: 0; margin: 0; }
 .accounts li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
 .note { font-size: 13px; color: var(--ink-soft); }
+.note a { color: var(--moss); font-weight: 600; }
 .plans { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
 .price {
   font-family: var(--font-sans), "Segoe UI", sans-serif;
