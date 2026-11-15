@@ -36,6 +36,24 @@ const CHANNELS: Record<string, CampaignChannel> = {
   MULTI_CHANNEL: "pmax",
 };
 
+export function customerAccessError(wanted: string, accessible: string[], reason: string) {
+  const label = (id: string) => {
+    const digits = id.replace(/\D/g, "");
+    return /^\d{10}$/.test(digits) ? `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}` : id;
+  };
+  const wantedLabel = label(wanted);
+  if (accessible.includes(wanted)) {
+    if (/test accounts|not approved for production|CLOUD_PROJECT_NOT_APPROVED/i.test(reason)) {
+      return `Google can see ${wantedLabel}. This Cloud project is still on Test access, so it cannot read that live account. On the Google Ads API Overview page, apply for Explorer access for the project that owns this OAuth client.`;
+    }
+    return reason
+      ? `Google can see ${wantedLabel}, and the read was refused: ${reason}`
+      : `Google can see ${wantedLabel}, and the read was refused.`;
+  }
+  const listed = accessible.map(label).join(", ");
+  return `This Google login cannot open ${wantedLabel}. It can open ${listed || "no accounts"}.`;
+}
+
 export function googleErrorMessage(payload: unknown, fallback: string) {
   const error = (payload as { error?: { message?: string; details?: { errors?: { message?: string }[] }[] } } | null)?.error;
   for (const detail of error?.details ?? []) {

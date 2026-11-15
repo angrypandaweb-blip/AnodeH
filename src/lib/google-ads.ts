@@ -2,6 +2,7 @@ import { execute, getDb, queryOne, type Client, type Db } from "./db";
 import { normalizeAdsAccount } from "./format";
 import {
   accessibleCustomerIds,
+  customerAccessError,
   dayTimestamp,
   googleErrorMessage,
   isManagerAccount,
@@ -171,12 +172,15 @@ async function resolveCustomer(
   wanted: string,
   accessible: string[],
 ): Promise<{ ok: true; customerId: string; loginCustomerId: string } | { ok: false; error: string }> {
+  let reason = "";
   if (wanted && accessible.includes(wanted)) {
     const direct = await adsSearch(accessToken, wanted, "SELECT customer.id, customer.manager FROM customer LIMIT 1");
     if (direct.ok) return { ok: true, customerId: wanted, loginCustomerId: "" };
+    reason = direct.error;
   }
   if (wanted) {
     for (const managerId of accessible) {
+      if (managerId === wanted) continue;
       const through = await adsSearch(
         accessToken,
         wanted,
@@ -184,9 +188,9 @@ async function resolveCustomer(
         managerId,
       );
       if (through.ok) return { ok: true, customerId: wanted, loginCustomerId: managerId };
+      if (!reason) reason = through.error;
     }
-    const listed = accessible.map((id) => normalizeAdsAccount(id) || id).join(", ");
-    return { ok: false, error: `This Google login cannot open ${normalizeAdsAccount(wanted) || wanted}. It can open ${listed || "no accounts"}.` };
+    return { ok: false, error: customerAccessError(wanted, accessible, reason) };
   }
 
   const clients: string[] = [];
