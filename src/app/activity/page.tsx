@@ -118,7 +118,7 @@ export default async function ActivityPage({
                   </div>
                   <div className="click-source">
                     <div className="mono">{click.ip}</div>
-                    <div className="muted">{click.isp} · {click.country}</div>
+                    <div className="muted">{[click.isp, click.country].filter(Boolean).join(" · ")}</div>
                     <div className="muted">{when(click.ts)}</div>
                   </div>
                   <div className="click-side">

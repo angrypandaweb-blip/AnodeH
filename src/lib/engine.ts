@@ -274,7 +274,7 @@ export async function recordClick(db: Db, input: IncomingClick, explicitUserId?:
   const campaign = findCampaign(input.campaign);
   const campaignName = campaign?.name ?? (input.campaign || "Unassigned");
   const campaignType = campaign?.type ?? "search";
-  const countries = campaign?.countries ?? ["US"];
+  const countries = campaign?.countries ?? [];
   const ts = input.ts ?? Math.floor(Date.now() / 1000);
   const allowed = isAllowed(input.ip, await allowValues(db, userId));
   const history = await historyFor(db, input, ts, userId);
@@ -461,7 +461,7 @@ export function parseIncoming(body: Record<string, unknown>, fallbackIp: string)
       placement: typeof body.placement === "string" ? body.placement : undefined,
       ip: ip === "::1" ? "127.0.0.1" : ip,
       deviceHash,
-      country: typeof body.country === "string" && body.country ? body.country.toUpperCase() : "US",
+      country: typeof body.country === "string" && /^[A-Za-z]{2}$/.test(body.country) ? body.country.toUpperCase() : "",
       city: typeof body.city === "string" ? body.city : undefined,
       isp: typeof body.isp === "string" && body.isp ? body.isp : guessIsp(network, ip),
       network,
