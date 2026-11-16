@@ -14,7 +14,7 @@ const RANGES = [
 ] as const;
 
 function threatsHref(range: ActivityRange) {
-  return range === "all" ? "/threats" : `/threats?range=${range}`;
+  return range === "day" ? "/threats" : `/threats?range=${range}`;
 }
 
 const NETWORK_LABEL: Record<string, string> = {
@@ -50,7 +50,7 @@ export default async function ThreatsPage({
   searchParams: Promise<{ range?: string }>;
 }) {
   const params = await searchParams;
-  const range: ActivityRange = RANGES.some((item) => item.id === params.range) ? (params.range as ActivityRange) : "all";
+  const range: ActivityRange = RANGES.some((item) => item.id === params.range) ? (params.range as ActivityRange) : "day";
   const user = await getUser();
   const place = placeFor(user?.country || "", user?.email || "");
   const local = await reportCurrency(user?.email || "", user?.country || "");
