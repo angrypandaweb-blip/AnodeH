@@ -1,6 +1,7 @@
 import { getUser } from "./auth";
 import { getDb, queryAll, queryOne } from "./db";
 import { EXCLUSION_CAP } from "./engine";
+import { googleClickPriceExpr } from "./google-cost";
 
 async function mine() {
   const user = await getUser();
@@ -162,16 +163,7 @@ export async function listClicks(action: string, query: string, page: number, pa
          AND (b.target = c.ip OR (b.kind = 'subnet' AND c.ip LIKE substr(b.target, 1, length(b.target) - 4) || '%'))
        LIMIT 1
      ) AS block_id,
-     (
-       SELECT CASE WHEN gd.clicks > 0 THEN gd.cost_micros * 1.0 / gd.clicks / 1000000 ELSE NULL END
-       FROM google_clicks gc
-       JOIN google_daily gd
-         ON gd.user_id = gc.user_id
-        AND gd.campaign = gc.campaign
-        AND gd.day = date(gc.ts, 'unixepoch')
-       WHERE gc.user_id = c.user_id AND gc.gclid = c.click_id
-       LIMIT 1
-     ) AS google_cost
+     ${googleClickPriceExpr("c")} AS google_cost
      FROM clicks c ${clause}
      ORDER BY c.ts DESC
      LIMIT ? OFFSET ?`,
@@ -260,13 +252,15 @@ export async function topIps(since: number | null = null) {
     where.push("ts >= ?");
     params.push(since);
   }
-  return queryAll<{ ip: string; isp: string; network: string; clicks: number; invalid: number; cost: number }>(
+  const price = googleClickPriceExpr("c");
+  return queryAll<{ ip: string; isp: string; network: string; clicks: number; invalid: number; google_cost: number | null; priced_clicks: number }>(
     await getDb(),
-    `SELECT ip, isp, network,
+    `SELECT c.ip AS ip, c.isp AS isp, c.network AS network,
        COUNT(*) AS clicks,
-       SUM(CASE WHEN action != 'allow' THEN 1 ELSE 0 END) AS invalid,
-       SUM(cost) AS cost
-     FROM clicks WHERE ${where.join(" AND ")} GROUP BY ip
+       SUM(CASE WHEN c.action != 'allow' THEN 1 ELSE 0 END) AS invalid,
+       SUM(${price}) AS google_cost,
+       SUM(CASE WHEN ${price} IS NOT NULL THEN 1 ELSE 0 END) AS priced_clicks
+     FROM clicks c WHERE ${where.join(" AND ")} GROUP BY c.ip
      ORDER BY invalid DESC, clicks DESC LIMIT 8`,
     params,
   );
@@ -300,14 +294,16 @@ export async function topPlacements(since: number | null = null) {
     where.push("ts >= ?");
     params.push(since);
   }
-  return queryAll<{ placement: string; clicks: number; invalid: number; cost: number }>(
+  const price = googleClickPriceExpr("c");
+  return queryAll<{ placement: string; clicks: number; invalid: number; google_cost: number | null; priced_clicks: number }>(
     await getDb(),
-    `SELECT placement,
+    `SELECT c.placement AS placement,
        COUNT(*) AS clicks,
-       SUM(CASE WHEN action != 'allow' THEN 1 ELSE 0 END) AS invalid,
-       SUM(cost) AS cost
-     FROM clicks WHERE ${where.join(" AND ")}
-     GROUP BY placement
+       SUM(CASE WHEN c.action != 'allow' THEN 1 ELSE 0 END) AS invalid,
+       SUM(${price}) AS google_cost,
+       SUM(CASE WHEN ${price} IS NOT NULL THEN 1 ELSE 0 END) AS priced_clicks
+     FROM clicks c WHERE ${where.join(" AND ")}
+     GROUP BY c.placement
      ORDER BY invalid DESC, clicks DESC LIMIT 6`,
     params,
   );
