@@ -26,7 +26,7 @@ export const metadata = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const path = (await headers()).get("x-pathname") || "/";
-  const bare = path === "/" || path === "/login" || path === "/register" || path === "/forgot-password" || path === "/reset-password" || path === "/privacy" || path === "/terms";
+  const bare = path === "/" || path === "/blocked" || path === "/login" || path === "/register" || path === "/forgot-password" || path === "/reset-password" || path === "/privacy" || path === "/terms";
   if (bare) {
     return (
       <html lang="en">

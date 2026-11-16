@@ -5,7 +5,7 @@ export function GET() {
   var el = document.currentScript;
   if (!el) return;
   var key = el.getAttribute("data-key") || "";
-  var blockUrl = el.getAttribute("data-block-url") || "https://anodeh.com/";
+  var blockUrl = el.getAttribute("data-block-url") || "https://anodeh.com/blocked";
   var endpoint = new URL("/api/clicks", el.src).toString();
   var started = Date.now();
   var engaged = false;
