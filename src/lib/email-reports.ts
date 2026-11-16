@@ -1,5 +1,6 @@
 import { execute, getDb, queryAll, queryOne } from "./db";
 import { escapeHtml, mailConfigured, sendMail } from "./mail";
+import { formatMoney, reportCurrency } from "./residence-currency";
 
 const APP = "https://anodeh.com";
 
@@ -50,10 +51,6 @@ function paidThrough(ts: number) {
     month: "short",
     year: "numeric",
   }).format(new Date(ts * 1000));
-}
-
-function money(value: number) {
-  return value.toLocaleString("en-US", { style: "currency", currency: "USD" });
 }
 
 async function people() {
@@ -171,10 +168,17 @@ export async function lastMailError(userId: string) {
   return row?.value || "";
 }
 
-async function sendDailyReportTo(user: Person, day: ReturnType<typeof previousJohannesburgDay>) {
+async function sendDailyReportTo(user: Person, day: ReturnType<typeof previousJohannesburgDay>, force = false) {
   const ref = `${user.id}:${day.key}`;
-  if (await alreadySent("daily", ref)) return { ok: true as const, skipped: true };
+  if (!force && (await alreadySent("daily", ref))) return { ok: true as const, skipped: true };
+  if (force) {
+    await execute(await getDb(), "DELETE FROM email_log WHERE kind = 'daily' AND ref = ?", [ref]);
+  }
   const summary = await clickSummary(user.id, day.start, day.end);
+  const local = await reportCurrency(user.email);
+  const spendText = formatMoney(summary.spend * local.rate, local.currency);
+  const wasteText = formatMoney(summary.waste * local.rate, local.currency);
+  const currencyNote = local.currency === "USD" ? "" : `Amounts are in ${local.name}, for where this account is based.`;
   const campaignLines = summary.campaigns.map((row) => `${row.campaign}: ${row.c}`);
   const lines = [
     `Hello ${user.name},`,
@@ -182,8 +186,8 @@ async function sendDailyReportTo(user: Person, day: ReturnType<typeof previousJo
     `Dashboard clicks for ${day.label}:`,
     `${summary.clicks} clicks`,
     `${summary.invalid} flagged or blocked`,
-    `${money(summary.spend)} monitored`,
-    `${money(summary.waste)} invalid cost`,
+    `${spendText} monitored`,
+    `${wasteText} invalid cost`,
   ];
   if (summary.googleClicks) lines.push(`${summary.googleClicks} clicks downloaded from Google Ads`);
   lines.push(
@@ -193,6 +197,7 @@ async function sendDailyReportTo(user: Person, day: ReturnType<typeof previousJo
     "",
     `Open the dashboard: ${APP}/dashboard`,
     "",
+    ...(currencyNote ? [currencyNote, ""] : []),
     "This report is sent every morning at 7:00am SAST.",
     "AnodeH",
   );
@@ -205,12 +210,13 @@ async function sendDailyReportTo(user: Person, day: ReturnType<typeof previousJo
 <ul>
 <li>${summary.clicks} clicks</li>
 <li>${summary.invalid} flagged or blocked</li>
-<li>${escapeHtml(money(summary.spend))} monitored</li>
-<li>${escapeHtml(money(summary.waste))} invalid cost</li>
+<li>${escapeHtml(spendText)} monitored</li>
+<li>${escapeHtml(wasteText)} invalid cost</li>
 ${summary.googleClicks ? `<li>${summary.googleClicks} clicks downloaded from Google Ads</li>` : ""}
 </ul>
 ${campaignHtml}
 <p><a href="${APP}/dashboard">Open the dashboard</a></p>
+${currencyNote ? `<p>${escapeHtml(currencyNote)}</p>` : ""}
 <p>This report is sent every morning at 7:00am SAST.</p>`;
   const result = await sendMail(user.email, `AnodeH clicks for ${day.label}`, text, html);
   if (!result.ok) {
@@ -237,6 +243,15 @@ export async function sendDailyReports(now = Date.now()) {
   }
   if (sent === 0 && error) return { ok: false as const, error, sent };
   return { ok: true as const, sent };
+}
+
+export async function resendDailyReport(email: string, now = Date.now()) {
+  if (!mailConfigured()) return { ok: false as const, error: "Email is not configured.", sent: 0 };
+  const user = await queryOne<Person>(await getDb(), "SELECT id, email, name FROM users WHERE lower(email) = ?", [email.trim().toLowerCase()]);
+  if (!user) return { ok: false as const, error: "Account not found.", sent: 0 };
+  const result = await sendDailyReportTo(user, previousJohannesburgDay(now), true);
+  if (!result.ok) return { ok: false as const, error: result.error, sent: 0 };
+  return { ok: true as const, sent: result.skipped ? 0 : 1 };
 }
 
 export async function sendDueDailyReport(userId: string, now = Date.now()) {
