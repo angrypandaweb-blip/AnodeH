@@ -15,6 +15,7 @@ import { authReturn, clearSession, getUser, hashPassword, safeNext, setSession, 
 import { normalizeAdsAccount } from "@/lib/format";
 import { createPayPalCheckout } from "@/lib/billing";
 import { execute, getDb, queryOne } from "@/lib/db";
+import { knownCountry } from "@/lib/residence-currency";
 import { disconnectGoogleAds, pullGoogleAds } from "@/lib/google-ads";
 import { resetDemo, simulateScenario } from "@/lib/seed";
 import type { Sensitivity } from "@/lib/types";
@@ -149,8 +150,9 @@ export async function registerAccount(formData: FormData) {
   const name = String(formData.get("name") || "").trim();
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
-  if (name.length < 1 || name.length > 80 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 8) {
-    redirect(withError(back, "Enter your name, a valid email, and a password of at least 8 characters."));
+  const country = String(formData.get("country") || "").trim().toUpperCase();
+  if (name.length < 1 || name.length > 80 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 8 || !knownCountry(country)) {
+    redirect(withError(back, "Enter your name, a valid email, a password of at least 8 characters, and your country."));
   }
   const db = await getDb();
   const existing = await queryOne<{ id: string }>(db, "SELECT id FROM users WHERE lower(email) = ?", [email]);
@@ -159,8 +161,8 @@ export async function registerAccount(formData: FormData) {
   try {
     await execute(
       db,
-      "INSERT INTO users (id, email, name, password_hash, created_at, ads_account, domain_key) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      [id, email, name, await hashPassword(password), Math.floor(Date.now() / 1000), "", `cf_${randomBytes(8).toString("hex")}`],
+      "INSERT INTO users (id, email, name, password_hash, created_at, ads_account, domain_key, country) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      [id, email, name, await hashPassword(password), Math.floor(Date.now() / 1000), "", `cf_${randomBytes(8).toString("hex")}`, country],
     );
   } catch (error) {
     if (String(error).includes("UNIQUE")) {

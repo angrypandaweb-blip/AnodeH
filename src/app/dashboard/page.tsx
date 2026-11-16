@@ -1,7 +1,8 @@
 import { clearAlerts, runScenario, syncGoogleAds } from "@/app/actions";
 import { getUser } from "@/lib/auth";
 import { reasonText } from "@/lib/score";
-import { compact, dayLabel, money, percent, scoreBand, when } from "@/lib/format";
+import { compact, dayLabel, percent, scoreBand, when } from "@/lib/format";
+import { formatMoney, moneyInCurrency, placeFor, reportCurrency } from "@/lib/residence-currency";
 import { getPolicy } from "@/lib/engine";
 import { refreshGoogleAdsIfStale } from "@/lib/google-ads";
 import { dayTimestamp } from "@/lib/google-ads-parse";
@@ -42,6 +43,11 @@ export default async function OverviewPage({
   const n = Math.max(0, Math.min(1000, Number(params.n) || 0));
   const hottest = caps.fullest / caps.cap;
   const todayInvalid = series.at(-1)?.other ?? 0;
+  const place = placeFor(user?.country || "", user?.email || "");
+  const local = await reportCurrency(user?.email || "", user?.country || "");
+  const priced = (usd: number) => formatMoney(usd * local.rate, local.currency);
+  const adsCurrency = /^[A-Z]{3}$/.test(link?.currency || "") ? link?.currency || "" : "";
+  const googlePrice = adsCurrency ? await moneyInCurrency(googleCost, adsCurrency, local.currency) : priced(0);
 
   return (
     <div>
@@ -88,7 +94,7 @@ export default async function OverviewPage({
             </article>
             <article className="metric">
               <span>Cost</span>
-              <strong>{money(googleCost)}</strong>
+              <strong>{googlePrice ?? priced(googleCost)}</strong>
               <em>Last 7 days</em>
             </article>
             <article className="metric">
@@ -116,8 +122,8 @@ export default async function OverviewPage({
             </article>
             <article className="metric">
               <span>Invalid cost</span>
-              <strong>{money(stats.waste)}</strong>
-              <em>of {money(stats.spend)} monitored</em>
+              <strong>{priced(stats.waste)}</strong>
+              <em>of {priced(stats.spend)} monitored</em>
             </article>
             <article className="metric">
               <span>Exclusions</span>
@@ -142,7 +148,7 @@ export default async function OverviewPage({
                       <div className="stack" style={{ height }}>
                         <div className="ok" style={{ flex: Math.max(day.clicks, 1) }} />
                       </div>
-                      <span>{dayLabel(ts)}</span>
+                      <span>{dayLabel(ts, place.timeZone)}</span>
                     </div>
                   );
                 })
@@ -156,7 +162,7 @@ export default async function OverviewPage({
                         <div className="ok" style={{ flex: day.allow }} />
                         <div className="bad" style={{ flex: day.other }} />
                       </div>
-                      <span>{dayLabel(day.ts)}</span>
+                      <span>{dayLabel(day.ts, place.timeZone)}</span>
                     </div>
                   );
                 })}
@@ -225,7 +231,7 @@ export default async function OverviewPage({
             {link
               ? googleClicks.map((click) => (
                   <tr key={click.id}>
-                    <td>{when(click.ts)}</td>
+                    <td>{when(click.ts, place.timeZone)}</td>
                     <td>
                       {click.campaign}
                       {click.ad_group ? <div className="muted">{click.ad_group}</div> : null}
@@ -237,7 +243,7 @@ export default async function OverviewPage({
                 ))
               : risky.map((click) => (
                   <tr key={click.id}>
-                    <td>{when(click.ts)}</td>
+                    <td>{when(click.ts, place.timeZone)}</td>
                     <td>
                       {click.campaign}
                       <div className="muted">{click.campaign_type === "pmax" ? "Conversion held when blocked" : click.keyword || click.placement || "—"}</div>

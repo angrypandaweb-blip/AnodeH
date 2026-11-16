@@ -2,6 +2,7 @@ import { registerAccount } from "@/app/actions";
 import { Mark } from "@/components/Mark";
 import { safePlan } from "@/lib/auth";
 import { ANNUAL_CENTS, dollars, INTRO_CENTS, STANDARD_CENTS } from "@/lib/billing";
+import { countryChoices } from "@/lib/residence-currency";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,7 @@ export default async function RegisterPage({
   const params = await searchParams;
   const plan = safePlan(params.plan);
   const back = plan ? `/register?plan=${plan}` : "/register";
+  const countries = countryChoices();
 
   return (
     <div className="site">
@@ -50,6 +52,15 @@ export default async function RegisterPage({
           <label>
             Password
             <input type="password" name="password" autoComplete="new-password" minLength={8} required />
+          </label>
+          <label>
+            Country
+            <select name="country" autoComplete="country" required defaultValue="">
+              <option value="" disabled>Choose a country</option>
+              {countries.map((country) => (
+                <option key={country.code} value={country.code}>{country.name}</option>
+              ))}
+            </select>
           </label>
           <button className="btn" type="submit">Create account</button>
         </form>

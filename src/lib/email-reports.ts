@@ -1,6 +1,7 @@
+import { startOfZonedDay, zonedDate } from "./activity-range";
 import { execute, getDb, queryAll, queryOne } from "./db";
 import { escapeHtml, mailConfigured, sendMail } from "./mail";
-import { formatMoney, reportCurrency } from "./residence-currency";
+import { formatMoney, placeFor, reportCurrency } from "./residence-currency";
 
 const APP = "https://anodeh.com";
 
@@ -12,26 +13,26 @@ export type PurchaseReceipt = {
   planName: string;
 };
 
-type Person = { id: string; email: string; name: string };
+type Person = { id: string; email: string; name: string; country: string };
 
-export function previousJohannesburgDay(now = Date.now()) {
-  const today = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Africa/Johannesburg",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(now));
-  const startToday = Date.parse(`${today}T00:00:00+02:00`);
-  const start = Math.floor(startToday / 1000) - 86400;
-  const end = Math.floor(startToday / 1000);
+export function previousLocalDay(timeZone: string, now = Date.now()) {
+  const today = zonedDate(now, timeZone);
+  const yesterdayUtc = new Date(Date.UTC(today.year, today.month - 1, today.day - 1));
+  const yesterday = {
+    year: yesterdayUtc.getUTCFullYear(),
+    month: yesterdayUtc.getUTCMonth() + 1,
+    day: yesterdayUtc.getUTCDate(),
+  };
+  const start = startOfZonedDay(yesterday.year, yesterday.month, yesterday.day, timeZone);
+  const end = startOfZonedDay(today.year, today.month, today.day, timeZone);
   const key = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Africa/Johannesburg",
+    timeZone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   }).format(new Date(start * 1000));
   const label = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Africa/Johannesburg",
+    timeZone,
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -39,24 +40,41 @@ export function previousJohannesburgDay(now = Date.now()) {
   return { start, end, key, label };
 }
 
+export function previousJohannesburgDay(now = Date.now()) {
+  return previousLocalDay("Africa/Johannesburg", now);
+}
+
 function dollars(cents: number) {
   const amount = cents / 100;
   return `$${cents % 100 === 0 ? amount.toFixed(0) : amount.toFixed(2)}`;
 }
 
-function paidThrough(ts: number) {
+function paidThrough(ts: number, timeZone: string) {
   return new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Africa/Johannesburg",
+    timeZone,
     day: "numeric",
     month: "short",
     year: "numeric",
   }).format(new Date(ts * 1000));
 }
 
+function localHour(now: number, timeZone: string) {
+  const hour = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    hour: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date(now));
+  return Number(hour);
+}
+
+function zoneFor(person: { country: string; email: string }) {
+  return placeFor(person.country || "", person.email).timeZone;
+}
+
 async function people() {
   return queryAll<Person>(
     await getDb(),
-    "SELECT id, email, name FROM users WHERE email LIKE '%@%' AND lower(email) NOT LIKE '%@example.com' ORDER BY created_at",
+    "SELECT id, email, name, country FROM users WHERE email LIKE '%@%' AND lower(email) NOT LIKE '%@example.com' ORDER BY created_at",
   );
 }
 
@@ -78,12 +96,12 @@ async function markSent(userId: string, kind: string, ref: string) {
 export async function sendPurchaseReceipt(receipt: PurchaseReceipt) {
   if (!mailConfigured()) return { ok: false as const, error: "Email is not configured." };
   if (await alreadySent("purchase", receipt.paymentId)) return { ok: true as const, skipped: true };
-  const user = await queryOne<Person>(await getDb(), "SELECT id, email, name FROM users WHERE id = ?", [receipt.userId]);
+  const user = await queryOne<Person>(await getDb(), "SELECT id, email, name, country FROM users WHERE id = ?", [receipt.userId]);
   if (!user || !user.email.includes("@") || user.email.toLowerCase().endsWith("@example.com")) {
     return { ok: false as const, error: "This account has no deliverable email." };
   }
   const amount = dollars(receipt.amountCents);
-  const through = paidThrough(receipt.periodEnd);
+  const through = paidThrough(receipt.periodEnd, zoneFor(user));
   const subject = "Your AnodeH payment was received";
   const text = [
     `Hello ${user.name},`,
@@ -138,15 +156,6 @@ async function clickSummary(userId: string, start: number, end: number) {
   };
 }
 
-function johannesburgHour(now: number) {
-  const hour = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Africa/Johannesburg",
-    hour: "2-digit",
-    hourCycle: "h23",
-  }).format(new Date(now));
-  return Number(hour);
-}
-
 async function rememberMailError(userId: string, error: string) {
   await execute(
     await getDb(),
@@ -175,7 +184,7 @@ async function sendDailyReportTo(user: Person, day: ReturnType<typeof previousJo
     await execute(await getDb(), "DELETE FROM email_log WHERE kind = 'daily' AND ref = ?", [ref]);
   }
   const summary = await clickSummary(user.id, day.start, day.end);
-  const local = await reportCurrency(user.email);
+  const local = await reportCurrency(user.email, user.country);
   const spendText = formatMoney(summary.spend * local.rate, local.currency);
   const wasteText = formatMoney(summary.waste * local.rate, local.currency);
   const currencyNote = local.currency === "USD" ? "" : `Amounts are in ${local.name}, for where this account is based.`;
@@ -198,7 +207,7 @@ async function sendDailyReportTo(user: Person, day: ReturnType<typeof previousJo
     `Open the dashboard: ${APP}/dashboard`,
     "",
     ...(currencyNote ? [currencyNote, ""] : []),
-    "This report is sent every morning at 7:00am SAST.",
+    "This report is sent every morning at 7:00am in your time zone.",
     "AnodeH",
   );
   const text = lines.join("\n");
@@ -217,7 +226,7 @@ ${summary.googleClicks ? `<li>${summary.googleClicks} clicks downloaded from Goo
 ${campaignHtml}
 <p><a href="${APP}/dashboard">Open the dashboard</a></p>
 ${currencyNote ? `<p>${escapeHtml(currencyNote)}</p>` : ""}
-<p>This report is sent every morning at 7:00am SAST.</p>`;
+<p>This report is sent every morning at 7:00am in your time zone.</p>`;
   const result = await sendMail(user.email, `AnodeH clicks for ${day.label}`, text, html);
   if (!result.ok) {
     await rememberMailError(user.id, result.error);
@@ -230,11 +239,12 @@ ${currencyNote ? `<p>${escapeHtml(currencyNote)}</p>` : ""}
 
 export async function sendDailyReports(now = Date.now()) {
   if (!mailConfigured()) return { ok: false as const, error: "Email is not configured.", sent: 0 };
-  const day = previousJohannesburgDay(now);
   let sent = 0;
   let error = "";
   for (const user of await people()) {
-    const result = await sendDailyReportTo(user, day);
+    const zone = zoneFor(user);
+    if (localHour(now, zone) < 7) continue;
+    const result = await sendDailyReportTo(user, previousLocalDay(zone, now));
     if (!result.ok) {
       error = result.error;
       continue;
@@ -247,25 +257,26 @@ export async function sendDailyReports(now = Date.now()) {
 
 export async function resendDailyReport(email: string, now = Date.now()) {
   if (!mailConfigured()) return { ok: false as const, error: "Email is not configured.", sent: 0 };
-  const user = await queryOne<Person>(await getDb(), "SELECT id, email, name FROM users WHERE lower(email) = ?", [email.trim().toLowerCase()]);
+  const user = await queryOne<Person>(await getDb(), "SELECT id, email, name, country FROM users WHERE lower(email) = ?", [email.trim().toLowerCase()]);
   if (!user) return { ok: false as const, error: "Account not found.", sent: 0 };
-  const result = await sendDailyReportTo(user, previousJohannesburgDay(now), true);
+  const result = await sendDailyReportTo(user, previousLocalDay(zoneFor(user), now), true);
   if (!result.ok) return { ok: false as const, error: result.error, sent: 0 };
   return { ok: true as const, sent: result.skipped ? 0 : 1 };
 }
 
 export async function sendDueDailyReport(userId: string, now = Date.now()) {
-  if (johannesburgHour(now) < 7) return { ok: true as const, sent: 0 };
+  const user = await queryOne<Person>(await getDb(), "SELECT id, email, name, country FROM users WHERE id = ?", [userId]);
+  if (!user || !user.email.includes("@") || user.email.toLowerCase().endsWith("@example.com")) {
+    return { ok: true as const, sent: 0 };
+  }
+  const zone = zoneFor(user);
+  if (localHour(now, zone) < 7) return { ok: true as const, sent: 0 };
   if (!mailConfigured()) {
     const error = "Email is not configured.";
     await rememberMailError(userId, error);
     return { ok: false as const, error, sent: 0 };
   }
-  const user = await queryOne<Person>(await getDb(), "SELECT id, email, name FROM users WHERE id = ?", [userId]);
-  if (!user || !user.email.includes("@") || user.email.toLowerCase().endsWith("@example.com")) {
-    return { ok: true as const, sent: 0 };
-  }
-  const result = await sendDailyReportTo(user, previousJohannesburgDay(now));
+  const result = await sendDailyReportTo(user, previousLocalDay(zone, now));
   if (!result.ok) return { ok: false as const, error: result.error, sent: 0 };
   return { ok: true as const, sent: result.skipped ? 0 : 1 };
 }
@@ -282,7 +293,7 @@ export async function sendBuildNotices() {
       "Two emails are now part of your AnodeH account.",
       "",
       "When PayPal confirms a payment, AnodeH sends a receipt with the amount and the date the workspace is covered through.",
-      "Each morning at 7:00am SAST, AnodeH sends the previous day's dashboard clicks: the total, how many were flagged or blocked, the cost, and the campaigns.",
+      "Each morning at 7:00am in your time zone, AnodeH sends the previous day's dashboard clicks: the total, how many were flagged or blocked, the cost, and the campaigns.",
       "",
       `Open the dashboard: ${APP}/dashboard`,
       "",
@@ -291,7 +302,7 @@ export async function sendBuildNotices() {
     const html = `<p>Hello ${escapeHtml(user.name)},</p>
 <p>Two emails are now part of your AnodeH account.</p>
 <p>When PayPal confirms a payment, AnodeH sends a receipt with the amount and the date the workspace is covered through.</p>
-<p>Each morning at 7:00am SAST, AnodeH sends the previous day's dashboard clicks: the total, how many were flagged or blocked, the cost, and the campaigns.</p>
+<p>Each morning at 7:00am in your time zone, AnodeH sends the previous day's dashboard clicks: the total, how many were flagged or blocked, the cost, and the campaigns.</p>
 <p><a href="${APP}/dashboard">Open the dashboard</a></p>`;
     const result = await sendMail(user.email, subject, text, html);
     if (!result.ok) continue;
