@@ -1,7 +1,8 @@
 import { manualBlock } from "@/app/actions";
 import { activitySince, type ActivityRange } from "@/lib/activity-range";
-import { compact, money, scoreBand, when } from "@/lib/format";
-import { activityCounts, listClicks } from "@/lib/queries";
+import { compact, scoreBand, when } from "@/lib/format";
+import { activityCounts, googleLink, listClicks } from "@/lib/queries";
+import { formatMoney } from "@/lib/residence-currency";
 import { REASON_LABELS } from "@/lib/score";
 
 export const dynamic = "force-dynamic";
@@ -62,10 +63,12 @@ export default async function ActivityPage({
   const since = activitySince(range);
   const query = (params.q || "").trim().slice(0, 80);
   const page = Math.max(0, Math.min(500, Number(params.page) || 0));
-  const [{ rows, total, pageSize }, counts] = await Promise.all([
+  const [{ rows, total, pageSize }, counts, link] = await Promise.all([
     listClicks(action, query, page, 40, since, traffic),
     activityCounts(query, since, traffic, action),
+    googleLink(),
   ]);
+  const currency = /^[A-Z]{3}$/.test(link?.currency || "") ? link?.currency || "" : "";
   const pages = Math.max(1, Math.ceil(total / pageSize));
   const from = total === 0 ? 0 : page * pageSize + 1;
   const to = Math.min(total, (page + 1) * pageSize);
@@ -78,7 +81,7 @@ export default async function ActivityPage({
           <p className="eyebrow">Activity</p>
           <h1>Every scored click</h1>
           <p className="sub">
-            Search, filter, and exclude an address from the campaign it clicked. Times are South African time. Paid clicks came from an ad. Organic visits are not charged. Performance Max holds the conversion instead of writing an IP exclusion.
+            Search, filter, and exclude an address from the campaign it clicked. Times are South African time. Cost is the average price Google Ads reported for that campaign on that day. Organic visits have no ad cost. Performance Max holds the conversion instead of writing an IP exclusion.
           </p>
         </div>
       </header>
@@ -134,6 +137,7 @@ export default async function ActivityPage({
               const kind = TYPE_LABEL[click.campaign_type as keyof typeof TYPE_LABEL] ?? click.campaign_type;
               const actionLabel = ACTION_LABEL[click.action as keyof typeof ACTION_LABEL] ?? click.action;
               const detail = click.keyword || click.placement || kind;
+              const adsCost = typeof click.google_cost === "number" && currency ? formatMoney(click.google_cost, currency) : null;
               return (
                 <article className="click" key={click.id}>
                   <div className={`click-score pill ${scoreBand(click.score)}`} aria-label={`Score ${click.score}`}>
@@ -159,7 +163,7 @@ export default async function ActivityPage({
                     <div className="muted">{when(click.ts)}</div>
                   </div>
                   <div className="click-side">
-                    <div className="cost">{click.channel === "organic" ? "—" : money(click.cost)}</div>
+                    <div className="cost">{adsCost ?? "—"}</div>
                     {click.block_id ? <span className="pill block">Excluded</span> : null}
                     {!click.block_id && held ? <span className="muted">Conversion held</span> : null}
                     {!click.block_id && !held ? (

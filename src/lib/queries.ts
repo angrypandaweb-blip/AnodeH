@@ -31,6 +31,7 @@ export type ClickRow = {
   enforcement: string;
   channel: string;
   block_id: string | null;
+  google_cost: number | null;
 };
 
 export async function weekStats() {
@@ -160,7 +161,17 @@ export async function listClicks(action: string, query: string, page: number, pa
        WHERE b.user_id = ? AND b.status = 'active' AND b.campaign = c.campaign
          AND (b.target = c.ip OR (b.kind = 'subnet' AND c.ip LIKE substr(b.target, 1, length(b.target) - 4) || '%'))
        LIMIT 1
-     ) AS block_id
+     ) AS block_id,
+     (
+       SELECT CASE WHEN gd.clicks > 0 THEN gd.cost_micros * 1.0 / gd.clicks / 1000000 ELSE NULL END
+       FROM google_clicks gc
+       JOIN google_daily gd
+         ON gd.user_id = gc.user_id
+        AND gd.campaign = gc.campaign
+        AND gd.day = date(gc.ts, 'unixepoch')
+       WHERE gc.user_id = c.user_id AND gc.gclid = c.click_id
+       LIMIT 1
+     ) AS google_cost
      FROM clicks c ${clause}
      ORDER BY c.ts DESC
      LIMIT ? OFFSET ?`,
@@ -308,6 +319,7 @@ export type GoogleLink = {
   connectedAt: number;
   syncedAt: number;
   lastError: string;
+  currency: string;
 };
 
 export async function googleLink(): Promise<GoogleLink | null> {
@@ -317,9 +329,10 @@ export async function googleLink(): Promise<GoogleLink | null> {
     connected_at: number;
     synced_at: number;
     last_error: string;
+    currency: string;
   }>(
     await getDb(),
-    "SELECT customer_id, login_customer_id, connected_at, synced_at, last_error FROM google_ads WHERE user_id = ?",
+    "SELECT customer_id, login_customer_id, connected_at, synced_at, last_error, currency FROM google_ads WHERE user_id = ?",
     [await mine()],
   );
   if (!row) return null;
@@ -329,6 +342,7 @@ export async function googleLink(): Promise<GoogleLink | null> {
     connectedAt: row.connected_at,
     syncedAt: row.synced_at,
     lastError: row.last_error,
+    currency: row.currency || "",
   };
 }
 

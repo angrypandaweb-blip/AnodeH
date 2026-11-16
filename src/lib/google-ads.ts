@@ -8,6 +8,7 @@ import {
   isManagerAccount,
   parseCampaign,
   parseClick,
+  parseCurrency,
   parseDaily,
   type ParsedCampaign,
   type ParsedClick,
@@ -227,7 +228,7 @@ function uniqueClicks(rows: ParsedClick[]) {
   });
 }
 
-async function savePull(db: Client, userId: string, customerId: string, loginCustomerId: string, campaigns: ParsedCampaign[], daily: ParsedDaily[], clicks: ParsedClick[]) {
+async function savePull(db: Client, userId: string, customerId: string, loginCustomerId: string, currency: string, campaigns: ParsedCampaign[], daily: ParsedDaily[], clicks: ParsedClick[]) {
   const tx = await db.transaction("write");
   try {
     await execute(tx, "DELETE FROM google_campaigns WHERE user_id = ?", [userId]);
@@ -259,8 +260,8 @@ async function savePull(db: Client, userId: string, customerId: string, loginCus
     if (pretty) await execute(tx, "UPDATE users SET ads_account = ? WHERE id = ?", [pretty, userId]);
     await execute(
       tx,
-      `UPDATE google_ads SET customer_id = ?, login_customer_id = ?, synced_at = ?, last_error = '' WHERE user_id = ?`,
-      [customerId, loginCustomerId, Math.floor(Date.now() / 1000), userId],
+      `UPDATE google_ads SET customer_id = ?, login_customer_id = ?, currency = ?, synced_at = ?, last_error = '' WHERE user_id = ?`,
+      [customerId, loginCustomerId, currency, Math.floor(Date.now() / 1000), userId],
     );
     await tx.commit();
   } catch (error) {
@@ -302,6 +303,14 @@ export async function pullGoogleAds(userId: string) {
     await remember(db, userId, { error: resolved.error });
     return { ok: false as const, error: resolved.error };
   }
+
+  const customerResult = await adsSearch(
+    token.accessToken,
+    resolved.customerId,
+    "SELECT customer.currency_code FROM customer LIMIT 1",
+    resolved.loginCustomerId,
+  );
+  const currency = customerResult.ok ? parseCurrency(customerResult.rows[0]) : "";
 
   const campaignResult = await adsSearch(
     token.accessToken,
@@ -362,7 +371,7 @@ export async function pullGoogleAds(userId: string) {
     }
   }
 
-  await savePull(db, userId, resolved.customerId, resolved.loginCustomerId, campaigns, daily, clicks);
+  await savePull(db, userId, resolved.customerId, resolved.loginCustomerId, currency, campaigns, daily, clicks);
   if (clickError) await remember(db, userId, { error: `Campaigns were saved. Individual clicks were not available: ${clickError}` });
   return { ok: true as const, campaigns: campaigns.length, clicks: clicks.length };
 }

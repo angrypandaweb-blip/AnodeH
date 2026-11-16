@@ -237,6 +237,7 @@ async function migrate(db: Client) {
     );
     CREATE UNIQUE INDEX IF NOT EXISTS email_log_kind_ref ON email_log (kind, ref);
   `);
+  await addColumn(db, "google_ads", "currency", "TEXT NOT NULL DEFAULT ''");
 
   const unsigned = await queryAll<{ id: string }>(db, "SELECT id FROM users WHERE domain_key = ''");
   for (const row of unsigned) {
