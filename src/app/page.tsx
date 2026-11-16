@@ -52,15 +52,6 @@ export default async function LandingPage() {
         <p className="lede">
           AnodeH scores invalid traffic on your Google Ads campaigns and writes the exclusions for you. The budget stays with people who might become customers.
         </p>
-        <div className="hero-actions">
-          <a className="btn" href={startHref}>{startLabel}</a>
-          <a className="btn ghost" href="#pricing">See pricing</a>
-        </div>
-        <ul className="reassure">
-          <li>Half off the first 30 days</li>
-          <li>Then {dollars(STANDARD_CENTS)} every 30 days</li>
-          <li>Cancel anytime in PayPal</li>
-        </ul>
       </section>
 
       <section id="preview" className="preview">
