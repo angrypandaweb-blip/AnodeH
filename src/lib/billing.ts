@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { getUser } from "@/lib/auth";
 import { execute, getDb, queryOne } from "@/lib/db";
 import { sendPurchaseReceipt } from "@/lib/email-reports";
+import { convertUsdCents, formatMoney, reportCurrency } from "@/lib/residence-currency";
 
 export const PERIOD_DAYS = 30;
 export const YEAR_DAYS = 365;
@@ -97,7 +98,30 @@ export async function getAccess(userId?: string): Promise<Access> {
   return { status: "unpaid", endsAt: paidUntil, daysLeft: 0, paidUntil, introUsed, lifetime: false };
 }
 
-export function planSummary(access: Access) {
+export type PlanQuote = {
+  currency: string;
+  name: string;
+  intro: string;
+  standard: string;
+  annual: string;
+};
+
+export async function quotesFor(email: string, country: string): Promise<PlanQuote> {
+  const local = await reportCurrency(email, country);
+  const money = (cents: number) => formatMoney(convertUsdCents(cents, local.rate), local.currency);
+  return {
+    currency: local.currency,
+    name: local.name,
+    intro: money(INTRO_CENTS),
+    standard: money(STANDARD_CENTS),
+    annual: money(ANNUAL_CENTS),
+  };
+}
+
+export function planSummary(access: Access, quote?: PlanQuote) {
+  const intro = quote?.intro ?? dollars(INTRO_CENTS);
+  const standard = quote?.standard ?? dollars(STANDARD_CENTS);
+  const annual = quote?.annual ?? dollars(ANNUAL_CENTS);
   if (access.lifetime) {
     return { title: "Lifetime", detail: "This account does not expire." };
   }
@@ -105,11 +129,11 @@ export function planSummary(access: Access) {
     return { title: `Paid · ${dayPhrase(access.daysLeft)} left`, detail: `Through ${planDate(access.endsAt)}` };
   }
   if (access.introUsed) {
-    return { title: "Plan unpaid", detail: `${dollars(STANDARD_CENTS)} / 30 days or ${dollars(ANNUAL_CENTS)}/year` };
+    return { title: "Plan unpaid", detail: `${standard} / 30 days or ${annual}/year` };
   }
   return {
-    title: `First 30 days · ${dollars(INTRO_CENTS)}`,
-    detail: `Then ${dollars(STANDARD_CENTS)} or ${dollars(ANNUAL_CENTS)}/year`,
+    title: `First 30 days · ${intro}`,
+    detail: `Then ${standard} or ${annual}/year`,
   };
 }
 

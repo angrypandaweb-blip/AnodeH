@@ -31,6 +31,7 @@ export default function TermsPage() {
         <p>
           The monthly plan charges {dollars(INTRO_CENTS)} for the first 30 days, then {dollars(STANDARD_CENTS)} every 30 days through PayPal until you cancel in PayPal.
           The annual plan is {dollars(ANNUAL_CENTS)} once and does not renew on its own.
+          An account shows these prices in the currency of the country saved at registration. PayPal collects the US dollar amounts.
         </p>
 
         <h2>Contact</h2>

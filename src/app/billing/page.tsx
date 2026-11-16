@@ -1,6 +1,5 @@
 import { beginCheckout } from "@/app/actions";
 import {
-  ANNUAL_CENTS,
   capturePayPalOrder,
   confirmPayPalSubscription,
   dayPhrase,
@@ -11,8 +10,11 @@ import {
   paypalLive,
   PERIOD_DAYS,
   planDate,
+  quotesFor,
   STANDARD_CENTS,
+  ANNUAL_CENTS,
 } from "@/lib/billing";
+import { getUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -35,9 +37,14 @@ export default async function BillingPage({
     payError = result.error || "PayPal has not confirmed this payment.";
   }
 
+  const user = await getUser();
   const access = await getAccess();
+  const quote = await quotesFor(user?.email || "", user?.country || "");
   const ready = paymentsConfigured();
-  const monthCents = access.introUsed ? STANDARD_CENTS : INTRO_CENTS;
+  const monthPrice = access.introUsed ? quote.standard : quote.intro;
+  const paypalNote = quote.currency === "USD"
+    ? "The monthly plan is charged automatically by PayPal in US dollars."
+    : `Prices are in ${quote.name}, for the country on this account. PayPal collects the US dollar price: ${dollars(INTRO_CENTS)} for the first 30 days, then ${dollars(STANDARD_CENTS)} every 30 days. The year is ${dollars(ANNUAL_CENTS)}.`;
 
   return (
     <div>
@@ -48,7 +55,7 @@ export default async function BillingPage({
           <p className="sub">
             {access.lifetime
               ? "This account does not expire. PayPal is not needed."
-              : `The first 30 days are ${dollars(INTRO_CENTS)}. PayPal then charges ${dollars(STANDARD_CENTS)} every 30 days until you cancel. The year is ${dollars(ANNUAL_CENTS)} once and does not renew.`}
+              : `The first 30 days are ${quote.intro}. Then ${quote.standard} every 30 days until you cancel. The year is ${quote.annual} once and does not renew.`}
           </p>
         </div>
       </header>
@@ -70,8 +77,8 @@ export default async function BillingPage({
             <p className="note">
               {dayPhrase(access.daysLeft)} remaining.
               {access.introUsed
-                ? ` The next 30 days are ${dollars(STANDARD_CENTS)}, or a year is ${dollars(ANNUAL_CENTS)}.`
-                : ` The first 30-day price of ${dollars(INTRO_CENTS)} is still available, or a year is ${dollars(ANNUAL_CENTS)}.`}
+                ? ` The next 30 days are ${quote.standard}, or a year is ${quote.annual}.`
+                : ` The first 30-day price of ${quote.intro} is still available, or a year is ${quote.annual}.`}
             </p>
           </>
         ) : (
@@ -79,8 +86,8 @@ export default async function BillingPage({
             <h2 style={{ marginTop: 10 }}>Protection starts when you pay</h2>
             <p className="note">
               {access.introUsed
-                ? `The introductory price has been used. Continue at ${dollars(STANDARD_CENTS)} for ${PERIOD_DAYS} days, or ${dollars(ANNUAL_CENTS)} for the year.`
-                : `The first ${PERIOD_DAYS} days are ${dollars(INTRO_CENTS)}. PayPal then charges ${dollars(STANDARD_CENTS)} every 30 days until you cancel.`}
+                ? `The introductory price has been used. Continue at ${quote.standard} for ${PERIOD_DAYS} days, or ${quote.annual} for the year.`
+                : `The first ${PERIOD_DAYS} days are ${quote.intro}. Then ${quote.standard} every 30 days until you cancel.`}
             </p>
           </>
         )}
@@ -90,7 +97,7 @@ export default async function BillingPage({
         <span className="card-label">Payment gateway</span>
         <h2 style={{ marginTop: 10 }}>PayPal</h2>
         <p className="note">
-          The monthly plan is charged automatically by PayPal in US dollars. Cancel it from your PayPal account to stop the next charge.
+          {paypalNote} Cancel it from your PayPal account to stop the next charge.
           {ready
             ? paypalLive()
               ? " Live payments are on."
@@ -104,13 +111,13 @@ export default async function BillingPage({
         <article className="card">
           <span className="card-label">{access.introUsed ? "30 days" : "First 30 days"}</span>
           <p className="price">
-            {dollars(monthCents)}
-            {access.introUsed ? null : <s className="was">{dollars(STANDARD_CENTS)}</s>}
+            {monthPrice}
+            {access.introUsed ? null : <s className="was">{quote.standard}</s>}
           </p>
           <p className="note">
             {access.introUsed
-              ? `${dollars(STANDARD_CENTS)} is charged every 30 days until you cancel.`
-              : `${dollars(INTRO_CENTS)} today, then ${dollars(STANDARD_CENTS)} every 30 days until you cancel.`}
+              ? `${quote.standard} is charged every 30 days until you cancel.`
+              : `${quote.intro} today, then ${quote.standard} every 30 days until you cancel.`}
           </p>
           <form action={beginCheckout}>
             <input type="hidden" name="plan" value="month" />
@@ -122,12 +129,12 @@ export default async function BillingPage({
 
         <article className="card">
           <span className="card-label">Annual</span>
-          <p className="price">{dollars(ANNUAL_CENTS)}</p>
+          <p className="price">{quote.annual}</p>
           <p className="note">One payment for 365 days. This plan does not renew.</p>
           <form action={beginCheckout}>
             <input type="hidden" name="plan" value="year" />
             <button className="btn" type="submit">
-              Pay {dollars(ANNUAL_CENTS)} with PayPal
+              Pay {quote.annual} with PayPal
             </button>
           </form>
         </article>
