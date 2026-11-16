@@ -1,6 +1,6 @@
 import { randomBytes } from "crypto";
 import { getUser } from "./auth";
-import { CAMPAIGNS, findCampaign } from "./campaigns";
+import { CAMPAIGNS, findCampaign, visitCampaignName } from "./campaigns";
 import { type Db, execute, getDb, queryAll, queryOne } from "./db";
 import { sendBlockedIp } from "./email-reports";
 import { enforcementFor, evaluate, guessIsp, guessNetwork } from "./score";
@@ -287,7 +287,7 @@ export async function recordClick(db: Db, input: IncomingClick, explicitUserId?:
   const userId = await ownerId(explicitUserId);
   const policy = await getPolicy(db, userId);
   const campaign = findCampaign(input.campaign);
-  const campaignName = campaign?.name ?? (input.campaign || "Unassigned");
+  const campaignName = visitCampaignName(input.campaign, input.region);
   const campaignType = campaign?.type ?? "search";
   const countries = campaign?.countries ?? [];
   const ts = input.ts ?? Math.floor(Date.now() / 1000);
@@ -494,6 +494,7 @@ export function parseIncoming(body: Record<string, unknown>, fallbackIp: string)
       deviceHash,
       country: typeof body.country === "string" && /^[A-Za-z]{2}$/.test(body.country) ? body.country.toUpperCase() : "",
       city: typeof body.city === "string" ? body.city : undefined,
+      region: typeof body.region === "string" ? body.region : undefined,
       isp: typeof body.isp === "string" && body.isp ? body.isp : guessIsp(network, ip),
       network,
       userAgent: typeof body.userAgent === "string" ? body.userAgent : undefined,

@@ -46,6 +46,25 @@ export const JUNK_PLACEMENTS = new Set([
   "pdf-download.example",
 ]);
 
+const PROVINCE_NAMES: Record<string, string> = {
+  "kwazulu-natal": "KwaZulu-Natal",
+  "kwazulu natal": "KwaZulu-Natal",
+};
+
+export function provinceName(region: string | undefined): string {
+  const clean = (region || "").trim().replace(/\s+/g, " ").slice(0, 80);
+  if (!clean) return "";
+  return PROVINCE_NAMES[clean.toLowerCase()] || clean;
+}
+
+export function visitCampaignName(incoming: string | undefined, region: string | undefined): string {
+  const known = findCampaign(incoming);
+  if (known) return known.name;
+  const given = (incoming || "").trim();
+  if (given) return given.slice(0, 120);
+  return provinceName(region) || "Unassigned";
+}
+
 export function findCampaign(nameOrSlug: string | undefined): Campaign | undefined {
   if (!nameOrSlug) return undefined;
   const key = nameOrSlug.trim().toLowerCase();
