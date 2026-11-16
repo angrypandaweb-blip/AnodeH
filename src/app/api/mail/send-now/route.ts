@@ -11,5 +11,8 @@ export async function GET() {
   );
   if (!user) return Response.json({ ok: false, error: "Account not found." }, { status: 404 });
   const result = await sendDueDailyReport(user.id);
-  return Response.json(result, { status: result.ok ? 200 : 503 });
+  return Response.json(
+    result.ok ? result : { ...result, from: process.env.MAIL_FROM || "" },
+    { status: result.ok ? 200 : 503 },
+  );
 }
