@@ -1,6 +1,7 @@
 import { Mark } from "@/components/Mark";
 import { getUser } from "@/lib/auth";
 import { dollars, getAccess, INTRO_CENTS, quotesFor, STANDARD_CENTS, ANNUAL_CENTS } from "@/lib/billing";
+import { visitorCountry } from "@/lib/visitor-country";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,8 @@ export default async function LandingPage() {
   const yearHref = user ? (subscribed ? "/dashboard" : "/billing") : "/register?plan=year";
   const monthLabel = user ? (subscribed ? "Open dashboard" : "Subscribe with PayPal") : "Subscribe";
   const yearLabel = user ? (subscribed ? "Open dashboard" : "Pay for the year") : "Pay for the year";
-  const quote = user ? await quotesFor(user.email, user.country) : null;
+  const seen = user?.country || (await visitorCountry());
+  const quote = await quotesFor(user?.email || "", seen);
   const intro = quote?.intro ?? dollars(INTRO_CENTS);
   const standard = quote?.standard ?? dollars(STANDARD_CENTS);
   const annual = quote?.annual ?? dollars(ANNUAL_CENTS);

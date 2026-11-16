@@ -1,3 +1,5 @@
+import { knownCountry } from "./residence-currency";
+
 export type IpSource = {
   country: string;
   isp: string;
@@ -34,12 +36,32 @@ export function isPublicIpv4(ip: string) {
   return true;
 }
 
+export function isPublicIp(ip: string) {
+  if (isPublicIpv4(ip)) return true;
+  if (!ip.includes(":")) return false;
+  const lower = ip.toLowerCase().split("%")[0];
+  if (lower.length > 45 || !/^[0-9a-f:]+$/.test(lower)) return false;
+  if (lower === "::1" || lower === "::") return false;
+  if (lower.startsWith("fe80:") || lower.startsWith("fc") || lower.startsWith("fd")) return false;
+  if (lower.startsWith("::ffff:")) return isPublicIpv4(lower.slice(7));
+  return true;
+}
+
+export function firstForwardedIp(value: string | null) {
+  return value?.split(",")[0]?.trim() || "";
+}
+
+export function countryHeader(value: string | null) {
+  const code = (value || "").trim().toUpperCase();
+  return knownCountry(code) ? code : "";
+}
+
 export async function lookupIpSource(ip: string): Promise<IpSource | null> {
-  if (!isPublicIpv4(ip)) return null;
+  if (!isPublicIp(ip)) return null;
   const cached = cache.get(ip);
   if (cached && Date.now() - cached.at < DAY) return cached.source;
   try {
-    const response = await fetch(`https://ipwho.is/${ip}?fields=success,country_code,city,connection`, {
+    const response = await fetch(`https://ipwho.is/${encodeURIComponent(ip)}?fields=success,country_code,city,connection`, {
       signal: AbortSignal.timeout(2500),
     });
     if (!response.ok) return null;
