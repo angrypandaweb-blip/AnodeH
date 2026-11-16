@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
@@ -16,6 +17,7 @@ import { normalizeAdsAccount } from "@/lib/format";
 import { createPayPalCheckout } from "@/lib/billing";
 import { execute, getDb, queryOne } from "@/lib/db";
 import { knownCountry } from "@/lib/residence-currency";
+import { passwordResetLink, sendPasswordReset } from "@/lib/email-reports";
 import { disconnectGoogleAds, pullGoogleAds } from "@/lib/google-ads";
 import { resetDemo, simulateScenario } from "@/lib/seed";
 import type { Sensitivity } from "@/lib/types";
@@ -207,18 +209,31 @@ export async function requestPasswordReset(formData: FormData) {
     redirect(withError(back, "Enter the email on the account."));
   }
   const db = await getDb();
-  const user = await queryOne<{ id: string }>(db, "SELECT id FROM users WHERE lower(email) = ?", [email]);
+  const user = await queryOne<{ id: string; name: string; email: string }>(
+    db,
+    "SELECT id, name, email FROM users WHERE lower(email) = ?",
+    [email],
+  );
   if (!user) redirect(withError(back, "No account uses that email."));
   const token = randomBytes(24).toString("hex");
   const now = Math.floor(Date.now() / 1000);
+  const resetId = `r${randomBytes(6).toString("hex")}`;
   await execute(db, "DELETE FROM password_resets WHERE user_id = ?", [user.id]);
   await execute(db, "INSERT INTO password_resets (id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)", [
-    `r${randomBytes(6).toString("hex")}`,
+    resetId,
     user.id,
     tokenHash(token),
     now + 30 * 60,
   ]);
-  redirect(`/reset-password?token=${token}`);
+  const headerList = await headers();
+  const host = headerList.get("x-forwarded-host") ?? headerList.get("host") ?? "anodeh.com";
+  const proto = headerList.get("x-forwarded-proto") ?? "https";
+  const sent = await sendPasswordReset(user.email, user.name, passwordResetLink(host, proto, token));
+  if (!sent.ok) {
+    await execute(db, "DELETE FROM password_resets WHERE id = ?", [resetId]);
+    redirect(withError(back, sent.error));
+  }
+  redirect("/forgot-password?sent=1");
 }
 
 export async function resetPassword(formData: FormData) {

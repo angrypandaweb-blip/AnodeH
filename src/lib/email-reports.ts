@@ -93,6 +93,34 @@ async function markSent(userId: string, kind: string, ref: string) {
   ]);
 }
 
+export function passwordResetLink(host: string, proto: string, token: string) {
+  const safeHost = /^[a-z0-9.-]+(?::\d+)?$/i.test(host) ? host : "anodeh.com";
+  const local = safeHost.startsWith("localhost") || safeHost.startsWith("127.0.0.1");
+  const protocol = proto === "http" && local ? "http" : "https";
+  return `${protocol}://${safeHost}/reset-password?token=${encodeURIComponent(token)}`;
+}
+
+export async function sendPasswordReset(to: string, name: string, link: string) {
+  if (!mailConfigured()) return { ok: false as const, error: "Add RESEND_API_KEY and MAIL_FROM, then redeploy." };
+  const subject = "Set a new AnodeH password";
+  const text = [
+    `Hello ${name},`,
+    "",
+    "Use this link to choose a new password. It works for 30 minutes.",
+    link,
+    "",
+    "If you did not ask for this, you can ignore the email. Your password stays the same.",
+    "",
+    "AnodeH",
+  ].join("\n");
+  const html = `<p>Hello ${escapeHtml(name)},</p>
+<p>Use this link to choose a new password. It works for 30 minutes.</p>
+<p><a href="${escapeHtml(link)}">Set a new password</a></p>
+<p>If you did not ask for this, you can ignore the email. Your password stays the same.</p>
+<p>AnodeH</p>`;
+  return sendMail(to, subject, text, html);
+}
+
 export async function sendPurchaseReceipt(receipt: PurchaseReceipt) {
   if (!mailConfigured()) return { ok: false as const, error: "Email is not configured." };
   if (await alreadySent("purchase", receipt.paymentId)) return { ok: true as const, skipped: true };

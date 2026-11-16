@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export default async function ForgotPasswordPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; sent?: string }>;
 }) {
   const params = await searchParams;
 
@@ -24,7 +24,8 @@ export default async function ForgotPasswordPage({
       <section className="hero" style={{ textAlign: "left", maxWidth: 480 }}>
         <p className="kicker">Forgot password</p>
         <h1>Choose a new password.</h1>
-        <p className="lede" style={{ marginLeft: 0 }}>Enter the email on the account. The next page lets you set a new password.</p>
+        <p className="lede" style={{ marginLeft: 0 }}>Enter the email on the account. We send a link that opens a page where you set a new password.</p>
+        {params.sent ? <p className="banner">Check that email. The link works for 30 minutes.</p> : null}
         {params.error ? <p className="banner warn">{params.error}</p> : null}
         <form action={requestPasswordReset} className="form-grid">
           <input type="hidden" name="return" value="/forgot-password" />
@@ -32,7 +33,7 @@ export default async function ForgotPasswordPage({
             Email
             <input type="email" name="email" autoComplete="email" required />
           </label>
-          <button className="btn" type="submit">Continue</button>
+          <button className="btn" type="submit">Email me a link</button>
         </form>
       </section>
     </div>
