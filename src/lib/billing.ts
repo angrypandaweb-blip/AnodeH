@@ -118,7 +118,7 @@ function isPlan(value: string | undefined): value is PlanId {
 }
 
 function paypalBase() {
-  return process.env.PAYPAL_ENV === "live" ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com";
+  return paypalLive() ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com";
 }
 
 export function paymentsConfigured() {
@@ -126,27 +126,58 @@ export function paymentsConfigured() {
 }
 
 export function paypalLive() {
-  return process.env.PAYPAL_ENV === "live";
+  return process.env.PAYPAL_ENV !== "sandbox";
 }
 
 function usd(cents: number) {
   return (cents / 100).toFixed(2);
 }
 
-async function paypalToken() {
-  const id = process.env.PAYPAL_CLIENT_ID || "";
-  const secret = process.env.PAYPAL_CLIENT_SECRET || "";
-  const response = await fetch(`${paypalBase()}/v1/oauth2/token`, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${Buffer.from(`${id}:${secret}`).toString("base64")}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: "grant_type=client_credentials",
-  });
-  const payload = (await response.json().catch(() => null)) as { access_token?: string } | null;
-  if (!response.ok || !payload?.access_token) return null;
-  return payload.access_token;
+function paypalCredential(value: string | undefined) {
+  let text = (value || "").trim();
+  if ((text.startsWith('"') && text.endsWith('"')) || (text.startsWith("'") && text.endsWith("'"))) {
+    text = text.slice(1, -1).trim();
+  }
+  return text.replace(/\s+/g, "");
+}
+
+async function paypalToken(): Promise<{ ok: true; token: string } | { ok: false; error: string }> {
+  const id = paypalCredential(process.env.PAYPAL_CLIENT_ID);
+  const secret = paypalCredential(process.env.PAYPAL_CLIENT_SECRET);
+  const mode = paypalLive() ? "live" : "sandbox";
+  const where = mode === "live" ? "the live PayPal API" : "the sandbox PayPal API";
+  if (!id || !secret) {
+    return { ok: false, error: `Add the ${mode} PayPal client id and secret, then redeploy.` };
+  }
+  let response: Response;
+  try {
+    response = await fetch(`${paypalBase()}/v1/oauth2/token`, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${id}:${secret}`).toString("base64")}`,
+        Accept: "application/json",
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: "grant_type=client_credentials",
+    });
+  } catch {
+    return { ok: false, error: `Could not reach ${where}.` };
+  }
+  const payload = (await response.json().catch(() => null)) as {
+    access_token?: string;
+    error?: string;
+    error_description?: string;
+  } | null;
+  if (!response.ok || !payload?.access_token) {
+    const detail = payload?.error_description || payload?.error;
+    return {
+      ok: false,
+      error: detail
+        ? `PayPal did not accept the client id and secret on ${where}. ${detail}`
+        : `PayPal did not accept the client id and secret on ${where}. Use the ${mode} client id and secret from the PayPal developer dashboard.`,
+    };
+  }
+  return { ok: true, token: payload.access_token };
 }
 
 async function grantPaidPeriod(paymentId: string, plan: PlanId, amountCents: number) {
@@ -209,8 +240,9 @@ export async function createPayPalCheckout(choice: "month" | "year") {
   if (!paymentsConfigured()) {
     return { error: "Add PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET to .env.local, then restart the app." };
   }
-  const token = await paypalToken();
-  if (!token) return { error: "PayPal did not accept the client id and secret." };
+  const auth = await paypalToken();
+  if (!auth.ok) return { error: auth.error };
+  const token = auth.token;
 
   const access = await getAccess();
   const plan: PlanId = choice === "year" ? "year" : access.introUsed ? "month" : "intro";
@@ -281,8 +313,9 @@ export async function capturePayPalOrder(orderId: string) {
   );
   if (!checkout || !isPlan(checkout.plan)) return { ok: false as const, error: "This PayPal payment is not for AnodeH." };
 
-  const token = await paypalToken();
-  if (!token) return { ok: false as const, error: "PayPal did not accept the client id and secret." };
+  const auth = await paypalToken();
+  if (!auth.ok) return { ok: false as const, error: auth.error };
+  const token = auth.token;
 
   let response = await fetch(`${paypalBase()}/v2/checkout/orders/${orderId}/capture`, {
     method: "POST",
@@ -445,8 +478,9 @@ async function applySubscription(
   id: string,
   userId?: string,
 ): Promise<{ ok: true; active: boolean } | { ok: false; error: string; active: boolean }> {
-  const token = await paypalToken();
-  if (!token) return { ok: false, error: "PayPal did not accept the client id and secret.", active: false };
+  const auth = await paypalToken();
+  if (!auth.ok) return { ok: false, error: auth.error, active: false };
+  const token = auth.token;
 
   const response = await fetch(`${paypalBase()}/v1/billing/subscriptions/${id}`, {
     headers: { Authorization: `Bearer ${token}` },
