@@ -41,6 +41,7 @@ h1, h2, .metric strong, .brand-name, .price {
 .app {
   display: grid;
   grid-template-columns: 232px 1fr;
+  grid-template-rows: 1fr auto;
   min-height: 100vh;
 }
 .sidebar {
@@ -53,6 +54,7 @@ h1, h2, .metric strong, .brand-name, .price {
   position: sticky;
   top: 0;
   height: 100vh;
+  grid-row: 1 / -1;
   border-right: 1px solid var(--line);
 }
 .brand { display: flex; gap: 10px; align-items: center; padding: 0 8px; text-decoration: none; }
@@ -86,7 +88,6 @@ h1, h2, .metric strong, .brand-name, .price {
   font-family: var(--font-sans), "Segoe UI", sans-serif;
 }
 .plan-link {
-  margin-top: auto;
   display: block;
   text-decoration: none;
   padding: 10px 12px;
@@ -98,6 +99,10 @@ h1, h2, .metric strong, .brand-name, .price {
 }
 .plan-link strong { display: block; font-weight: 600; }
 .plan-link span { color: var(--muted); }
+.side-account { margin-top: auto; }
+.account-foot { grid-column: 2; padding: 0 32px 32px; max-width: 1180px; }
+.account-foot .plan-link { max-width: 280px; }
+.account-foot form { margin-top: 12px; }
 .side-foot { margin-top: 12px; padding: 0 8px; color: var(--muted); font-size: 12px; line-height: 1.4; }
 .side-foot strong { color: var(--ink); font-weight: 600; display: block; }
 .side-foot a, .banner a { color: inherit; font-weight: 600; }
@@ -445,8 +450,10 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 
 @media (max-width: 980px) {
   .app { grid-template-columns: 1fr; }
-  .sidebar { position: relative; height: auto; }
+  .sidebar { position: relative; height: auto; grid-row: auto; }
   .nav { flex-direction: row; flex-wrap: wrap; }
+  .side-account { margin-top: 8px; }
+  .account-foot { grid-column: 1; padding: 8px 16px 32px; }
   .plan-link, .side-foot { margin-top: 8px; }
   .metrics, .split, .plans, .feature-grid { grid-template-columns: 1fr; }
   .hero { padding: 40px 16px 20px; }

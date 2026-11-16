@@ -55,18 +55,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               </span>
             </a>
             <Nav unread={unread} />
-            <a className="plan-link" href="/billing">
-              <strong>{plan.title}</strong>
-              <span>{plan.detail}</span>
-            </a>
-            <p className="side-foot">
-              <strong>{user.name}</strong>
-              {user.email}
-            </p>
-            <form action={logoutAccount}>
-              <button className="btn ghost" type="submit">Log out</button>
-            </form>
-            <p className="side-foot">
+            <p className="side-foot side-account">
               <strong>Google Ads</strong>
               {user.adsAccount ? (
                 <>
@@ -80,6 +69,19 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </p>
           </aside>
           <main className="main">{children}</main>
+          <footer className="account-foot">
+            <a className="plan-link" href="/billing">
+              <strong>{plan.title}</strong>
+              <span>{plan.detail}</span>
+            </a>
+            <p className="side-foot">
+              <strong>{user.name}</strong>
+              {user.email}
+            </p>
+            <form action={logoutAccount}>
+              <button className="btn ghost" type="submit">Log out</button>
+            </form>
+          </footer>
         </div>
       </body>
     </html>
