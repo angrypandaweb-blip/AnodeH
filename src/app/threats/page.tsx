@@ -1,8 +1,8 @@
 import { activitySince, type ActivityRange } from "@/lib/activity-range";
 import { getUser } from "@/lib/auth";
 import { compact } from "@/lib/format";
-import { topDevices, topIps, topPlacements } from "@/lib/queries";
-import { formatMoney, placeFor, reportCurrency } from "@/lib/residence-currency";
+import { googleLink, topDevices, topIps, topPlacements } from "@/lib/queries";
+import { formatMoney, placeFor, reportCurrency, usdRate } from "@/lib/residence-currency";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +35,15 @@ function shortHash(value: string) {
   return `${value.slice(0, 8)}…${value.slice(-4)}`;
 }
 
+function googleRowPrice(
+  row: { clicks: number; priced_clicks: number; google_cost: number | null },
+  currency: string,
+  scale: number,
+) {
+  if (row.priced_clicks !== row.clicks || typeof row.google_cost !== "number" || !currency || !scale) return "—";
+  return formatMoney(row.google_cost * scale, currency);
+}
+
 export default async function ThreatsPage({
   searchParams,
 }: {
@@ -45,9 +54,14 @@ export default async function ThreatsPage({
   const user = await getUser();
   const place = placeFor(user?.country || "", user?.email || "");
   const local = await reportCurrency(user?.email || "", user?.country || "");
-  const priced = (usd: number) => formatMoney(usd * local.rate, local.currency);
   const since = activitySince(range, Date.now(), place.timeZone);
-  const [ips, devices, placements] = await Promise.all([topIps(since), topDevices(since), topPlacements(since)]);
+  const [ips, devices, placements, link] = await Promise.all([topIps(since), topDevices(since), topPlacements(since), googleLink()]);
+  const adsCurrency = /^[A-Z]{3}$/.test(link?.currency || "") ? link?.currency || "" : "";
+  const fromRate = adsCurrency && adsCurrency !== local.currency ? await usdRate(adsCurrency) : 1;
+  const toRate = adsCurrency && adsCurrency !== local.currency ? await usdRate(local.currency) : 1;
+  const adsScale = fromRate && toRate ? toRate / fromRate : 0;
+  const rowPrice = (row: { clicks: number; priced_clicks: number; google_cost: number | null }) =>
+    googleRowPrice(row, adsCurrency, adsScale);
 
   return (
     <div>
@@ -56,7 +70,7 @@ export default async function ThreatsPage({
           <p className="eyebrow">Threats</p>
           <h1>Where the waste repeats</h1>
           <p className="sub">
-            Addresses, devices, and placements that keep producing invalid clicks. A device on many IPs is one visitor rotating exits. A placement with mostly invalid clicks is a site that should come off the campaign.
+            Addresses, devices, and placements that keep producing invalid clicks. A device on many IPs is one visitor rotating exits. A placement with mostly invalid clicks is a site that should come off the campaign. A cost is shown only when Google Ads reported a price for every click in that row.
           </p>
         </div>
       </header>
@@ -101,7 +115,7 @@ export default async function ThreatsPage({
                   <div className="muted">{compact(row.invalid)} invalid</div>
                 </div>
                 <div className="click-side">
-                  <div className="cost">{priced(row.cost)}</div>
+                  <div className="cost">{rowPrice(row)}</div>
                 </div>
               </article>
             ))}
@@ -169,7 +183,7 @@ export default async function ThreatsPage({
                   <div className="muted">{compact(row.invalid)} invalid</div>
                 </div>
                 <div className="click-side">
-                  <div className="cost">{priced(row.cost)}</div>
+                  <div className="cost">{rowPrice(row)}</div>
                 </div>
               </article>
             ))}
