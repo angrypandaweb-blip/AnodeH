@@ -147,6 +147,7 @@ async function migrate(db: Client) {
 
   await addColumn(db, "users", "ads_account", "TEXT NOT NULL DEFAULT ''");
   await addColumn(db, "users", "domain_key", "TEXT NOT NULL DEFAULT ''");
+  await addColumn(db, "users", "country", "TEXT NOT NULL DEFAULT ''");
   await addColumn(db, "clicks", "user_id", "TEXT NOT NULL DEFAULT ''");
   await addColumn(db, "clicks", "channel", "TEXT NOT NULL DEFAULT ''");
   await execute(

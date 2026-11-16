@@ -3,6 +3,7 @@ import { createAllow, deleteAllow, disconnectGoogle, restoreSample, syncGoogleAd
 import { getUser } from "@/lib/auth";
 import { getPolicy } from "@/lib/engine";
 import { when } from "@/lib/format";
+import { placeFor } from "@/lib/residence-currency";
 import { googleAdsConfigured, googleAdsSetupError, requestOrigin } from "@/lib/google-ads";
 import { allowlist, googleLink } from "@/lib/queries";
 import { lastMailError } from "@/lib/email-reports";
@@ -25,6 +26,7 @@ export default async function SettingsPage({
 }) {
   const params = await searchParams;
   const [policy, allowed, headerList, link, user] = await Promise.all([getPolicy(), allowlist(), headers(), googleLink(), getUser()]);
+  const place = placeFor(user?.country || "", user?.email || "");
   const mailError = user ? await lastMailError(user.id) : "";
   const host = headerList.get("x-forwarded-host") || headerList.get("host") || "localhost:3000";
   const proto = headerList.get("x-forwarded-proto") || "http";
@@ -54,7 +56,7 @@ export default async function SettingsPage({
           <>
             <p className="note">
               Connected{link.customerId ? ` to ${link.customerId.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3")}` : ""}.
-              {link.syncedAt ? ` Last pull ${when(link.syncedAt)}.` : " The first pull has not finished."}
+              {link.syncedAt ? ` Last pull ${when(link.syncedAt, place.timeZone)}.` : " The first pull has not finished."}
               {" "}Google Ads does not include the visitor IP, so exclusions still come from the site tag.
             </p>
             {link.lastError ? <p className="banner warn">{link.lastError}</p> : null}
@@ -120,7 +122,7 @@ export default async function SettingsPage({
         <h2 style={{ marginTop: 10 }}>Receipts and the morning report</h2>
         <p className="note">
           {mailConfigured()
-            ? "A receipt goes out when PayPal confirms a payment. A click report for the previous day goes out every morning at 7:00am SAST. On the current host it can arrive any time before 8:00am."
+            ? "A receipt goes out when PayPal confirms a payment. A click report for the previous day goes out every morning at 7:00am in your time zone. On the current host it can arrive any time in the following hour."
             : "Receipts and the daily click report are ready. Add RESEND_API_KEY, MAIL_FROM, and CRON_SECRET on Vercel, then redeploy, before those emails can leave."}
         </p>
         {mailError ? <p className="banner warn">{mailError}</p> : null}

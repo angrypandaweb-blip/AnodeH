@@ -1,6 +1,8 @@
 import { activitySince, type ActivityRange } from "@/lib/activity-range";
-import { compact, money } from "@/lib/format";
+import { getUser } from "@/lib/auth";
+import { compact } from "@/lib/format";
 import { topDevices, topIps, topPlacements } from "@/lib/queries";
+import { formatMoney, placeFor, reportCurrency } from "@/lib/residence-currency";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +42,11 @@ export default async function ThreatsPage({
 }) {
   const params = await searchParams;
   const range: ActivityRange = RANGES.some((item) => item.id === params.range) ? (params.range as ActivityRange) : "all";
-  const since = activitySince(range);
+  const user = await getUser();
+  const place = placeFor(user?.country || "", user?.email || "");
+  const local = await reportCurrency(user?.email || "", user?.country || "");
+  const priced = (usd: number) => formatMoney(usd * local.rate, local.currency);
+  const since = activitySince(range, Date.now(), place.timeZone);
   const [ips, devices, placements] = await Promise.all([topIps(since), topDevices(since), topPlacements(since)]);
 
   return (
@@ -95,7 +101,7 @@ export default async function ThreatsPage({
                   <div className="muted">{compact(row.invalid)} invalid</div>
                 </div>
                 <div className="click-side">
-                  <div className="cost">{money(row.cost)}</div>
+                  <div className="cost">{priced(row.cost)}</div>
                 </div>
               </article>
             ))}
@@ -163,7 +169,7 @@ export default async function ThreatsPage({
                   <div className="muted">{compact(row.invalid)} invalid</div>
                 </div>
                 <div className="click-side">
-                  <div className="cost">{money(row.cost)}</div>
+                  <div className="cost">{priced(row.cost)}</div>
                 </div>
               </article>
             ))}

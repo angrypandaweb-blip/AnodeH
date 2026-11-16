@@ -2,6 +2,7 @@ import { unblock } from "@/app/actions";
 import { getUser } from "@/lib/auth";
 import { CAMPAIGNS } from "@/lib/campaigns";
 import { compact, scoreBand, when } from "@/lib/format";
+import { placeFor } from "@/lib/residence-currency";
 import { refreshGoogleAdsIfStale } from "@/lib/google-ads";
 import { blockCounts, capacity, googleCampaigns, googleLink, listBlocks } from "@/lib/queries";
 import { REASON_LABELS } from "@/lib/score";
@@ -59,6 +60,7 @@ export default async function ProtectionPage({
   const used = new Map(caps.rows.map((row) => [row.campaign, row.c]));
   const added = Math.max(0, Math.min(10000, Number(params.n) || 0));
   const user = await getUser();
+  const place = placeFor(user?.country || "", user?.email || "");
   if (user) await refreshGoogleAdsIfStale(user.id);
   const link = await googleLink();
   const liveCampaigns = link ? await googleCampaigns() : [];
@@ -168,8 +170,8 @@ export default async function ProtectionPage({
                     </div>
                   </div>
                   <div className="click-source">
-                    <div className="muted">Added {when(block.created_at)}</div>
-                    <div className="muted">Until {when(block.expires_at)}</div>
+                    <div className="muted">Added {when(block.created_at, place.timeZone)}</div>
+                    <div className="muted">Until {when(block.expires_at, place.timeZone)}</div>
                   </div>
                   <div className="click-side">
                     {status === "active" ? (
