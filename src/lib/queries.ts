@@ -93,9 +93,13 @@ export async function recentRisky(limit = 6): Promise<ClickRow[]> {
   );
 }
 
-export async function activityCounts(query: string) {
+export async function activityCounts(query: string, since: number | null = null) {
   const where = ["user_id = ?"];
-  const params: string[] = [await mine()];
+  const params: (string | number)[] = [await mine()];
+  if (since != null) {
+    where.push("ts >= ?");
+    params.push(since);
+  }
   if (query) {
     where.push("(ip LIKE ? OR campaign LIKE ? OR keyword LIKE ? OR placement LIKE ?)");
     const like = `%${query}%`;
@@ -117,11 +121,15 @@ export async function activityCounts(query: string) {
   return counts;
 }
 
-export async function listClicks(action: string, query: string, page: number, pageSize = 40) {
+export async function listClicks(action: string, query: string, page: number, pageSize = 40, since: number | null = null) {
   const db = await getDb();
   const userId = await mine();
   const where = ["c.user_id = ?"];
   const params: (string | number)[] = [userId];
+  if (since != null) {
+    where.push("c.ts >= ?");
+    params.push(since);
+  }
   if (action === "allow" || action === "flag" || action === "block") {
     where.push("c.action = ?");
     params.push(action);
