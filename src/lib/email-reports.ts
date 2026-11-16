@@ -1,7 +1,9 @@
 import { startOfZonedDay, zonedDate } from "./activity-range";
 import { execute, getDb, queryAll, queryOne } from "./db";
 import { escapeHtml, mailConfigured, sendMail } from "./mail";
+import { when } from "./format";
 import { convertUsdCents, formatMoney, placeFor, reportCurrency } from "./residence-currency";
+import { reasonText } from "./score";
 
 const APP = "https://anodeh.com";
 
@@ -119,6 +121,49 @@ export async function sendPasswordReset(to: string, name: string, link: string) 
 <p>If you did not ask for this, you can ignore the email. Your password stays the same.</p>
 <p>AnodeH</p>`;
   return sendMail(to, subject, text, html);
+}
+
+export async function sendBlockedIp(notice: {
+  userId: string;
+  blockId: string;
+  target: string;
+  kind: "ip" | "subnet";
+  campaign: string;
+  reason: string;
+  score: number;
+  ts: number;
+}) {
+  if (!mailConfigured()) return { ok: false as const, error: "Email is not configured." };
+  if (await alreadySent("block", notice.blockId)) return { ok: true as const, skipped: true };
+  const user = await queryOne<Person>(await getDb(), "SELECT id, email, name, country FROM users WHERE id = ?", [notice.userId]);
+  if (!user || !user.email.includes("@") || user.email.toLowerCase().endsWith("@example.com")) {
+    return { ok: false as const, error: "This account has no deliverable email." };
+  }
+  const address = notice.kind === "subnet" ? `the range ${notice.target}` : notice.target;
+  const why = reasonText(notice.reason.split(",").map((reason) => reason.trim()).filter(Boolean));
+  const clock = when(notice.ts, zoneFor(user));
+  const subject = `AnodeH blocked ${notice.target}`;
+  const text = [
+    `Hello ${user.name},`,
+    "",
+    `AnodeH blocked ${address} on ${notice.campaign}.`,
+    `Score ${notice.score}. ${why}.`,
+    `Blocked at ${clock}.`,
+    "",
+    `Open protection: ${APP}/protection`,
+    "",
+    "AnodeH",
+  ].join("\n");
+  const html = `<p>Hello ${escapeHtml(user.name)},</p>
+<p>AnodeH blocked <strong>${escapeHtml(address)}</strong> on ${escapeHtml(notice.campaign)}.</p>
+<p>Score ${notice.score}. ${escapeHtml(why)}.</p>
+<p>Blocked at ${escapeHtml(clock)}.</p>
+<p><a href="${APP}/protection">Open protection</a></p>
+<p>AnodeH</p>`;
+  const sent = await sendMail(user.email, subject, text, html);
+  if (!sent.ok) return sent;
+  await markSent(user.id, "block", notice.blockId);
+  return { ok: true as const };
 }
 
 export async function sendPurchaseReceipt(receipt: PurchaseReceipt) {

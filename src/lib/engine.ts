@@ -2,6 +2,7 @@ import { randomBytes } from "crypto";
 import { getUser } from "./auth";
 import { CAMPAIGNS, findCampaign } from "./campaigns";
 import { type Db, execute, getDb, queryAll, queryOne } from "./db";
+import { sendBlockedIp } from "./email-reports";
 import { enforcementFor, evaluate, guessIsp, guessNetwork } from "./score";
 import type { IncomingClick, Network, Policy, Sensitivity, Traffic } from "./types";
 
@@ -155,6 +156,7 @@ async function upsertBlock(
     source: string;
   },
   userId: string,
+  notify = false,
 ) {
   const existing = await queryOne<{ id: string }>(
     db,
@@ -172,12 +174,13 @@ async function upsertBlock(
     return;
   }
   await makeRoom(db, block.campaign, userId);
+  const id = nid("b");
   await execute(
     db,
     `INSERT INTO blocks (id, target, kind, campaign, reason, score, created_at, expires_at, status, source, user_id)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`,
     [
-      nid("b"),
+      id,
       block.target,
       block.kind,
       block.campaign,
@@ -190,6 +193,17 @@ async function upsertBlock(
     ],
   );
   await checkCapacity(db, block.ts, userId);
+  if (!notify) return;
+  await sendBlockedIp({
+    userId,
+    blockId: id,
+    target: block.target,
+    kind: block.kind,
+    campaign: block.campaign,
+    reason: block.reason,
+    score: block.score,
+    ts: block.ts,
+  }).catch(() => undefined);
 }
 
 async function considerBlock(
@@ -206,6 +220,7 @@ async function considerBlock(
   },
   policy: Policy,
   userId: string,
+  notify = false,
 ) {
   if (row.enforcement !== "ip_exclusion") return;
   const expires = row.ts + policy.blockDays * 86400;
@@ -230,7 +245,7 @@ async function considerBlock(
           ts: row.ts,
           expires,
           source: "auto",
-        }, userId);
+        }, userId, notify);
         await execute(
           db,
           `UPDATE blocks SET status = 'covered'
@@ -250,7 +265,7 @@ async function considerBlock(
     ts: row.ts,
     expires,
     source: "auto",
-  }, userId);
+  }, userId, notify);
 }
 
 export type StoredClick = VerdictShape & {
@@ -268,7 +283,7 @@ type VerdictShape = {
   reasons: string[];
 };
 
-export async function recordClick(db: Db, input: IncomingClick, explicitUserId?: string): Promise<StoredClick> {
+export async function recordClick(db: Db, input: IncomingClick, explicitUserId?: string, notify = true): Promise<StoredClick> {
   const userId = await ownerId(explicitUserId);
   const policy = await getPolicy(db, userId);
   const campaign = findCampaign(input.campaign);
@@ -335,6 +350,7 @@ export async function recordClick(db: Db, input: IncomingClick, explicitUserId?:
     },
     policy,
     userId,
+    notify,
   );
   return {
     id,
@@ -365,7 +381,7 @@ export async function blockManually(ip: string, campaign: string, score: number)
     ts,
     expires: ts + policy.blockDays * 86400,
     source: "manual",
-  }, userId);
+  }, userId, true);
   return { ok: true as const };
 }
 
