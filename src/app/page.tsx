@@ -1,6 +1,6 @@
 import { Mark } from "@/components/Mark";
 import { getUser } from "@/lib/auth";
-import { ANNUAL_CENTS, dollars, getAccess, INTRO_CENTS, STANDARD_CENTS } from "@/lib/billing";
+import { dollars, getAccess, INTRO_CENTS, quotesFor, STANDARD_CENTS, ANNUAL_CENTS } from "@/lib/billing";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +29,10 @@ export default async function LandingPage() {
   const yearHref = user ? (subscribed ? "/dashboard" : "/billing") : "/register?plan=year";
   const monthLabel = user ? (subscribed ? "Open dashboard" : "Subscribe with PayPal") : "Subscribe";
   const yearLabel = user ? (subscribed ? "Open dashboard" : "Pay for the year") : "Pay for the year";
+  const quote = user ? await quotesFor(user.email, user.country) : null;
+  const intro = quote?.intro ?? dollars(INTRO_CENTS);
+  const standard = quote?.standard ?? dollars(STANDARD_CENTS);
+  const annual = quote?.annual ?? dollars(ANNUAL_CENTS);
 
   return (
     <div className="site">
@@ -203,13 +207,13 @@ export default async function LandingPage() {
           <article className="offer featured">
             <span className="offer-tag">Most people start here</span>
             <h3>Monthly</h3>
-            <p className="offer-price">{dollars(INTRO_CENTS)} <s>{dollars(STANDARD_CENTS)}</s></p>
-            <p>First 30 days at half price, then {dollars(STANDARD_CENTS)} every 30 days. PayPal charges this automatically until you cancel.</p>
+            <p className="offer-price">{intro} <s>{standard}</s></p>
+            <p>First 30 days at half price, then {standard} every 30 days. PayPal charges this automatically until you cancel.{quote && quote.currency !== "USD" ? ` Prices are in ${quote.name}. PayPal collects US dollars.` : ""}</p>
             <a className="btn" href={monthHref}>{monthLabel}</a>
           </article>
           <article className="offer">
             <h3>Annual</h3>
-            <p className="offer-price">{dollars(ANNUAL_CENTS)}</p>
+            <p className="offer-price">{annual}</p>
             <p>One payment for 365 days. This plan does not renew on its own.</p>
             <a className="btn ghost" href={yearHref}>{yearLabel}</a>
           </article>
@@ -228,7 +232,7 @@ export default async function LandingPage() {
         </details>
         <details>
           <summary>When am I charged?</summary>
-          <p>The monthly plan bills {dollars(INTRO_CENTS)} today, then {dollars(STANDARD_CENTS)} every 30 days through PayPal until you cancel. The annual plan is {dollars(ANNUAL_CENTS)} once.</p>
+          <p>The monthly plan bills {intro} today, then {standard} every 30 days through PayPal until you cancel. The annual plan is {annual} once.{quote && quote.currency !== "USD" ? ` Prices are in ${quote.name}. PayPal collects US dollars.` : ""}</p>
         </details>
       </section>
 

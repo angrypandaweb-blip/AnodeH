@@ -1,7 +1,7 @@
 import { startOfZonedDay, zonedDate } from "./activity-range";
 import { execute, getDb, queryAll, queryOne } from "./db";
 import { escapeHtml, mailConfigured, sendMail } from "./mail";
-import { formatMoney, placeFor, reportCurrency } from "./residence-currency";
+import { convertUsdCents, formatMoney, placeFor, reportCurrency } from "./residence-currency";
 
 const APP = "https://anodeh.com";
 
@@ -100,7 +100,9 @@ export async function sendPurchaseReceipt(receipt: PurchaseReceipt) {
   if (!user || !user.email.includes("@") || user.email.toLowerCase().endsWith("@example.com")) {
     return { ok: false as const, error: "This account has no deliverable email." };
   }
-  const amount = dollars(receipt.amountCents);
+  const local = await reportCurrency(user.email, user.country);
+  const converted = formatMoney(convertUsdCents(receipt.amountCents, local.rate), local.currency);
+  const amount = local.currency === "USD" ? converted : `${converted} (${dollars(receipt.amountCents)} charged by PayPal)`;
   const through = paidThrough(receipt.periodEnd, zoneFor(user));
   const subject = "Your AnodeH payment was received";
   const text = [

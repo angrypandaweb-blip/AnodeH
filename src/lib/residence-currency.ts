@@ -147,6 +147,38 @@ export function formatMoney(value: number, currency: string): string {
 }
 
 const rates = new Map<string, number>();
+let rateTable: Promise<Record<string, number>> | null = null;
+
+export function convertUsdCents(cents: number, rate: number): number {
+  return (cents / 100) * rate;
+}
+
+export async function allUsdRates(): Promise<Record<string, number>> {
+  if (rateTable) return rateTable;
+  const pending = loadUsdRates();
+  const table = await pending;
+  if (table.ZAR && table.EUR) rateTable = Promise.resolve(table);
+  return table;
+}
+
+async function loadUsdRates(): Promise<Record<string, number>> {
+  try {
+    const response = await fetch("https://api.frankfurter.dev/v1/latest?from=USD", {
+      signal: AbortSignal.timeout(4000),
+    });
+    const payload = (await response.json().catch(() => null)) as { rates?: Record<string, number> } | null;
+    if (!response.ok || !payload?.rates) return { USD: 1 };
+    const table: Record<string, number> = { USD: 1 };
+    for (const [code, rate] of Object.entries(payload.rates)) {
+      if (!Number.isFinite(rate) || rate <= 0) continue;
+      table[code] = rate;
+      rates.set(code, rate);
+    }
+    return table;
+  } catch {
+    return { USD: 1 };
+  }
+}
 
 export async function usdRate(currency: string): Promise<number | null> {
   if (currency === "USD") return 1;

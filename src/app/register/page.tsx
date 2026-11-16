@@ -1,15 +1,16 @@
-import { registerAccount } from "@/app/actions";
+import { RegisterForm } from "@/components/RegisterForm";
 import { Mark } from "@/components/Mark";
 import { safePlan } from "@/lib/auth";
 import { ANNUAL_CENTS, dollars, INTRO_CENTS, STANDARD_CENTS } from "@/lib/billing";
-import { countryChoices } from "@/lib/residence-currency";
+import { allUsdRates, convertUsdCents, countryChoices, currencyForCountry, formatMoney } from "@/lib/residence-currency";
 
 export const dynamic = "force-dynamic";
 
-const PLAN_COPY = {
-  month: `Monthly plan. ${dollars(INTRO_CENTS)} for the first 30 days, then ${dollars(STANDARD_CENTS)} every 30 days. The dashboard opens after the account is created.`,
-  year: `Annual plan. ${dollars(ANNUAL_CENTS)} for 365 days, with no renewal. The dashboard opens after the account is created.`,
-};
+function quote(cents: number, currency: string, rates: Record<string, number>) {
+  const rate = currency === "USD" ? 1 : rates[currency];
+  if (!rate) return { currency: "USD", text: dollars(cents) };
+  return { currency, text: formatMoney(convertUsdCents(cents, rate), currency) };
+}
 
 export default async function RegisterPage({
   searchParams,
@@ -20,6 +21,27 @@ export default async function RegisterPage({
   const plan = safePlan(params.plan);
   const back = plan ? `/register?plan=${plan}` : "/register";
   const countries = countryChoices();
+  const rates = await allUsdRates();
+  const quotes: Record<string, { currency: string; intro: string; standard: string; annual: string }> = {};
+  for (const country of countries) {
+    const currency = currencyForCountry(country.code);
+    const intro = quote(INTRO_CENTS, currency, rates);
+    const standard = quote(STANDARD_CENTS, currency, rates);
+    const annual = quote(ANNUAL_CENTS, currency, rates);
+    const same = intro.currency === currency && standard.currency === currency && annual.currency === currency;
+    quotes[country.code] = {
+      currency: same ? currency : "USD",
+      intro: intro.text,
+      standard: standard.text,
+      annual: annual.text,
+    };
+  }
+  const fallback = {
+    currency: "USD",
+    intro: dollars(INTRO_CENTS),
+    standard: dollars(STANDARD_CENTS),
+    annual: dollars(ANNUAL_CENTS),
+  };
 
   return (
     <div className="site">
@@ -35,35 +57,7 @@ export default async function RegisterPage({
       <section className="hero" style={{ textAlign: "left", maxWidth: 480 }}>
         <p className="kicker">Create an account</p>
         <h1>Open the dashboard.</h1>
-        <p className="lede" style={{ marginLeft: 0 }}>
-          {plan ? PLAN_COPY[plan] : "Create an account and the scored clicks, exclusions, and settings are on the next page."}
-        </p>
-        {params.error ? <p className="banner warn">{params.error}</p> : null}
-        <form action={registerAccount} className="form-grid">
-          <input type="hidden" name="return" value={back} />
-          <label>
-            Name
-            <input type="text" name="name" autoComplete="name" required />
-          </label>
-          <label>
-            Email
-            <input type="email" name="email" autoComplete="email" required />
-          </label>
-          <label>
-            Password
-            <input type="password" name="password" autoComplete="new-password" minLength={8} required />
-          </label>
-          <label>
-            Country
-            <select name="country" autoComplete="country" required defaultValue="">
-              <option value="" disabled>Choose a country</option>
-              {countries.map((country) => (
-                <option key={country.code} value={country.code}>{country.name}</option>
-              ))}
-            </select>
-          </label>
-          <button className="btn" type="submit">Create account</button>
-        </form>
+        <RegisterForm plan={plan} back={back} error={params.error} countries={countries} quotes={quotes} fallback={fallback} />
       </section>
     </div>
   );

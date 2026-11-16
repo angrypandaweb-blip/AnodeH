@@ -5,7 +5,7 @@ import { Mark } from "@/components/Mark";
 import { Nav } from "@/components/Nav";
 import { logoutAccount } from "@/app/actions";
 import { getUser } from "@/lib/auth";
-import { getAccess, planSummary } from "@/lib/billing";
+import { getAccess, planSummary, quotesFor } from "@/lib/billing";
 import { getPolicy } from "@/lib/engine";
 import { sendDueDailyReport } from "@/lib/email-reports";
 import { unreadCount } from "@/lib/queries";
@@ -41,7 +41,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   if (access.status === "unpaid" && path !== "/billing" && !path.startsWith("/billing/")) {
     redirect("/billing");
   }
-  const plan = planSummary(access);
+  const plan = planSummary(access, await quotesFor(user.email, user.country));
   const policy = await getPolicy();
   const unread = await unreadCount();
   return (
