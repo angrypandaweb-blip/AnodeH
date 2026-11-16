@@ -24,11 +24,11 @@ export default async function LandingPage() {
   const [access, user] = await Promise.all([getAccess(), getUser()]);
   const subscribed = access.status === "active";
   const startHref = user ? (subscribed ? "/dashboard" : "/billing") : "/login";
-  const startLabel = user ? (subscribed ? "Open dashboard" : "Continue to payment") : "Log in";
+  const startLabel = user ? (subscribed ? "Open dashboard" : "Continue to payment") : "Get started";
   const monthHref = user ? (subscribed ? "/dashboard" : "/billing") : "/login";
   const yearHref = user ? (subscribed ? "/dashboard" : "/billing") : "/login";
-  const monthLabel = user ? (subscribed ? "Open dashboard" : "Subscribe with PayPal") : "Log in";
-  const yearLabel = user ? (subscribed ? "Open dashboard" : "Pay for the year") : "Log in";
+  const monthLabel = user ? (subscribed ? "Open dashboard" : "Subscribe with PayPal") : "Subscribe";
+  const yearLabel = user ? (subscribed ? "Open dashboard" : "Pay for the year") : "Pay for the year";
 
   return (
     <div className="site">
