@@ -284,7 +284,8 @@ export async function recordClick(db: Db, input: IncomingClick, explicitUserId?:
   const enforcement =
     scored.action === "block" ? enforcementFor(scored.action, campaignType) : scored.enforcement;
   const verdict = { ...scored, enforcement };
-  const cost = input.cost ?? (campaign ? campaign.cpc * (0.9 + ((ts % 20) / 100)) : 1.5);
+  const estimated = campaign ? campaign.cpc * (0.9 + ((ts % 20) / 100)) : 1.5;
+  const cost = channel === "organic" ? 0 : (input.cost ?? estimated);
   const id = nid("c");
   await execute(
     db,
