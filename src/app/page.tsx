@@ -1,4 +1,3 @@
-import { loginAccount, registerAccount } from "@/app/actions";
 import { Mark } from "@/components/Mark";
 import { getUser } from "@/lib/auth";
 import { ANNUAL_CENTS, dollars, getAccess, INTRO_CENTS, STANDARD_CENTS } from "@/lib/billing";
@@ -24,12 +23,12 @@ const BENEFITS = [
 export default async function LandingPage() {
   const [access, user] = await Promise.all([getAccess(), getUser()]);
   const subscribed = access.status === "active";
-  const startHref = user ? (subscribed ? "/dashboard" : "/billing") : "#account";
-  const startLabel = user ? (subscribed ? "Open dashboard" : "Continue to payment") : "Create an account";
-  const monthHref = user ? (subscribed ? "/dashboard" : "/billing") : "/register?plan=month";
-  const yearHref = user ? (subscribed ? "/dashboard" : "/billing") : "/register?plan=year";
-  const monthLabel = user ? (subscribed ? "Open dashboard" : "Subscribe with PayPal") : "Create account";
-  const yearLabel = user ? (subscribed ? "Open dashboard" : "Pay for the year") : "Create account";
+  const startHref = user ? (subscribed ? "/dashboard" : "/billing") : "/login";
+  const startLabel = user ? (subscribed ? "Open dashboard" : "Continue to payment") : "Log in";
+  const monthHref = user ? (subscribed ? "/dashboard" : "/billing") : "/login";
+  const yearHref = user ? (subscribed ? "/dashboard" : "/billing") : "/login";
+  const monthLabel = user ? (subscribed ? "Open dashboard" : "Subscribe with PayPal") : "Log in";
+  const yearLabel = user ? (subscribed ? "Open dashboard" : "Pay for the year") : "Log in";
 
   return (
     <div className="site">
@@ -42,7 +41,7 @@ export default async function LandingPage() {
           <a href="#preview">Dashboard</a>
           <a href="#threats">Threats</a>
           <a href="#pricing">Pricing</a>
-          <a href="#account">{user ? "Account" : "Log in"}</a>
+          <a href={user ? startHref : "/login"}>{user ? "Account" : "Log in"}</a>
           <a className="btn" href={startHref}>{startLabel}</a>
         </nav>
       </header>
@@ -224,66 +223,6 @@ export default async function LandingPage() {
             <a className="btn ghost" href={yearHref}>{yearLabel}</a>
           </article>
         </div>
-      </section>
-
-      <section id="account" className="benefits">
-        <h2>{user ? `Signed in as ${user.name}` : "Log in or create an account"}</h2>
-        <p className="lede">
-          {user
-            ? "Your account opens the dashboard, where the scored clicks and exclusions live."
-            : "Choosing a plan starts here. Create an account and the dashboard opens next."}
-        </p>
-        {user ? (
-          <div className="hero-actions">
-            <a className="btn" href={startHref}>{startLabel}</a>
-          </div>
-        ) : (
-          <div className="plans">
-            <article className="offer featured">
-              <h3>Create an account</h3>
-              <p>Use the name and email you want on the workspace. The dashboard opens as soon as the account exists.</p>
-              <form action={registerAccount} className="form-grid">
-                <input type="hidden" name="return" value="/register" />
-                <label>
-                  Name
-                  <input type="text" name="name" autoComplete="name" required />
-                </label>
-                <label>
-                  Email
-                  <input type="email" name="email" autoComplete="email" required />
-                </label>
-                <label>
-                  Password
-                  <input type="password" name="password" autoComplete="new-password" minLength={8} required />
-                </label>
-                <label>
-                  Google Ads account number
-                  <input type="text" name="adsAccount" inputMode="numeric" autoComplete="off" placeholder="123-456-7890" required />
-                </label>
-                <p className="note">The 10-digit customer ID of the Google Ads account you want to keep track of.</p>
-                <button className="btn" type="submit">Create account</button>
-              </form>
-            </article>
-            <article className="offer">
-              <h3>Log in</h3>
-              <p>Already registered? Use the same email to get back to the dashboard.</p>
-              <form action={loginAccount} className="form-grid">
-                <input type="hidden" name="return" value="/login" />
-                <input type="hidden" name="next" value="/dashboard" />
-                <label>
-                  Email
-                  <input type="email" name="email" autoComplete="email" required />
-                </label>
-                <label>
-                  Password
-                  <input type="password" name="password" autoComplete="current-password" required />
-                </label>
-                <p className="form-extra"><a href="/forgot-password">Forgot password</a></p>
-                <button className="btn ghost" type="submit">Log in</button>
-              </form>
-            </article>
-          </div>
-        )}
       </section>
 
       <section id="faq" className="faq">
