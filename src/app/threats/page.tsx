@@ -1,7 +1,19 @@
+import { activitySince, type ActivityRange } from "@/lib/activity-range";
 import { compact, money } from "@/lib/format";
 import { topDevices, topIps, topPlacements } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
+
+const RANGES = [
+  { id: "day", label: "Daily" },
+  { id: "week", label: "Weekly" },
+  { id: "month", label: "Monthly" },
+  { id: "all", label: "All time" },
+] as const;
+
+function threatsHref(range: ActivityRange) {
+  return range === "all" ? "/threats" : `/threats?range=${range}`;
+}
 
 const NETWORK_LABEL: Record<string, string> = {
   residential: "Residential",
@@ -21,8 +33,15 @@ function shortHash(value: string) {
   return `${value.slice(0, 8)}…${value.slice(-4)}`;
 }
 
-export default async function ThreatsPage() {
-  const [ips, devices, placements] = await Promise.all([topIps(), topDevices(), topPlacements()]);
+export default async function ThreatsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string }>;
+}) {
+  const params = await searchParams;
+  const range: ActivityRange = RANGES.some((item) => item.id === params.range) ? (params.range as ActivityRange) : "all";
+  const since = activitySince(range);
+  const [ips, devices, placements] = await Promise.all([topIps(since), topDevices(since), topPlacements(since)]);
 
   return (
     <div>
@@ -36,9 +55,19 @@ export default async function ThreatsPage() {
         </div>
       </header>
 
+      <div className="toolbar">
+        <div className="filters" role="navigation" aria-label="Time range">
+          {RANGES.map((item) => (
+            <a key={item.id} className={item.id === range ? "on" : undefined} href={threatsHref(item.id)}>
+              {item.label}
+            </a>
+          ))}
+        </div>
+      </div>
+
       <article className="card">
         <span className="card-label">Addresses</span>
-        {ips.length === 0 ? <p className="note">No clicks recorded yet.</p> : null}
+        {ips.length === 0 ? <p className="note">{range === "all" ? "No clicks recorded yet." : "No clicks in this period."}</p> : null}
         {ips.length > 0 ? (
           <div className="click-list">
             <div className="click-head" aria-hidden>
@@ -76,7 +105,7 @@ export default async function ThreatsPage() {
 
       <article className="card">
         <span className="card-label">Devices on more than one IP</span>
-        {devices.length === 0 ? <p className="note">No device has shown up from more than one address.</p> : null}
+        {devices.length === 0 ? <p className="note">{range === "all" ? "No device has shown up from more than one address." : "No device used more than one address in this period."}</p> : null}
         {devices.length > 0 ? (
           <div className="click-list">
             <div className="click-head" aria-hidden>
@@ -110,7 +139,7 @@ export default async function ThreatsPage() {
 
       <article className="card">
         <span className="card-label">Placements</span>
-        {placements.length === 0 ? <p className="note">No placement clicks recorded yet.</p> : null}
+        {placements.length === 0 ? <p className="note">{range === "all" ? "No placement clicks recorded yet." : "No placement clicks in this period."}</p> : null}
         {placements.length > 0 ? (
           <div className="click-list">
             <div className="click-head" aria-hidden>

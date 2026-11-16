@@ -231,20 +231,32 @@ export async function unreadCount() {
   return row?.c ?? 0;
 }
 
-export async function topIps() {
+export async function topIps(since: number | null = null) {
+  const where = ["user_id = ?"];
+  const params: (string | number)[] = [await mine()];
+  if (since != null) {
+    where.push("ts >= ?");
+    params.push(since);
+  }
   return queryAll<{ ip: string; isp: string; network: string; clicks: number; invalid: number; cost: number }>(
     await getDb(),
     `SELECT ip, isp, network,
        COUNT(*) AS clicks,
        SUM(CASE WHEN action != 'allow' THEN 1 ELSE 0 END) AS invalid,
        SUM(cost) AS cost
-     FROM clicks WHERE user_id = ? GROUP BY ip
+     FROM clicks WHERE ${where.join(" AND ")} GROUP BY ip
      ORDER BY invalid DESC, clicks DESC LIMIT 8`,
-    [await mine()],
+    params,
   );
 }
 
-export async function topDevices() {
+export async function topDevices(since: number | null = null) {
+  const where = ["user_id = ?"];
+  const params: (string | number)[] = [await mine()];
+  if (since != null) {
+    where.push("ts >= ?");
+    params.push(since);
+  }
   return queryAll<{ device_hash: string; ips: number; clicks: number; network: string; invalid: number }>(
     await getDb(),
     `SELECT device_hash,
@@ -252,24 +264,30 @@ export async function topDevices() {
        COUNT(*) AS clicks,
        MAX(network) AS network,
        SUM(CASE WHEN action != 'allow' THEN 1 ELSE 0 END) AS invalid
-     FROM clicks WHERE user_id = ? GROUP BY device_hash
+     FROM clicks WHERE ${where.join(" AND ")} GROUP BY device_hash
      HAVING ips > 1
      ORDER BY ips DESC, invalid DESC LIMIT 6`,
-    [await mine()],
+    params,
   );
 }
 
-export async function topPlacements() {
+export async function topPlacements(since: number | null = null) {
+  const where = ["user_id = ?", "placement != ''"];
+  const params: (string | number)[] = [await mine()];
+  if (since != null) {
+    where.push("ts >= ?");
+    params.push(since);
+  }
   return queryAll<{ placement: string; clicks: number; invalid: number; cost: number }>(
     await getDb(),
     `SELECT placement,
        COUNT(*) AS clicks,
        SUM(CASE WHEN action != 'allow' THEN 1 ELSE 0 END) AS invalid,
        SUM(cost) AS cost
-     FROM clicks WHERE user_id = ? AND placement != ''
+     FROM clicks WHERE ${where.join(" AND ")}
      GROUP BY placement
      ORDER BY invalid DESC, clicks DESC LIMIT 6`,
-    [await mine()],
+    params,
   );
 }
 
