@@ -149,9 +149,8 @@ export async function registerAccount(formData: FormData) {
   const name = String(formData.get("name") || "").trim();
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
-  const adsAccount = normalizeAdsAccount(String(formData.get("adsAccount") || ""));
-  if (name.length < 1 || name.length > 80 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 8 || !adsAccount) {
-    redirect(withError(back, "Enter your name, a valid email, a password of at least 8 characters, and a 10-digit Google Ads account number."));
+  if (name.length < 1 || name.length > 80 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 8) {
+    redirect(withError(back, "Enter your name, a valid email, and a password of at least 8 characters."));
   }
   const db = await getDb();
   const existing = await queryOne<{ id: string }>(db, "SELECT id FROM users WHERE lower(email) = ?", [email]);
@@ -161,7 +160,7 @@ export async function registerAccount(formData: FormData) {
     await execute(
       db,
       "INSERT INTO users (id, email, name, password_hash, created_at, ads_account, domain_key) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      [id, email, name, await hashPassword(password), Math.floor(Date.now() / 1000), adsAccount, `cf_${randomBytes(8).toString("hex")}`],
+      [id, email, name, await hashPassword(password), Math.floor(Date.now() / 1000), "", `cf_${randomBytes(8).toString("hex")}`],
     );
   } catch (error) {
     if (String(error).includes("UNIQUE")) {
