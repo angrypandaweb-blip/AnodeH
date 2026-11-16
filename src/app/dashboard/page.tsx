@@ -1,4 +1,5 @@
 import { clearAlerts, runScenario, syncGoogleAds } from "@/app/actions";
+import { LiveRefresh } from "@/components/LiveRefresh";
 import { getUser } from "@/lib/auth";
 import { reasonText } from "@/lib/score";
 import { compact, dayLabel, percent, scoreBand, when } from "@/lib/format";
@@ -51,6 +52,7 @@ export default async function OverviewPage({
 
   return (
     <div>
+      <LiveRefresh />
       <header className="page-head">
         <div>
           <p className="eyebrow">{user?.adsAccount ? `Google Ads ${user.adsAccount}` : policy.domain}</p>
