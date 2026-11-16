@@ -157,6 +157,7 @@ async function migrate(db: Client) {
      END
      WHERE channel = ''`,
   );
+  await execute(db, "UPDATE clicks SET cost = 0 WHERE channel = 'organic' AND cost != 0");
   await addColumn(db, "blocks", "user_id", "TEXT NOT NULL DEFAULT ''");
   await addColumn(db, "alerts", "user_id", "TEXT NOT NULL DEFAULT ''");
   await addColumn(db, "allowlist", "user_id", "TEXT NOT NULL DEFAULT ''");

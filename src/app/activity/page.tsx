@@ -78,7 +78,7 @@ export default async function ActivityPage({
           <p className="eyebrow">Activity</p>
           <h1>Every scored click</h1>
           <p className="sub">
-            Search, filter, and exclude an address from the campaign it clicked. Times are South African time. Paid clicks came from an ad. Organic visits did not. Performance Max holds the conversion instead of writing an IP exclusion.
+            Search, filter, and exclude an address from the campaign it clicked. Times are South African time. Paid clicks came from an ad. Organic visits are not charged. Performance Max holds the conversion instead of writing an IP exclusion.
           </p>
         </div>
       </header>
@@ -159,7 +159,7 @@ export default async function ActivityPage({
                     <div className="muted">{when(click.ts)}</div>
                   </div>
                   <div className="click-side">
-                    <div className="cost">{money(click.cost)}</div>
+                    <div className="cost">{click.channel === "organic" ? "—" : money(click.cost)}</div>
                     {click.block_id ? <span className="pill block">Excluded</span> : null}
                     {!click.block_id && held ? <span className="muted">Conversion held</span> : null}
                     {!click.block_id && !held ? (
