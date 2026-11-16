@@ -133,6 +133,11 @@ export function evaluate(
   return { score, reasons, action, enforcement: "none" };
 }
 
+export function actionForChannel(action: Action, channel: string): Action {
+  if (channel === "organic" && action === "block") return "flag";
+  return action;
+}
+
 export function enforcementFor(action: Action, campaignType: IncomingClick["network"] | string): Enforcement {
   if (action !== "block") return "none";
   if (campaignType === "pmax") return "conversion_hold";
