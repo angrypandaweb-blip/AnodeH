@@ -1,6 +1,5 @@
 import { headers } from "next/headers";
-import { createAllow, deleteAllow, disconnectGoogle, restoreSample, saveAdsAccount, syncGoogleAds, updateSettings } from "@/app/actions";
-import { getUser } from "@/lib/auth";
+import { createAllow, deleteAllow, disconnectGoogle, restoreSample, syncGoogleAds, updateSettings } from "@/app/actions";
 import { getPolicy } from "@/lib/engine";
 import { when } from "@/lib/format";
 import { googleAdsConfigured, googleAdsSetupError, requestOrigin } from "@/lib/google-ads";
@@ -23,7 +22,7 @@ export default async function SettingsPage({
   searchParams: Promise<{ saved?: string; error?: string }>;
 }) {
   const params = await searchParams;
-  const [policy, allowed, headerList, user, link] = await Promise.all([getPolicy(), allowlist(), headers(), getUser(), googleLink()]);
+  const [policy, allowed, headerList, link] = await Promise.all([getPolicy(), allowlist(), headers(), googleLink()]);
   const host = headerList.get("x-forwarded-host") || headerList.get("host") || "localhost:3000";
   const proto = headerList.get("x-forwarded-proto") || "http";
   const snippet = `<script src="${proto}://${host}/cf.js" data-key="${policy.domainKey}" async></script>`;
@@ -78,34 +77,6 @@ export default async function SettingsPage({
             {googleAdsSetupError()} The OAuth client needs the scope https://www.googleapis.com/auth/adwords and this redirect URI: {origin}/api/google-ads/callback. On the Google Ads API overview page, upgrade access from Test to Explorer.
           </p>
         )}
-      </article>
-
-      <article className="card">
-        <span className="card-label">Google Ads account</span>
-        <p className="note">
-          {user?.adsAccount
-            ? `AnodeH is watching ${user.adsAccount}. Enter a different customer ID to switch accounts. A manager login needs this client ID before the pull.`
-            : "Enter the 10-digit customer ID when the Google login is a manager account. A direct login can be discovered from Connect Google Ads."}
-        </p>
-        <form action={saveAdsAccount} className="form-grid">
-          <label>
-            Account number
-            <input
-              type="text"
-              name="adsAccount"
-              inputMode="numeric"
-              autoComplete="off"
-              placeholder="123-456-7890"
-              defaultValue={user?.adsAccount || ""}
-              aria-label="Google Ads account number"
-              required
-            />
-            <small>Ten digits, with or without dashes. This is the customer ID in Google Ads.</small>
-          </label>
-          <div>
-            <button type="submit">{user?.adsAccount ? "Update account" : "Track this account"}</button>
-          </div>
-        </form>
       </article>
 
       <article className="card">
