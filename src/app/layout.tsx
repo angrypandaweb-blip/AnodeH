@@ -7,6 +7,7 @@ import { logoutAccount } from "@/app/actions";
 import { getUser } from "@/lib/auth";
 import { getAccess, planSummary } from "@/lib/billing";
 import { getPolicy } from "@/lib/engine";
+import { sendDueDailyReport } from "@/lib/email-reports";
 import { unreadCount } from "@/lib/queries";
 import "./globals.css";
 
@@ -35,6 +36,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   }
   const user = await getUser();
   if (!user) redirect(`/login?next=${encodeURIComponent(path)}`);
+  await sendDueDailyReport(user.id).catch(() => undefined);
   const access = await getAccess();
   if (access.status === "unpaid" && path !== "/billing" && !path.startsWith("/billing/")) {
     redirect("/billing");

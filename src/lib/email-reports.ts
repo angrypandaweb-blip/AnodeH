@@ -141,40 +141,66 @@ async function clickSummary(userId: string, start: number, end: number) {
   };
 }
 
-export async function sendDailyReports(now = Date.now()) {
-  if (!mailConfigured()) return { ok: false as const, error: "Email is not configured.", sent: 0 };
-  const day = previousJohannesburgDay(now);
-  let sent = 0;
-  for (const user of await people()) {
-    const ref = `${user.id}:${day.key}`;
-    if (await alreadySent("daily", ref)) continue;
-    const summary = await clickSummary(user.id, day.start, day.end);
-    const campaignLines = summary.campaigns.map((row) => `${row.campaign}: ${row.c}`);
-    const lines = [
-      `Hello ${user.name},`,
-      "",
-      `Dashboard clicks for ${day.label}:`,
-      `${summary.clicks} clicks`,
-      `${summary.invalid} flagged or blocked`,
-      `${money(summary.spend)} monitored`,
-      `${money(summary.waste)} invalid cost`,
-    ];
-    if (summary.googleClicks) lines.push(`${summary.googleClicks} clicks downloaded from Google Ads`);
-    lines.push(
-      "",
-      campaignLines.length ? "Campaigns:" : "No clicks were recorded on this day.",
-      ...campaignLines,
-      "",
-      `Open the dashboard: ${APP}/dashboard`,
-      "",
-      "This report is sent every morning at 7:00am SAST.",
-      "AnodeH",
-    );
-    const text = lines.join("\n");
-    const campaignHtml = campaignLines.length
-      ? `<ul>${campaignLines.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul>`
-      : "<p>No clicks were recorded on this day.</p>";
-    const html = `<p>Hello ${escapeHtml(user.name)},</p>
+function johannesburgHour(now: number) {
+  const hour = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Africa/Johannesburg",
+    hour: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date(now));
+  return Number(hour);
+}
+
+async function rememberMailError(userId: string, error: string) {
+  await execute(
+    await getDb(),
+    "INSERT INTO user_settings (user_id, key, value) VALUES (?, 'mail_last_error', ?) ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value",
+    [userId, error.slice(0, 300)],
+  );
+}
+
+async function clearMailError(userId: string) {
+  await execute(await getDb(), "DELETE FROM user_settings WHERE user_id = ? AND key = 'mail_last_error'", [userId]);
+}
+
+export async function lastMailError(userId: string) {
+  const row = await queryOne<{ value: string }>(
+    await getDb(),
+    "SELECT value FROM user_settings WHERE user_id = ? AND key = 'mail_last_error'",
+    [userId],
+  );
+  return row?.value || "";
+}
+
+async function sendDailyReportTo(user: Person, day: ReturnType<typeof previousJohannesburgDay>) {
+  const ref = `${user.id}:${day.key}`;
+  if (await alreadySent("daily", ref)) return { ok: true as const, skipped: true };
+  const summary = await clickSummary(user.id, day.start, day.end);
+  const campaignLines = summary.campaigns.map((row) => `${row.campaign}: ${row.c}`);
+  const lines = [
+    `Hello ${user.name},`,
+    "",
+    `Dashboard clicks for ${day.label}:`,
+    `${summary.clicks} clicks`,
+    `${summary.invalid} flagged or blocked`,
+    `${money(summary.spend)} monitored`,
+    `${money(summary.waste)} invalid cost`,
+  ];
+  if (summary.googleClicks) lines.push(`${summary.googleClicks} clicks downloaded from Google Ads`);
+  lines.push(
+    "",
+    campaignLines.length ? "Campaigns:" : "No clicks were recorded on this day.",
+    ...campaignLines,
+    "",
+    `Open the dashboard: ${APP}/dashboard`,
+    "",
+    "This report is sent every morning at 7:00am SAST.",
+    "AnodeH",
+  );
+  const text = lines.join("\n");
+  const campaignHtml = campaignLines.length
+    ? `<ul>${campaignLines.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul>`
+    : "<p>No clicks were recorded on this day.</p>";
+  const html = `<p>Hello ${escapeHtml(user.name)},</p>
 <p>Dashboard clicks for ${escapeHtml(day.label)}:</p>
 <ul>
 <li>${summary.clicks} clicks</li>
@@ -186,12 +212,47 @@ ${summary.googleClicks ? `<li>${summary.googleClicks} clicks downloaded from Goo
 ${campaignHtml}
 <p><a href="${APP}/dashboard">Open the dashboard</a></p>
 <p>This report is sent every morning at 7:00am SAST.</p>`;
-    const result = await sendMail(user.email, `AnodeH clicks for ${day.label}`, text, html);
-    if (!result.ok) continue;
-    await markSent(user.id, "daily", ref);
-    sent += 1;
+  const result = await sendMail(user.email, `AnodeH clicks for ${day.label}`, text, html);
+  if (!result.ok) {
+    await rememberMailError(user.id, result.error);
+    return result;
   }
+  await markSent(user.id, "daily", ref);
+  await clearMailError(user.id);
+  return { ok: true as const, skipped: false };
+}
+
+export async function sendDailyReports(now = Date.now()) {
+  if (!mailConfigured()) return { ok: false as const, error: "Email is not configured.", sent: 0 };
+  const day = previousJohannesburgDay(now);
+  let sent = 0;
+  let error = "";
+  for (const user of await people()) {
+    const result = await sendDailyReportTo(user, day);
+    if (!result.ok) {
+      error = result.error;
+      continue;
+    }
+    if (!result.skipped) sent += 1;
+  }
+  if (sent === 0 && error) return { ok: false as const, error, sent };
   return { ok: true as const, sent };
+}
+
+export async function sendDueDailyReport(userId: string, now = Date.now()) {
+  if (johannesburgHour(now) < 7) return { ok: true as const, sent: 0 };
+  if (!mailConfigured()) {
+    const error = "Email is not configured.";
+    await rememberMailError(userId, error);
+    return { ok: false as const, error, sent: 0 };
+  }
+  const user = await queryOne<Person>(await getDb(), "SELECT id, email, name FROM users WHERE id = ?", [userId]);
+  if (!user || !user.email.includes("@") || user.email.toLowerCase().endsWith("@example.com")) {
+    return { ok: true as const, sent: 0 };
+  }
+  const result = await sendDailyReportTo(user, previousJohannesburgDay(now));
+  if (!result.ok) return { ok: false as const, error: result.error, sent: 0 };
+  return { ok: true as const, sent: result.skipped ? 0 : 1 };
 }
 
 export async function sendBuildNotices() {
@@ -252,7 +313,7 @@ export async function runDailyMail(now = Date.now()) {
   const notices = await sendBuildNotices();
   const receipts = await sendMissingReceipts();
   const reports = await sendDailyReports(now);
-  if (!notices.ok && !reports.ok) return { ok: false as const, error: notices.error || reports.error };
+  if (!reports.ok) return { ok: false as const, error: reports.error };
   return {
     ok: true as const,
     notices: notices.sent,

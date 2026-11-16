@@ -1,9 +1,11 @@
 import { headers } from "next/headers";
 import { createAllow, deleteAllow, disconnectGoogle, restoreSample, syncGoogleAds, updateSettings } from "@/app/actions";
+import { getUser } from "@/lib/auth";
 import { getPolicy } from "@/lib/engine";
 import { when } from "@/lib/format";
 import { googleAdsConfigured, googleAdsSetupError, requestOrigin } from "@/lib/google-ads";
 import { allowlist, googleLink } from "@/lib/queries";
+import { lastMailError } from "@/lib/email-reports";
 import { mailConfigured } from "@/lib/mail";
 import { THRESHOLDS } from "@/lib/score";
 import type { Sensitivity } from "@/lib/types";
@@ -22,7 +24,8 @@ export default async function SettingsPage({
   searchParams: Promise<{ saved?: string; error?: string }>;
 }) {
   const params = await searchParams;
-  const [policy, allowed, headerList, link] = await Promise.all([getPolicy(), allowlist(), headers(), googleLink()]);
+  const [policy, allowed, headerList, link, user] = await Promise.all([getPolicy(), allowlist(), headers(), googleLink(), getUser()]);
+  const mailError = user ? await lastMailError(user.id) : "";
   const host = headerList.get("x-forwarded-host") || headerList.get("host") || "localhost:3000";
   const proto = headerList.get("x-forwarded-proto") || "http";
   const snippet = `<script src="${proto}://${host}/cf.js" data-key="${policy.domainKey}" async></script>`;
@@ -117,9 +120,10 @@ export default async function SettingsPage({
         <h2 style={{ marginTop: 10 }}>Receipts and the morning report</h2>
         <p className="note">
           {mailConfigured()
-            ? "A receipt goes out when PayPal confirms a payment. A click report for the previous day goes out every morning at 7:00am SAST."
+            ? "A receipt goes out when PayPal confirms a payment. A click report for the previous day goes out every morning at 7:00am SAST. On the current host it can arrive any time before 8:00am."
             : "Receipts and the daily click report are ready. Add RESEND_API_KEY, MAIL_FROM, and CRON_SECRET on Vercel, then redeploy, before those emails can leave."}
         </p>
+        {mailError ? <p className="banner warn">{mailError}</p> : null}
       </article>
 
       <article className="card">
