@@ -25,8 +25,8 @@ export default async function LandingPage() {
   const subscribed = access.status === "active";
   const startHref = user ? (subscribed ? "/dashboard" : "/billing") : "/login";
   const startLabel = user ? (subscribed ? "Open dashboard" : "Continue to payment") : "Get started";
-  const monthHref = user ? (subscribed ? "/dashboard" : "/billing") : "/login";
-  const yearHref = user ? (subscribed ? "/dashboard" : "/billing") : "/login";
+  const monthHref = user ? (subscribed ? "/dashboard" : "/billing") : "/register?plan=month";
+  const yearHref = user ? (subscribed ? "/dashboard" : "/billing") : "/register?plan=year";
   const monthLabel = user ? (subscribed ? "Open dashboard" : "Subscribe with PayPal") : "Subscribe";
   const yearLabel = user ? (subscribed ? "Open dashboard" : "Pay for the year") : "Pay for the year";
 
