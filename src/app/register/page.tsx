@@ -27,7 +27,7 @@ export default async function RegisterPage({
           <span className="brand-name">AnodeH</span>
         </a>
         <nav className="site-nav">
-          <a href="/#account">Log in</a>
+          <a href="/login">Log in</a>
         </nav>
       </header>
       <section className="hero" style={{ textAlign: "left", maxWidth: 480 }}>
