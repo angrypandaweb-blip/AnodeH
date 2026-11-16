@@ -34,7 +34,7 @@ const TRAFFIC = [
 function activityHref(action: string, query: string, range: ActivityRange, traffic: string, page = 0) {
   const params = new URLSearchParams();
   if (action && action !== "all") params.set("action", action);
-  if (range !== "all") params.set("range", range);
+  if (range !== "day") params.set("range", range);
   if (traffic === "paid" || traffic === "organic") params.set("traffic", traffic);
   if (query) params.set("q", query);
   if (page > 0) params.set("page", String(page));
@@ -59,7 +59,7 @@ export default async function ActivityPage({
 }) {
   const params = await searchParams;
   const action = FILTERS.some((filter) => filter.id === params.action) ? params.action || "all" : "all";
-  const range: ActivityRange = RANGES.some((item) => item.id === params.range) ? (params.range as ActivityRange) : "all";
+  const range: ActivityRange = RANGES.some((item) => item.id === params.range) ? (params.range as ActivityRange) : "day";
   const traffic = TRAFFIC.some((item) => item.id === params.traffic) ? params.traffic || "all" : "all";
   const user = await getUser();
   const place = placeFor(user?.country || "", user?.email || "");
@@ -121,7 +121,7 @@ export default async function ActivityPage({
         </div>
         <form className="filters" action="/activity">
           {action !== "all" ? <input type="hidden" name="action" value={action} /> : null}
-          {range !== "all" ? <input type="hidden" name="range" value={range} /> : null}
+          {range !== "day" ? <input type="hidden" name="range" value={range} /> : null}
           {traffic !== "all" ? <input type="hidden" name="traffic" value={traffic} /> : null}
           <input name="q" defaultValue={query} placeholder="IP, campaign, or keyword" aria-label="Search clicks" />
           <button className="ghost" type="submit">Search</button>
