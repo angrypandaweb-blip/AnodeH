@@ -55,18 +55,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               </span>
             </a>
             <Nav unread={unread} />
-            <p className="side-foot side-account">
-              <strong>Google Ads</strong>
-              {user.adsAccount ? (
-                <>
-                  {user.adsAccount}
-                  <br />
-                  This is the account AnodeH is watching.
-                </>
-              ) : (
-                <a href="/settings">Add the account number you want to track</a>
-              )}
-            </p>
           </aside>
           <main className="main">{children}</main>
           <footer className="account-foot">
@@ -77,6 +65,18 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <p className="side-foot">
               <strong>{user.name}</strong>
               {user.email}
+            </p>
+            <p className="side-foot">
+              <strong>Google Ads</strong>
+              {user.adsAccount ? (
+                <>
+                  {user.adsAccount}
+                  <br />
+                  This is the account AnodeH is watching.
+                </>
+              ) : (
+                <a href="/settings">Add the account number you want to track</a>
+              )}
             </p>
             <form action={logoutAccount}>
               <button className="btn ghost" type="submit">Log out</button>

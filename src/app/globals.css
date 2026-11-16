@@ -99,7 +99,6 @@ h1, h2, .metric strong, .brand-name, .price {
 }
 .plan-link strong { display: block; font-weight: 600; }
 .plan-link span { color: var(--muted); }
-.side-account { margin-top: auto; }
 .account-foot { grid-column: 2; padding: 0 32px 32px; max-width: 1180px; }
 .account-foot .plan-link { max-width: 280px; }
 .account-foot form { margin-top: 12px; }
@@ -452,7 +451,6 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
   .app { grid-template-columns: 1fr; }
   .sidebar { position: relative; height: auto; grid-row: auto; }
   .nav { flex-direction: row; flex-wrap: wrap; }
-  .side-account { margin-top: 8px; }
   .account-foot { grid-column: 1; padding: 8px 16px 32px; }
   .plan-link, .side-foot { margin-top: 8px; }
   .metrics, .split, .plans, .feature-grid { grid-template-columns: 1fr; }
