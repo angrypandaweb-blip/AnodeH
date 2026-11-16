@@ -81,6 +81,11 @@ export function campaignName(row: unknown, fallback: string) {
   return name || fallback;
 }
 
+export function parseCurrency(row: unknown): string {
+  const code = (row as { customer?: { currencyCode?: string } } | null)?.customer?.currencyCode?.trim().toUpperCase() || "";
+  return /^[A-Z]{3}$/.test(code) ? code : "";
+}
+
 export function parseCampaign(row: unknown): ParsedCampaign | null {
   const campaign = (row as { campaign?: { id?: string | number; name?: string; status?: string; advertisingChannelType?: string } } | null)?.campaign;
   const id = String(campaign?.id ?? "");

@@ -7,6 +7,7 @@ import {
   isManagerAccount,
   mapChannel,
   parseCampaign,
+  parseCurrency,
   parseClick,
   parseDaily,
 } from "../src/lib/google-ads-parse";
@@ -21,6 +22,8 @@ const campaign = parseCampaign({
 });
 assert.equal(campaign?.name, "Brand Search");
 assert.equal(campaign?.channel, "search");
+assert.equal(parseCurrency({ customer: { currencyCode: "zar" } }), "ZAR");
+assert.equal(parseCurrency({ customer: { currencyCode: "nope" } }), "");
 assert.equal(parseCampaign({ campaign: { id: "1" } }), null);
 
 const daily = parseDaily({
