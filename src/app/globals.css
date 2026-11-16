@@ -201,6 +201,8 @@ td { padding: 10px 10px 10px 0; border-top: 1px solid var(--line); vertical-alig
 .pill.allow, .pill.ok { background: var(--moss-soft); color: var(--moss); }
 .pill.flag, .pill.watch { background: var(--brass-soft); color: var(--brass); }
 .pill.block, .pill.stop { background: var(--brass); color: white; }
+.pill.paid { background: #e8f0fe; color: var(--cc-navy); }
+.pill.organic { background: var(--moss-soft); color: var(--moss); }
 .toolbar {
   display: flex;
   justify-content: space-between;

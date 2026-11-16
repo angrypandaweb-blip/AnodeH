@@ -193,7 +193,7 @@ export async function seedIfEmpty(db: Db, userId = "") {
   }
 
   events.sort((a, b) => (a.ts ?? 0) - (b.ts ?? 0));
-  for (const event of events) await recordClick(db, event, userId);
+  for (const event of events) await recordClick(db, { ...event, channel: event.channel ?? "paid" }, userId);
 }
 
 export async function simulateScenario(scenario: string): Promise<number> {
@@ -271,6 +271,6 @@ export async function simulateScenario(scenario: string): Promise<number> {
     }
   }
 
-  for (const event of made) await recordClick(db, event, (await getUser())?.id);
+  for (const event of made) await recordClick(db, { ...event, channel: event.channel ?? "paid" }, (await getUser())?.id);
   return made.length;
 }

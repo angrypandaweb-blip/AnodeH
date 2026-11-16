@@ -17,8 +17,11 @@ export function percent(part: number, whole: number): string {
   return `${Math.round((part / whole) * 100)}%`;
 }
 
+const ZONE = "Africa/Johannesburg";
+
 export function when(ts: number): string {
   return new Date(ts * 1000).toLocaleString("en-US", {
+    timeZone: ZONE,
     month: "short",
     day: "numeric",
     hour: "numeric",
@@ -27,7 +30,7 @@ export function when(ts: number): string {
 }
 
 export function dayLabel(ts: number): string {
-  return new Date(ts * 1000).toLocaleDateString("en-US", { weekday: "short" });
+  return new Date(ts * 1000).toLocaleDateString("en-US", { timeZone: ZONE, weekday: "short" });
 }
 
 export function scoreBand(score: number): "ok" | "watch" | "stop" {

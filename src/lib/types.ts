@@ -12,8 +12,11 @@ export type Policy = {
   domainKey: string;
 };
 
+export type Traffic = "paid" | "organic";
+
 export type IncomingClick = {
   clickId?: string;
+  channel?: Traffic;
   campaign: string;
   keyword?: string;
   placement?: string;
