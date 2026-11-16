@@ -17,7 +17,8 @@ export function GET() {
     var params = new URLSearchParams(location.search);
     return JSON.stringify({
       key: key,
-      clickId: params.get("gclid") || params.get("msclkid") || params.get("fbclid") || "",
+      clickId: params.get("gclid") || params.get("gbraid") || params.get("wbraid") || params.get("msclkid") || params.get("fbclid") || "",
+      medium: params.get("utm_medium") || "",
       campaign: params.get("utm_campaign") || "",
       landing: location.href,
       timeOnPage: Math.round((Date.now() - started) / 1000),

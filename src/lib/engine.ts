@@ -3,7 +3,7 @@ import { getUser } from "./auth";
 import { CAMPAIGNS, findCampaign } from "./campaigns";
 import { type Db, execute, getDb, queryAll, queryOne } from "./db";
 import { enforcementFor, evaluate, guessIsp, guessNetwork } from "./score";
-import type { IncomingClick, Network, Policy, Sensitivity } from "./types";
+import type { IncomingClick, Network, Policy, Sensitivity, Traffic } from "./types";
 
 export const EXCLUSION_CAP = 500;
 export const ALERT_AT = 400;
@@ -276,6 +276,8 @@ export async function recordClick(db: Db, input: IncomingClick, explicitUserId?:
   const campaignType = campaign?.type ?? "search";
   const countries = campaign?.countries ?? [];
   const ts = input.ts ?? Math.floor(Date.now() / 1000);
+  const providedClickId = input.clickId?.trim() || "";
+  const channel = input.channel ?? (providedClickId ? "paid" : "organic");
   const allowed = isAllowed(input.ip, await allowValues(db, userId));
   const history = await historyFor(db, input, ts, userId);
   const scored = evaluate(input, history, policy, allowed, countries);
@@ -289,12 +291,12 @@ export async function recordClick(db: Db, input: IncomingClick, explicitUserId?:
     `INSERT INTO clicks (
       id, ts, click_id, campaign, campaign_type, keyword, placement, ip, device_hash,
       country, city, isp, network, user_agent, time_on_page, engaged, converted, cost,
-      score, reasons, action, enforcement, user_id
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      score, reasons, action, enforcement, user_id, channel
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id,
       ts,
-      input.clickId || nid("gclid_"),
+      providedClickId || nid("visit_"),
       campaignName,
       campaignType,
       input.keyword ?? "",
@@ -315,6 +317,7 @@ export async function recordClick(db: Db, input: IncomingClick, explicitUserId?:
       verdict.action,
       verdict.enforcement,
       userId,
+      channel,
     ],
   );
   await considerBlock(
@@ -440,6 +443,13 @@ export async function previewCeiling() {
 }
 
 const NETWORKS: Network[] = ["residential", "datacenter", "vpn", "proxy"];
+const PAID_MEDIUMS = new Set(["cpc", "ppc", "paid", "paidsearch", "paidsocial", "display", "cpm", "cpv"]);
+
+export function trafficChannel(clickId: string, medium: string): Traffic {
+  if (clickId.trim()) return "paid";
+  if (PAID_MEDIUMS.has(medium.trim().toLowerCase())) return "paid";
+  return "organic";
+}
 
 export function parseIncoming(body: Record<string, unknown>, fallbackIp: string): { ok: true; click: IncomingClick } | { ok: false; error: string } {
   const ip = typeof body.ip === "string" && body.ip ? body.ip : fallbackIp;
@@ -456,6 +466,10 @@ export function parseIncoming(body: Record<string, unknown>, fallbackIp: string)
     ok: true,
     click: {
       clickId: typeof body.clickId === "string" ? body.clickId : undefined,
+      channel: trafficChannel(
+        typeof body.clickId === "string" ? body.clickId : "",
+        typeof body.medium === "string" ? body.medium : "",
+      ),
       campaign,
       keyword: typeof body.keyword === "string" ? body.keyword : undefined,
       placement: typeof body.placement === "string" ? body.placement : undefined,

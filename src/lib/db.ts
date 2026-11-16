@@ -148,6 +148,15 @@ async function migrate(db: Client) {
   await addColumn(db, "users", "ads_account", "TEXT NOT NULL DEFAULT ''");
   await addColumn(db, "users", "domain_key", "TEXT NOT NULL DEFAULT ''");
   await addColumn(db, "clicks", "user_id", "TEXT NOT NULL DEFAULT ''");
+  await addColumn(db, "clicks", "channel", "TEXT NOT NULL DEFAULT ''");
+  await execute(
+    db,
+    `UPDATE clicks SET channel = CASE
+       WHEN click_id GLOB 'gclid_[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]' OR click_id = '' THEN 'organic'
+       ELSE 'paid'
+     END
+     WHERE channel = ''`,
+  );
   await addColumn(db, "blocks", "user_id", "TEXT NOT NULL DEFAULT ''");
   await addColumn(db, "alerts", "user_id", "TEXT NOT NULL DEFAULT ''");
   await addColumn(db, "allowlist", "user_id", "TEXT NOT NULL DEFAULT ''");

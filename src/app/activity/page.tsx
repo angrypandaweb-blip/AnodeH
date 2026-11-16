@@ -23,10 +23,17 @@ const RANGES = [
 const ACTION_LABEL = { allow: "Allowed", flag: "Flagged", block: "Blocked" } as const;
 const TYPE_LABEL = { search: "Search", display: "Display", pmax: "Performance Max" } as const;
 
-function activityHref(action: string, query: string, range: ActivityRange, page = 0) {
+const TRAFFIC = [
+  { id: "all", label: "All traffic" },
+  { id: "paid", label: "Paid" },
+  { id: "organic", label: "Organic" },
+] as const;
+
+function activityHref(action: string, query: string, range: ActivityRange, traffic: string, page = 0) {
   const params = new URLSearchParams();
   if (action && action !== "all") params.set("action", action);
   if (range !== "all") params.set("range", range);
+  if (traffic === "paid" || traffic === "organic") params.set("traffic", traffic);
   if (query) params.set("q", query);
   if (page > 0) params.set("page", String(page));
   const qs = params.toString();
@@ -46,22 +53,23 @@ function reasonList(raw: string): string[] {
 export default async function ActivityPage({
   searchParams,
 }: {
-  searchParams: Promise<{ action?: string; q?: string; page?: string; range?: string; error?: string }>;
+  searchParams: Promise<{ action?: string; q?: string; page?: string; range?: string; traffic?: string; error?: string }>;
 }) {
   const params = await searchParams;
   const action = FILTERS.some((filter) => filter.id === params.action) ? params.action || "all" : "all";
   const range: ActivityRange = RANGES.some((item) => item.id === params.range) ? (params.range as ActivityRange) : "all";
+  const traffic = TRAFFIC.some((item) => item.id === params.traffic) ? params.traffic || "all" : "all";
   const since = activitySince(range);
   const query = (params.q || "").trim().slice(0, 80);
   const page = Math.max(0, Math.min(500, Number(params.page) || 0));
   const [{ rows, total, pageSize }, counts] = await Promise.all([
-    listClicks(action, query, page, 40, since),
-    activityCounts(query, since),
+    listClicks(action, query, page, 40, since, traffic),
+    activityCounts(query, since, traffic, action),
   ]);
   const pages = Math.max(1, Math.ceil(total / pageSize));
   const from = total === 0 ? 0 : page * pageSize + 1;
   const to = Math.min(total, (page + 1) * pageSize);
-  const here = activityHref(action, query, range, page);
+  const here = activityHref(action, query, range, traffic, page);
 
   return (
     <div>
@@ -70,7 +78,7 @@ export default async function ActivityPage({
           <p className="eyebrow">Activity</p>
           <h1>Every scored click</h1>
           <p className="sub">
-            Search, filter, and exclude an address from the campaign it clicked. Performance Max holds the conversion instead of writing an IP exclusion.
+            Search, filter, and exclude an address from the campaign it clicked. Times are South African time. Paid clicks came from an ad. Organic visits did not. Performance Max holds the conversion instead of writing an IP exclusion.
           </p>
         </div>
       </header>
@@ -80,7 +88,7 @@ export default async function ActivityPage({
       <div className="toolbar">
         <div className="filters" role="navigation" aria-label="Filter clicks">
           {FILTERS.map((filter) => (
-            <a key={filter.id} className={filter.id === action ? "on" : undefined} href={activityHref(filter.id, query, range)}>
+            <a key={filter.id} className={filter.id === action ? "on" : undefined} href={activityHref(filter.id, query, range, traffic)}>
               {filter.label}
               <span className="count">{compact(counts[filter.id])}</span>
             </a>
@@ -88,14 +96,23 @@ export default async function ActivityPage({
         </div>
         <div className="filters" role="navigation" aria-label="Time range">
           {RANGES.map((item) => (
-            <a key={item.id} className={item.id === range ? "on" : undefined} href={activityHref(action, query, item.id)}>
+            <a key={item.id} className={item.id === range ? "on" : undefined} href={activityHref(action, query, item.id, traffic)}>
               {item.label}
+            </a>
+          ))}
+        </div>
+        <div className="filters" role="navigation" aria-label="Paid or organic">
+          {TRAFFIC.map((item) => (
+            <a key={item.id} className={item.id === traffic ? "on" : undefined} href={activityHref(action, query, range, item.id)}>
+              {item.label}
+              <span className="count">{compact(item.id === "all" ? counts.paid + counts.organic : counts[item.id])}</span>
             </a>
           ))}
         </div>
         <form className="filters" action="/activity">
           {action !== "all" ? <input type="hidden" name="action" value={action} /> : null}
           {range !== "all" ? <input type="hidden" name="range" value={range} /> : null}
+          {traffic !== "all" ? <input type="hidden" name="traffic" value={traffic} /> : null}
           <input name="q" defaultValue={query} placeholder="IP, campaign, or keyword" aria-label="Search clicks" />
           <button className="ghost" type="submit">Search</button>
         </form>
@@ -127,6 +144,7 @@ export default async function ActivityPage({
                       <strong>{click.campaign}</strong>
                       <span className="muted">{detail}</span>
                       <span className={`pill ${click.action}`}>{actionLabel}</span>
+                      <span className={`pill ${click.channel === "organic" ? "organic" : "paid"}`}>{click.channel === "organic" ? "Organic" : "Paid"}</span>
                     </div>
                     <div className="reasons">
                       {reasons.length === 0 ? <span className="reason">No risk signals</span> : null}
@@ -161,8 +179,8 @@ export default async function ActivityPage({
         ) : null}
         <div className="pager">
           <span className="muted">{from}–{to} of {total}</span>
-          {page > 0 ? <a href={activityHref(action, query, range, page - 1)}>Previous</a> : null}
-          {page + 1 < pages ? <a href={activityHref(action, query, range, page + 1)}>Next</a> : null}
+          {page > 0 ? <a href={activityHref(action, query, range, traffic, page - 1)}>Previous</a> : null}
+          {page + 1 < pages ? <a href={activityHref(action, query, range, traffic, page + 1)}>Next</a> : null}
         </div>
       </article>
     </div>

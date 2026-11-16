@@ -29,6 +29,7 @@ export type ClickRow = {
   reasons: string;
   action: string;
   enforcement: string;
+  channel: string;
   block_id: string | null;
 };
 
@@ -93,7 +94,7 @@ export async function recentRisky(limit = 6): Promise<ClickRow[]> {
   );
 }
 
-export async function activityCounts(query: string, since: number | null = null) {
+export async function activityCounts(query: string, since: number | null = null, traffic = "all", action = "all") {
   const where = ["user_id = ?"];
   const params: (string | number)[] = [await mine()];
   if (since != null) {
@@ -106,22 +107,28 @@ export async function activityCounts(query: string, since: number | null = null)
     params.push(like, like, like, like);
   }
   const clause = `WHERE ${where.join(" AND ")}`;
-  const rows = await queryAll<{ action: string; c: number; cost: number | null }>(
+  const rows = await queryAll<{ action: string; channel: string; c: number; cost: number | null }>(
     await getDb(),
-    `SELECT action, COUNT(*) AS c, SUM(CASE WHEN action = 'allow' THEN 0 ELSE cost END) AS cost
-     FROM clicks ${clause} GROUP BY action`,
+    `SELECT action, channel, COUNT(*) AS c, SUM(CASE WHEN action = 'allow' THEN 0 ELSE cost END) AS cost
+     FROM clicks ${clause} GROUP BY action, channel`,
     params,
   );
-  const counts = { all: 0, allow: 0, flag: 0, block: 0, waste: 0 };
+  const counts = { all: 0, allow: 0, flag: 0, block: 0, waste: 0, paid: 0, organic: 0 };
   for (const row of rows) {
-    counts.all += row.c;
-    if (row.action === "allow" || row.action === "flag" || row.action === "block") counts[row.action] += row.c;
-    counts.waste += row.cost ?? 0;
+    const channel = row.channel === "organic" ? "organic" : "paid";
+    const inTraffic = traffic === "all" || channel === traffic;
+    const inAction = action !== "allow" && action !== "flag" && action !== "block" || row.action === action;
+    if (inTraffic) {
+      counts.all += row.c;
+      if (row.action === "allow" || row.action === "flag" || row.action === "block") counts[row.action] += row.c;
+      counts.waste += row.cost ?? 0;
+    }
+    if (inAction) counts[channel] += row.c;
   }
   return counts;
 }
 
-export async function listClicks(action: string, query: string, page: number, pageSize = 40, since: number | null = null) {
+export async function listClicks(action: string, query: string, page: number, pageSize = 40, since: number | null = null, traffic = "all") {
   const db = await getDb();
   const userId = await mine();
   const where = ["c.user_id = ?"];
@@ -133,6 +140,10 @@ export async function listClicks(action: string, query: string, page: number, pa
   if (action === "allow" || action === "flag" || action === "block") {
     where.push("c.action = ?");
     params.push(action);
+  }
+  if (traffic === "paid" || traffic === "organic") {
+    where.push("c.channel = ?");
+    params.push(traffic);
   }
   if (query) {
     where.push("(c.ip LIKE ? OR c.campaign LIKE ? OR c.keyword LIKE ? OR c.placement LIKE ?)");
