@@ -44,10 +44,11 @@ export default async function BillingPage({
       <header className="page-head">
         <div>
           <p className="eyebrow">Plan</p>
-          <h1>Half off the first 30 days</h1>
+          <h1>{access.lifetime ? "Lifetime access" : "Half off the first 30 days"}</h1>
           <p className="sub">
-            The first 30 days are {dollars(INTRO_CENTS)}. PayPal then charges {dollars(STANDARD_CENTS)} every 30 days until you cancel.
-            The year is {dollars(ANNUAL_CENTS)} once and does not renew.
+            {access.lifetime
+              ? "This account does not expire. PayPal is not needed."
+              : `The first 30 days are ${dollars(INTRO_CENTS)}. PayPal then charges ${dollars(STANDARD_CENTS)} every 30 days until you cancel. The year is ${dollars(ANNUAL_CENTS)} once and does not renew.`}
           </p>
         </div>
       </header>
@@ -58,7 +59,12 @@ export default async function BillingPage({
 
       <article className="card">
         <span className="card-label">Current access</span>
-        {access.status === "active" ? (
+        {access.lifetime ? (
+          <>
+            <h2 style={{ marginTop: 10 }}>Lifetime</h2>
+            <p className="note">This account stays active. There is no renewal date.</p>
+          </>
+        ) : access.status === "active" ? (
           <>
             <h2 style={{ marginTop: 10 }}>Paid through {planDate(access.endsAt)}</h2>
             <p className="note">
@@ -93,6 +99,7 @@ export default async function BillingPage({
         </p>
       </article>
 
+      {access.lifetime ? null : (
       <section className="plans">
         <article className="card">
           <span className="card-label">{access.introUsed ? "30 days" : "First 30 days"}</span>
@@ -125,6 +132,7 @@ export default async function BillingPage({
           </form>
         </article>
       </section>
+      )}
     </div>
   );
 }

@@ -19,6 +19,7 @@ export type Access = {
   daysLeft: number;
   paidUntil: number;
   introUsed: boolean;
+  lifetime: boolean;
 };
 
 function nowSec() {
@@ -85,14 +86,21 @@ export async function getAccess(userId?: string): Promise<Access> {
   await syncPayPalSubscription(userId);
   const paidUntil = Number((await setting("paid_until", userId)) || 0);
   const introUsed = (await setting("intro_used", userId)) === "1";
+  const lifetime = (await setting("lifetime", userId)) === "1";
   const now = nowSec();
-  if (paidUntil > now) {
-    return { status: "active", endsAt: paidUntil, daysLeft: daysLeft(paidUntil, now), paidUntil, introUsed };
+  if (lifetime) {
+    return { status: "active", endsAt: 0, daysLeft: 0, paidUntil, introUsed, lifetime: true };
   }
-  return { status: "unpaid", endsAt: paidUntil, daysLeft: 0, paidUntil, introUsed };
+  if (paidUntil > now) {
+    return { status: "active", endsAt: paidUntil, daysLeft: daysLeft(paidUntil, now), paidUntil, introUsed, lifetime: false };
+  }
+  return { status: "unpaid", endsAt: paidUntil, daysLeft: 0, paidUntil, introUsed, lifetime: false };
 }
 
 export function planSummary(access: Access) {
+  if (access.lifetime) {
+    return { title: "Lifetime", detail: "This account does not expire." };
+  }
   if (access.status === "active") {
     return { title: `Paid · ${dayPhrase(access.daysLeft)} left`, detail: `Through ${planDate(access.endsAt)}` };
   }
