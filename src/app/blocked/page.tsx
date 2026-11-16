@@ -1,5 +1,8 @@
 import { Mark } from "@/components/Mark";
-import { ANNUAL_CENTS, dollars, INTRO_CENTS, STANDARD_CENTS } from "@/lib/billing";
+import { ANNUAL_CENTS, dollars, INTRO_CENTS, quotesFor, STANDARD_CENTS } from "@/lib/billing";
+import { visitorCountry } from "@/lib/visitor-country";
+
+export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "This visit was blocked · AnodeH",
@@ -15,7 +18,13 @@ const CAUGHT = [
   { title: "Off-target countries", body: "Visits from outside the countries you chose to buy." },
 ];
 
-export default function BlockedPage() {
+export default async function BlockedPage() {
+  const quote = await quotesFor("", await visitorCountry());
+  const intro = quote.intro || dollars(INTRO_CENTS);
+  const standard = quote.standard || dollars(STANDARD_CENTS);
+  const annual = quote.annual || dollars(ANNUAL_CENTS);
+  const local = quote.currency === "USD" ? "" : ` Prices are in ${quote.name}. PayPal collects US dollars.`;
+
   return (
     <div className="site">
       <header className="site-bar">
@@ -82,13 +91,13 @@ export default function BlockedPage() {
           <article className="offer featured">
             <span className="offer-tag">Most people start here</span>
             <h3>Monthly</h3>
-            <p className="offer-price">{dollars(INTRO_CENTS)} <s>{dollars(STANDARD_CENTS)}</s></p>
-            <p>First 30 days at half price, then {dollars(STANDARD_CENTS)} every 30 days. PayPal charges this automatically until you cancel.</p>
+            <p className="offer-price">{intro} <s>{standard}</s></p>
+            <p>First 30 days at half price, then {standard} every 30 days. PayPal charges this automatically until you cancel.{local}</p>
             <a className="btn" href="/register?plan=month">Subscribe</a>
           </article>
           <article className="offer">
             <h3>Annual</h3>
-            <p className="offer-price">{dollars(ANNUAL_CENTS)}</p>
+            <p className="offer-price">{annual}</p>
             <p>One payment for 365 days. This plan does not renew on its own.</p>
             <a className="btn ghost" href="/register?plan=year">Pay for the year</a>
           </article>
