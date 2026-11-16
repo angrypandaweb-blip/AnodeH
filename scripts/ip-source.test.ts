@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { provinceName, visitCampaignName } from "../src/lib/campaigns";
+import { actionForChannel } from "../src/lib/score";
 import { countryHeader, firstForwardedIp, isPublicIp, isPublicIpv4, readIpSource } from "../src/lib/ip-source";
 
 const source = readIpSource({
@@ -18,6 +19,9 @@ assert.equal(visitCampaignName("", "Gauteng"), "Gauteng");
 assert.equal(visitCampaignName("", "Kwazulu-Natal"), "KwaZulu-Natal");
 assert.equal(visitCampaignName("Brand — Exact", "Gauteng"), "Brand — Exact");
 assert.equal(visitCampaignName("  ", ""), "Unassigned");
+assert.equal(actionForChannel("block", "organic"), "flag");
+assert.equal(actionForChannel("block", "paid"), "block");
+assert.equal(actionForChannel("flag", "organic"), "flag");
 assert.equal(readIpSource({ success: false, message: "reserved range" }), null);
 assert.equal(readIpSource({ success: true, connection: { org: "Fallback Org" } }), null);
 

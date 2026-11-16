@@ -3,7 +3,7 @@ import { getUser } from "./auth";
 import { CAMPAIGNS, findCampaign, visitCampaignName } from "./campaigns";
 import { type Db, execute, getDb, queryAll, queryOne } from "./db";
 import { sendBlockedIp } from "./email-reports";
-import { enforcementFor, evaluate, guessIsp, guessNetwork } from "./score";
+import { actionForChannel, enforcementFor, evaluate, guessIsp, guessNetwork } from "./score";
 import type { IncomingClick, Network, Policy, Sensitivity, Traffic } from "./types";
 
 export const EXCLUSION_CAP = 500;
@@ -296,9 +296,9 @@ export async function recordClick(db: Db, input: IncomingClick, explicitUserId?:
   const allowed = isAllowed(input.ip, await allowValues(db, userId));
   const history = await historyFor(db, input, ts, userId);
   const scored = evaluate(input, history, policy, allowed, countries);
-  const enforcement =
-    scored.action === "block" ? enforcementFor(scored.action, campaignType) : scored.enforcement;
-  const verdict = { ...scored, enforcement };
+  const action = actionForChannel(scored.action, channel);
+  const enforcement = action === "block" ? enforcementFor(action, campaignType) : "none";
+  const verdict = { ...scored, action, enforcement };
   const estimated = campaign ? campaign.cpc * (0.9 + ((ts % 20) / 100)) : 1.5;
   const cost = channel === "organic" ? 0 : (input.cost ?? estimated);
   const id = nid("c");
