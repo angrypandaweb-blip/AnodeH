@@ -24,6 +24,7 @@ export type IncomingClick = {
   deviceHash: string;
   country: string;
   city?: string;
+  region?: string;
   isp: string;
   network: Network;
   userAgent?: string;

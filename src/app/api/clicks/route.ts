@@ -50,6 +50,7 @@ export async function POST(request: Request) {
       body.country = source.country;
       body.isp = source.isp;
       if (source.city) body.city = source.city;
+      if (source.region) body.region = source.region;
     } else if (!body.isp) {
       body.isp = "Unknown";
       body.country = "";

@@ -4,6 +4,7 @@ export type IpSource = {
   country: string;
   isp: string;
   city: string;
+  region: string;
 };
 
 const cache = new Map<string, { at: number; source: IpSource | null }>();
@@ -14,6 +15,7 @@ export function readIpSource(payload: unknown): IpSource | null {
     success?: boolean;
     country_code?: string;
     city?: string;
+    region?: string;
     connection?: { isp?: string; org?: string };
   } | null;
   if (!row || row.success === false) return null;
@@ -21,7 +23,8 @@ export function readIpSource(payload: unknown): IpSource | null {
   if (!/^[A-Z]{2}$/.test(country)) return null;
   const isp = String(row.connection?.isp || row.connection?.org || "").trim().slice(0, 80);
   const city = String(row.city || "").trim().slice(0, 80);
-  return { country, isp: isp || "Unknown", city };
+  const region = String(row.region || "").trim().slice(0, 80);
+  return { country, isp: isp || "Unknown", city, region };
 }
 
 export function isPublicIpv4(ip: string) {
@@ -61,7 +64,7 @@ export async function lookupIpSource(ip: string): Promise<IpSource | null> {
   const cached = cache.get(ip);
   if (cached && Date.now() - cached.at < DAY) return cached.source;
   try {
-    const response = await fetch(`https://ipwho.is/${encodeURIComponent(ip)}?fields=success,country_code,city,connection`, {
+    const response = await fetch(`https://ipwho.is/${encodeURIComponent(ip)}?fields=success,country_code,city,region,connection`, {
       signal: AbortSignal.timeout(2500),
     });
     if (!response.ok) return null;
