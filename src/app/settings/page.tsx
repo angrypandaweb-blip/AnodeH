@@ -163,7 +163,7 @@ export default async function SettingsPage({
 
       <article className="card">
         <span className="card-label">Site tag</span>
-        <p className="note">Paste this on {policy.domain}. It sends the visit when the visitor leaves, or after eight seconds.</p>
+        <p className="note">Paste this on {policy.domain}. It sends the visit when the visitor leaves, or after eight seconds. A blocked visitor is then sent to anodeh.com/blocked. Allowed and flagged visitors stay on the page.</p>
         <pre className="snippet">{snippet}</pre>
       </article>
 
