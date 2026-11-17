@@ -1,6 +1,5 @@
 import { unblock } from "@/app/actions";
 import { getUser } from "@/lib/auth";
-import { CAMPAIGNS } from "@/lib/campaigns";
 import { compact, scoreTone, when } from "@/lib/format";
 import { placeFor } from "@/lib/residence-currency";
 import { refreshGoogleAdsIfStale } from "@/lib/google-ads";
@@ -71,13 +70,7 @@ export default async function ProtectionPage({
     status: campaign.status === "ENABLED" ? "" : campaign.status.toLowerCase(),
   }));
   const fromExclusions = caps.rows.map((row) => ({ slug: row.campaign, name: row.campaign, type: "other", status: "" }));
-  const cards = fromGoogle.length
-    ? fromGoogle
-    : fromExclusions.length
-      ? fromExclusions
-      : link
-        ? []
-        : CAMPAIGNS.map((campaign) => ({ slug: campaign.slug, name: campaign.name, type: campaign.type, status: "" }));
+  const cards = fromGoogle.length ? fromGoogle : fromExclusions;
 
   return (
     <div>
@@ -95,11 +88,7 @@ export default async function ProtectionPage({
         <p className="banner">Added {compact(added)} addresses to Brand — Exact so the list can be seen near its ceiling.</p>
       ) : null}
 
-      {liveCampaigns.length > 0 ? (
-        <p className="note">Campaigns on the account AnodeH is watching.</p>
-      ) : link ? null : (
-        <p className="note">These are the sample campaigns. Connect Google Ads in Settings to replace them with the account you watch.</p>
-      )}
+      {liveCampaigns.length > 0 ? <p className="note">Campaigns on the account AnodeH is watching.</p> : null}
 
       <section className="campaign-grid">
         {cards.length === 0 ? <article className="card"><p className="note">No campaigns to show yet.</p></article> : null}

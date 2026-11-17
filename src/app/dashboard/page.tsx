@@ -1,4 +1,4 @@
-import { clearAlerts, runScenario } from "@/app/actions";
+import { clearAlerts } from "@/app/actions";
 import { LiveRefresh } from "@/components/LiveRefresh";
 import { getUser } from "@/lib/auth";
 import { reasonText } from "@/lib/score";
@@ -61,22 +61,9 @@ export default async function OverviewPage({
               : "Invalid clicks are scored as they arrive. Search and Display exclusions are written onto the ad account. Performance Max holds the conversion instead, because that campaign type has no IP list."}
           </p>
         </div>
-        {link ? null : (
-          <form action={runScenario} className="scenarios">
-            <button name="scenario" value="shoppers" className="ghost" type="submit">Shoppers</button>
-            <button name="scenario" value="competitor" className="ghost" type="submit">Competitor</button>
-            <button name="scenario" value="datacenter" type="submit">Datacenter burst</button>
-            <button name="scenario" value="vpn" className="ghost" type="submit">VPN bounces</button>
-          </form>
-        )}
       </header>
 
       {notice && params.notice !== "google" ? <p className="banner">{notice(n)}</p> : null}
-      {!link && !user?.adsAccount ? (
-        <p className="banner warn">
-          Add the Google Ads account you want to watch. <a href="/settings">Connect Google Ads</a>
-        </p>
-      ) : null}
 
       <section className="metrics">
         {hasGoogleTotals ? (

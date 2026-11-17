@@ -37,8 +37,8 @@ const ANSWERS: { test: RegExp; answer: AssistantAnswer }[] = [
   {
     test: /google ads|explorer|oauth|client id|connect/,
     answer: {
-      text: "Connect Google Ads in Settings with the account you want to watch. AnodeH downloads campaigns and recent clicks. Google does not send the visitor IP, so scoring and exclusions still use the site tag. The Cloud project that owns the OAuth client needs Explorer access before it can read a live account.",
-      links: [{ label: "Settings", href: "/settings" }],
+      text: "Paid click totals come from Google Ads. Scored visits come from the site tag. Google does not send the visitor IP, so scoring and exclusions still use that tag.",
+      links: [{ label: "Overview", href: "/dashboard" }],
     },
   },
   {

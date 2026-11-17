@@ -155,17 +155,14 @@ export function welcomeLetter(person: { name: string; domainKey: string }, sampl
   const text = [
     intro,
     "",
-    "Your AnodeH account is open. Three steps finish the setup.",
+    "Your AnodeH account is open. Two steps finish the setup.",
     "",
     "1. Paste the site tag on your website",
     "Add this snippet on every page, just before the closing body tag:",
     tag,
     "The tag reports the visit when the visitor leaves, or after eight seconds. A blocked paid visitor is sent to the blocked page. Allowed and flagged visitors stay on the page.",
     "",
-    "2. Connect Google Ads",
-    `Open Settings and connect the account you want AnodeH to watch: ${APP}/settings`,
-    "",
-    "3. Start the plan when you are ready",
+    "2. Start the plan when you are ready",
     `The monthly plan is free for 7 days. After that PayPal deducts the regular price every 30 days until you cancel: ${APP}/billing`,
     "",
     `Need help adding the tag? Write to ${SUPPORT_EMAIL} or send a request at ${APP}/support.`,
@@ -173,14 +170,12 @@ export function welcomeLetter(person: { name: string; domainKey: string }, sampl
     "AnodeH",
   ].join("\n");
   const html = `<p>${escapeHtml(intro)}</p>
-<p>Your AnodeH account is open. Three steps finish the setup.</p>
+<p>Your AnodeH account is open. Two steps finish the setup.</p>
 <p><strong>1. Paste the site tag on your website</strong><br>
 Add this snippet on every page, just before the closing body tag:</p>
 <pre>${escapeHtml(tag)}</pre>
 <p>The tag reports the visit when the visitor leaves, or after eight seconds. A blocked paid visitor is sent to the blocked page. Allowed and flagged visitors stay on the page.</p>
-<p><strong>2. Connect Google Ads</strong><br>
-<a href="${APP}/settings">Open Settings</a> and connect the account you want AnodeH to watch.</p>
-<p><strong>3. Start the plan when you are ready</strong><br>
+<p><strong>2. Start the plan when you are ready</strong><br>
 The monthly plan is free for 7 days. After that PayPal deducts the regular price every 30 days until you cancel. <a href="${APP}/billing">Open the plan</a>.</p>
 <p>Need help adding the tag? Write to <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a> or <a href="${APP}/support">send a support request</a>.</p>
 <p>AnodeH</p>`;
