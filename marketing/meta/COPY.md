@@ -6,8 +6,8 @@ Upload either image under **Single image or video**, then paste the fields below
 
 | File | Size | Best for |
 |---|---|---|
-| `anodeh-meta-feed-square.png` | 1080×1080 | Feed (default) |
-| `anodeh-meta-feed-portrait.png` | 1080×1350 | Feed / Explore (more screen) |
+| `anodeh-meta-feed-square.png` | 1080×1080 | Feed (default) — sample costs in ZAR |
+| `anodeh-meta-feed-portrait.png` | 1080×1350 | Feed / Explore (more screen) — sample costs in ZAR |
 | `anodeh-meta-alt-square.jpg` | alt creative | A/B test |
 | `anodeh-meta-alt-portrait.jpg` | alt creative | A/B test |
 
