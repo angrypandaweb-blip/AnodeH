@@ -1,6 +1,7 @@
 import { Mark } from "@/components/Mark";
 import { getUser } from "@/lib/auth";
 import { dollars, getAccess, INTRO_CENTS, quotesFor, STANDARD_CENTS, ANNUAL_CENTS } from "@/lib/billing";
+import { formatMoney, reportCurrency } from "@/lib/residence-currency";
 import { visitorCountry } from "@/lib/visitor-country";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +32,11 @@ export default async function LandingPage() {
   const monthLabel = user ? (subscribed ? "Open dashboard" : "Subscribe with PayPal") : "Subscribe";
   const yearLabel = user ? (subscribed ? "Open dashboard" : "Pay for the year") : "Pay for the year";
   const seen = user?.country || (await visitorCountry());
-  const quote = await quotesFor(user?.email || "", seen);
+  const [quote, local] = await Promise.all([
+    quotesFor(user?.email || "", seen),
+    reportCurrency(user?.email || "", seen),
+  ]);
+  const sample = (usd: number) => formatMoney(Math.round(usd * local.rate), local.currency, 0);
   const intro = quote?.intro ?? dollars(INTRO_CENTS);
   const standard = quote?.standard ?? dollars(STANDARD_CENTS);
   const annual = quote?.annual ?? dollars(ANNUAL_CENTS);
@@ -84,8 +89,8 @@ export default async function LandingPage() {
             </article>
             <article className="metric">
               <span>Invalid cost</span>
-              <strong>$642</strong>
-              <em>of $4,180 monitored</em>
+              <strong>{sample(642)}</strong>
+              <em>of {sample(4180)} monitored</em>
             </article>
             <article className="metric">
               <span>Exclusions</span>
