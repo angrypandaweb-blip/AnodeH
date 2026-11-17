@@ -27,18 +27,19 @@ export function normalizeFrom(raw: string) {
   return name ? `${name} <${email}>` : email;
 }
 
-export async function sendMail(to: string, subject: string, text: string, html: string) {
+export async function sendMail(to: string, subject: string, text: string, html: string, replyTo?: string) {
   const key = process.env.RESEND_API_KEY || "";
   const from = normalizeFrom(process.env.MAIL_FROM || "");
   if (!key || !process.env.MAIL_FROM) return { ok: false as const, error: "Add RESEND_API_KEY and MAIL_FROM, then redeploy." };
   if (!from) return { ok: false as const, error: "MAIL_FROM must be an email address, like AnodeH <reports@anodeh.com>." };
+  const reply = replyTo && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(replyTo) ? replyTo : "";
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${key}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ from, to: [to], subject, text, html }),
+    body: JSON.stringify({ from, to: [to], subject, text, html, ...(reply ? { reply_to: reply } : {}) }),
   });
   if (!response.ok) {
     const payload = (await response.json().catch(() => null)) as { message?: string } | null;

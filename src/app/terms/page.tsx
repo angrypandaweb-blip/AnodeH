@@ -17,6 +17,7 @@ export default function TermsPage() {
         <nav className="site-nav">
           <a href="/">Home</a>
           <a href="/privacy">Privacy</a>
+          <a href="/support">Support</a>
         </nav>
       </header>
       <article className="legal">

@@ -70,6 +70,13 @@ const ANSWERS: { test: RegExp; answer: AssistantAnswer }[] = [
     },
   },
   {
+    test: /support|contact|help me|install the tag/,
+    answer: {
+      text: "Send a support request and it goes to support@anodeh.com. The site tag is in Settings. Paste it on every page of your site, just before the closing body tag.",
+      links: [{ label: "Support", href: "/support" }, { label: "Settings", href: "/settings" }],
+    },
+  },
+  {
     test: /what|how|anodeh|help|start|tag|script/,
     answer: {
       text: "AnodeH scores invalid clicks on Google Ads and writes the exclusions. Paste the site tag on your domain. It reports the visit when the visitor leaves, or after eight seconds. A blocked paid visitor is sent to the blocked page.",

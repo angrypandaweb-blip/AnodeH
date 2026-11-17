@@ -51,6 +51,7 @@ export default async function RegisterPage({
         </a>
         <nav className="site-nav">
           <a href="/login">Log in</a>
+          <a href="/support">Support</a>
         </nav>
       </header>
       <section className="hero" style={{ textAlign: "left", maxWidth: 480 }}>

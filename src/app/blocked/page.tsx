@@ -109,6 +109,7 @@ export default async function BlockedPage() {
       </section>
       <footer className="site-legal">
         <a href="/privacy">Privacy</a>
+        <a href="/support">Support</a>
         <a href="/terms">Terms</a>
       </footer>
     </div>

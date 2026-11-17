@@ -17,7 +17,7 @@ import { normalizeAdsAccount } from "@/lib/format";
 import { createPayPalCheckout } from "@/lib/billing";
 import { execute, getDb, queryOne } from "@/lib/db";
 import { knownCountry } from "@/lib/residence-currency";
-import { passwordResetLink, sendPasswordReset } from "@/lib/email-reports";
+import { passwordResetLink, sendPasswordReset, sendSignupNotice, sendSupportRequest, sendWelcome } from "@/lib/email-reports";
 import { disconnectGoogleAds, pullGoogleAds } from "@/lib/google-ads";
 import { resetDemo, simulateScenario } from "@/lib/seed";
 import type { Sensitivity } from "@/lib/types";
@@ -160,11 +160,13 @@ export async function registerAccount(formData: FormData) {
   const existing = await queryOne<{ id: string }>(db, "SELECT id FROM users WHERE lower(email) = ?", [email]);
   if (existing) redirect(withError(back, "That email already has an account. Log in with it. Each person needs their own email."));
   const id = `u${randomBytes(6).toString("hex")}`;
+  const createdAt = Math.floor(Date.now() / 1000);
+  const domainKey = `cf_${randomBytes(8).toString("hex")}`;
   try {
     await execute(
       db,
       "INSERT INTO users (id, email, name, password_hash, created_at, ads_account, domain_key, country) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-      [id, email, name, await hashPassword(password), Math.floor(Date.now() / 1000), "", `cf_${randomBytes(8).toString("hex")}`, country],
+      [id, email, name, await hashPassword(password), createdAt, "", domainKey, country],
     );
   } catch (error) {
     if (String(error).includes("UNIQUE")) {
@@ -172,8 +174,26 @@ export async function registerAccount(formData: FormData) {
     }
     throw error;
   }
+  await Promise.all([
+    sendSignupNotice({ id, name, email, country, createdAt }).catch(() => undefined),
+    sendWelcome({ id, name, email, domainKey }).catch(() => undefined),
+  ]);
   await setSession(id);
   redirect("/dashboard");
+}
+
+export async function submitSupport(formData: FormData) {
+  if (String(formData.get("company") || "").trim()) redirect("/support?sent=1");
+  const name = String(formData.get("name") || "").trim();
+  const email = String(formData.get("email") || "").trim().toLowerCase();
+  const message = String(formData.get("message") || "").trim();
+  if (name.length < 1 || name.length > 80 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || message.length < 10 || message.length > 4000) {
+    redirect(withError("/support", "Enter your name, email, and a message of at least 10 characters."));
+  }
+  const user = await getUser();
+  const sent = await sendSupportRequest({ userId: user?.id || "public", name, email, message });
+  if (!sent.ok) redirect(withError("/support", sent.error));
+  redirect("/support?sent=1");
 }
 
 export async function loginAccount(formData: FormData) {

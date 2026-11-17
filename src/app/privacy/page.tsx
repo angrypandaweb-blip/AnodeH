@@ -16,6 +16,7 @@ export default function PrivacyPage() {
         <nav className="site-nav">
           <a href="/">Home</a>
           <a href="/terms">Terms</a>
+          <a href="/support">Support</a>
         </nav>
       </header>
       <article className="legal">
@@ -24,7 +25,7 @@ export default function PrivacyPage() {
         <p>AnodeH scores invalid clicks on the Google Ads account you connect. This page says what that connection stores and what it is used for.</p>
 
         <h2>AnodeH account</h2>
-        <p>Creating an account stores your name, email, password, and the Google Ads customer ID you enter. Password resets and payment receipts use that email. PayPal processes the subscription payment. AnodeH stores the plan and the payment reference PayPal returns.</p>
+        <p>Creating an account stores your name, email, password, country, and the Google Ads customer ID you enter. A welcome email goes to that address. AnodeH also emails support@anodeh.com the name, email, and country. The password is not emailed. Password resets, payment receipts, and the daily report use the account email. A support request emails support@anodeh.com and includes the message you write. PayPal processes the subscription payment. AnodeH stores the plan and the payment reference PayPal returns.</p>
 
         <h2>Google user data</h2>
         <p>
