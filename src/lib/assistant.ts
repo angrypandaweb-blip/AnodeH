@@ -35,6 +35,13 @@ const ANSWERS: { test: RegExp; answer: AssistantAnswer }[] = [
     },
   },
   {
+    test: /account number|customer id|ads account/,
+    answer: {
+      text: "The Google Ads account number goes in Settings. It is the 10-digit customer ID, like 123-456-7890.",
+      links: [{ label: "Settings", href: "/settings" }],
+    },
+  },
+  {
     test: /google ads|explorer|oauth|client id|connect/,
     answer: {
       text: "Paid click totals come from Google Ads. Scored visits come from the site tag. Google does not send the visitor IP, so scoring and exclusions still use that tag.",

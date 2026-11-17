@@ -1,5 +1,5 @@
 import { headers } from "next/headers";
-import { createAllow, deleteAllow, saveAverageClickPrice, saveTrackedDomain, updateSettings } from "@/app/actions";
+import { createAllow, deleteAllow, saveAdsAccount, saveAverageClickPrice, saveTrackedDomain, updateSettings } from "@/app/actions";
 import { getUser } from "@/lib/auth";
 import { getPolicy } from "@/lib/engine";
 import { allowlist, savedClickPrice } from "@/lib/queries";
@@ -50,6 +50,34 @@ export default async function SettingsPage({
 
       {params.saved ? <p className="banner">Saved.</p> : null}
       {params.error ? <p className="banner warn">{params.error}</p> : null}
+
+      <article className="card">
+        <span className="card-label">Google Ads account</span>
+        <p className="note">
+          {user?.adsAccount
+            ? `AnodeH is watching ${user.adsAccount}. Enter a different customer ID to switch accounts.`
+            : "Enter the 10-digit customer ID of the Google Ads account you want watched."}
+        </p>
+        <form action={saveAdsAccount} className="form-grid">
+          <label>
+            Account number
+            <input
+              type="text"
+              name="adsAccount"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="123-456-7890"
+              defaultValue={user?.adsAccount || ""}
+              aria-label="Google Ads account number"
+              required
+            />
+            <small>Ten digits, with or without dashes. This is the customer ID in Google Ads.</small>
+          </label>
+          <div>
+            <button type="submit">{user?.adsAccount ? "Update account" : "Track this account"}</button>
+          </div>
+        </form>
+      </article>
 
       <article className="card">
         <span className="card-label">Scoring</span>
