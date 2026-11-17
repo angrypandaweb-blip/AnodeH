@@ -3,12 +3,19 @@ import { getUser } from "@/lib/auth";
 import { execute, getDb, queryOne } from "@/lib/db";
 import { sendPurchaseReceipt } from "@/lib/email-reports";
 import { convertUsdCents, formatMoney, reportCurrency } from "@/lib/residence-currency";
-import { type CheckoutChoice, SITES_10_CENTS, SITES_20_CENTS, sitesCovered, storedSites } from "@/lib/site-plans";
+import {
+  type CheckoutChoice,
+  SITES_10_CENTS,
+  SITES_10_INTRO_CENTS,
+  SITES_20_CENTS,
+  SITES_20_INTRO_CENTS,
+  sitesCovered,
+  storedSites,
+} from "@/lib/site-plans";
 
-export { SITES_10_CENTS, SITES_20_CENTS } from "@/lib/site-plans";
+export { SITES_10_CENTS, SITES_10_INTRO_CENTS, SITES_20_CENTS, SITES_20_INTRO_CENTS } from "@/lib/site-plans";
 
 export const PERIOD_DAYS = 30;
-export const TRIAL_DAYS = 7;
 export const YEAR_DAYS = 365;
 export const STANDARD_CENTS = 6900;
 export const INTRO_CENTS = 3450;
@@ -107,10 +114,11 @@ export async function getAccess(userId?: string): Promise<Access> {
 export type PlanQuote = {
   currency: string;
   name: string;
-  intro: string;
+  half: string;
   standard: string;
-  annual: string;
+  half10: string;
   sites10: string;
+  half20: string;
   sites20: string;
 };
 
@@ -120,17 +128,18 @@ export async function quotesFor(email: string, country: string): Promise<PlanQuo
   return {
     currency: local.currency,
     name: local.name,
-    intro: "Free",
+    half: money(INTRO_CENTS),
     standard: money(STANDARD_CENTS),
-    annual: money(ANNUAL_CENTS),
+    half10: money(SITES_10_INTRO_CENTS),
     sites10: money(SITES_10_CENTS),
+    half20: money(SITES_20_INTRO_CENTS),
     sites20: money(SITES_20_CENTS),
   };
 }
 
 export function planSummary(access: Access, quote?: PlanQuote) {
+  const half = quote?.half ?? dollars(INTRO_CENTS);
   const standard = quote?.standard ?? dollars(STANDARD_CENTS);
-  const annual = quote?.annual ?? dollars(ANNUAL_CENTS);
   if (access.lifetime) {
     return { title: "Lifetime", detail: "This account does not expire." };
   }
@@ -139,11 +148,11 @@ export function planSummary(access: Access, quote?: PlanQuote) {
     return { title: `Paid · ${dayPhrase(access.daysLeft)} left${websites}`, detail: `Through ${planDate(access.endsAt)}` };
   }
   if (access.introUsed) {
-    return { title: "Plan unpaid", detail: `${standard} / 30 days or ${annual}/year` };
+    return { title: "Plan unpaid", detail: `${standard} every 30 days` };
   }
   return {
-    title: `${TRIAL_DAYS} days free`,
-    detail: `Then ${standard} every 30 days, or ${annual}/year`,
+    title: "Half price first month",
+    detail: `${half} for 30 days, then ${standard}`,
   };
 }
 
@@ -312,89 +321,13 @@ async function startPayPalCheckout(choice: CheckoutChoice) {
   if (!token) return { error: "PayPal did not accept the client id and secret." };
 
   const access = await getAccess();
-  if (choice === "sites10" || choice === "sites20") {
-    const origin = await siteOrigin();
-    if (!origin) return { error: "Could not determine the site address for checkout." };
-    return createMonthlySubscription(token, choice, origin);
-  }
-  const plan: PlanId = choice === "year" ? "year" : access.introUsed ? "month" : "intro";
-  if (plan !== "year") {
-    const origin = await siteOrigin();
-    if (!origin) return { error: "Could not determine the site address for checkout." };
-    return createMonthlySubscription(token, plan, origin);
-  }
-
-  const spec = PLANS[plan];
-  const amount = usd(spec.cents);
-  const label = spec.name.replaceAll("—", "-");
-
   const origin = await siteOrigin();
   if (!origin) return { error: "Could not determine the site address for checkout." };
-
-  const response = await paypalFetch(`${paypalBase()}/v2/checkout/orders`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      intent: "CAPTURE",
-      purchase_units: [
-        {
-          custom_id: plan,
-          description: label,
-          amount: {
-            currency_code: "USD",
-            value: amount,
-            breakdown: { item_total: { currency_code: "USD", value: amount } },
-          },
-          items: [
-            {
-              name: label,
-              quantity: "1",
-              category: "DIGITAL_GOODS",
-              unit_amount: { currency_code: "USD", value: amount },
-            },
-          ],
-        },
-      ],
-      payment_source: {
-        paypal: {
-          experience_context: {
-            brand_name: "AnodeH",
-            locale: "en-US",
-            landing_page: "LOGIN",
-            shipping_preference: "NO_SHIPPING",
-            user_action: "PAY_NOW",
-            return_url: `${origin}/billing`,
-            cancel_url: `${origin}/billing?canceled=1`,
-          },
-        },
-      },
-    }),
-  });
-  const payload = (await response.json().catch(() => null)) as {
-    id?: string;
-    message?: string;
-    details?: { description?: string }[];
-    links?: { href?: string; rel?: string }[];
-  } | null;
-  const approve =
-    payload?.links?.find((link) => link.rel === "payer-action")?.href ||
-    payload?.links?.find((link) => link.rel === "approve")?.href;
-  if (!response.ok || !payload?.id || !approve) {
-    return { error: paypalError(payload, "PayPal could not start the payment.") };
+  const discounted = !access.introUsed;
+  if (choice === "sites10" || choice === "sites20") {
+    return createMonthlySubscription(token, choice, origin, discounted);
   }
-
-  const redirectUrl = new URL(approve);
-  if (!paypalRedirectHost(redirectUrl)) return { error: "PayPal returned an unexpected payment link." };
-
-  await execute(
-    await getDb(),
-    "INSERT INTO checkouts (id, plan, amount, created_at) VALUES (?, ?, ?, ?)",
-    [payload.id, plan, spec.cents, nowSec()],
-  );
-  return { url: approve };
+  return createMonthlySubscription(token, discounted ? "intro" : "month", origin, discounted);
 }
 
 export async function capturePayPalOrder(orderId: string) {
@@ -486,36 +419,34 @@ async function paypalProductId(token: string) {
   return created.payload.id;
 }
 
-async function monthlyPlanId(token: string, trial: boolean) {
-  const key = `paypal_plan_${trial ? "trial7" : "month"}_${paypalMode()}`;
+async function pricedPlanId(token: string, keyName: string, name: string, fullCents: number, introCents: number, discounted: boolean) {
+  const key = `paypal_plan_${keyName}_${paypalMode()}`;
   const existing = await setting(key);
   if (existing) return existing;
   const productId = await paypalProductId(token);
   if (!productId) return null;
-
   const regular = {
     frequency: { interval_unit: "DAY", interval_count: PERIOD_DAYS },
-    tenure_type: "REGULAR",
-    sequence: trial ? 2 : 1,
+    tenure_type: "REGULAR" as const,
+    sequence: discounted ? 2 : 1,
     total_cycles: 0,
-    pricing_scheme: { fixed_price: { value: usd(STANDARD_CENTS), currency_code: "USD" } },
+    pricing_scheme: { fixed_price: { value: usd(fullCents), currency_code: "USD" } },
   };
-  const cycles = trial
+  const cycles = discounted
     ? [
         {
-          frequency: { interval_unit: "DAY", interval_count: TRIAL_DAYS },
+          frequency: { interval_unit: "DAY", interval_count: PERIOD_DAYS },
           tenure_type: "TRIAL",
           sequence: 1,
           total_cycles: 1,
-          pricing_scheme: { fixed_price: { value: "0.00", currency_code: "USD" } },
+          pricing_scheme: { fixed_price: { value: usd(introCents), currency_code: "USD" } },
         },
         regular,
       ]
     : [regular];
-
   const created = await paypalJson(token, "/v1/billing/plans", {
     product_id: productId,
-    name: trial ? "AnodeH monthly - 7 day free trial" : "AnodeH monthly",
+    name,
     status: "ACTIVE",
     billing_cycles: cycles,
     payment_preferences: {
@@ -528,37 +459,12 @@ async function monthlyPlanId(token: string, trial: boolean) {
   return created.payload.id;
 }
 
-async function websitePlanId(token: string, sites: 10 | 20) {
-  const key = `paypal_plan_sites${sites}_${paypalMode()}`;
-  const existing = await setting(key);
-  if (existing) return existing;
-  const productId = await paypalProductId(token);
-  if (!productId) return null;
-  const cents = sites === 10 ? SITES_10_CENTS : SITES_20_CENTS;
-  const created = await paypalJson(token, "/v1/billing/plans", {
-    product_id: productId,
-    name: `AnodeH ${sites} websites`,
-    status: "ACTIVE",
-    billing_cycles: [
-      {
-        frequency: { interval_unit: "DAY", interval_count: PERIOD_DAYS },
-        tenure_type: "REGULAR",
-        sequence: 1,
-        total_cycles: 0,
-        pricing_scheme: { fixed_price: { value: usd(cents), currency_code: "USD" } },
-      },
-    ],
-    payment_preferences: {
-      auto_bill_outstanding: true,
-      payment_failure_threshold: 2,
-    },
-  });
-  if (!created.ok || !created.payload?.id) return null;
-  await saveSetting(key, created.payload.id);
-  return created.payload.id;
-}
-
-async function createMonthlySubscription(token: string, plan: "intro" | "month" | "sites10" | "sites20", origin: string) {
+async function createMonthlySubscription(
+  token: string,
+  plan: "intro" | "month" | "sites10" | "sites20",
+  origin: string,
+  discounted: boolean,
+) {
   const current = await setting("paypal_subscription");
   if (current) {
     const state = await applySubscription(current);
@@ -566,9 +472,18 @@ async function createMonthlySubscription(token: string, plan: "intro" | "month" 
   }
 
   const planId =
-    plan === "sites10" || plan === "sites20"
-      ? await websitePlanId(token, plan === "sites10" ? 10 : 20)
-      : await monthlyPlanId(token, plan === "intro");
+    plan === "sites20"
+      ? await pricedPlanId(token, discounted ? "sites20_half30" : "sites20_full", "AnodeH 20 websites", SITES_20_CENTS, SITES_20_INTRO_CENTS, discounted)
+      : plan === "sites10"
+        ? await pricedPlanId(token, discounted ? "sites10_half30" : "sites10_full", "AnodeH 10 websites", SITES_10_CENTS, SITES_10_INTRO_CENTS, discounted)
+        : await pricedPlanId(
+            token,
+            discounted ? "half30" : "month",
+            discounted ? "AnodeH 1 website - first month half" : "AnodeH monthly",
+            STANDARD_CENTS,
+            INTRO_CENTS,
+            discounted,
+          );
   if (!planId) return { error: "PayPal could not prepare the monthly plan." };
 
   const created = await paypalJson(token, "/v1/billing/subscriptions", {
@@ -634,7 +549,9 @@ async function applySubscription(
     paidCents === INTRO_CENTS ||
     paidCents === STANDARD_CENTS ||
     paidCents === SITES_10_CENTS ||
-    paidCents === SITES_20_CENTS;
+    paidCents === SITES_10_INTRO_CENTS ||
+    paidCents === SITES_20_CENTS ||
+    paidCents === SITES_20_INTRO_CENTS;
   const nextBilling = isoToSec(subscription.billing_info?.next_billing_time);
   const periodEnd = nextBilling || (payment?.time && paidCents > 0 ? isoToSec(payment.time) + PERIOD_DAYS * DAY : 0);
   const currencyOk = !payment || payment.amount?.currency_code === "USD";
@@ -661,7 +578,8 @@ async function applySubscription(
     [paymentId, owner || "", paidCents, nowSec(), periodEnd],
   );
   if (!existingPayment && owner) {
-    const label = paidCents === INTRO_CENTS ? "First 30 days" : sites === 10 ? "10 websites" : sites === 20 ? "20 websites" : "30 days";
+    const firstMonth = paidCents === INTRO_CENTS || paidCents === SITES_10_INTRO_CENTS || paidCents === SITES_20_INTRO_CENTS;
+    const label = firstMonth ? "First 30 days" : sites === 10 ? "10 websites" : sites === 20 ? "20 websites" : "30 days";
     await sendPurchaseReceipt({
       userId: owner,
       paymentId,

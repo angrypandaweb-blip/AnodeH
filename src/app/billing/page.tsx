@@ -3,18 +3,11 @@ import {
   capturePayPalOrder,
   confirmPayPalSubscription,
   dayPhrase,
-  dollars,
   getAccess,
   paymentsConfigured,
   paypalLive,
-  PERIOD_DAYS,
   planDate,
   quotesFor,
-  STANDARD_CENTS,
-  ANNUAL_CENTS,
-  SITES_10_CENTS,
-  SITES_20_CENTS,
-  TRIAL_DAYS,
 } from "@/lib/billing";
 import { getUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -43,23 +36,22 @@ export default async function BillingPage({
   const access = await getAccess();
   const quote = await quotesFor(user?.email || "", user?.country || "");
   const ready = paymentsConfigured();
-  const monthPrice = access.introUsed ? quote.standard : "Free";
   const paypalNote = quote.currency === "USD"
-    ? `The monthly plan is free for ${TRIAL_DAYS} days, then PayPal deducts ${dollars(STANDARD_CENTS)} every 30 days automatically.`
-    : `Prices are in ${quote.name}, for the country on this account. PayPal collects US dollars: nothing for ${TRIAL_DAYS} days, then ${dollars(STANDARD_CENTS)} every 30 days. The year is ${dollars(ANNUAL_CENTS)}. Ten websites are ${dollars(SITES_10_CENTS)} every 30 days, and twenty websites are ${dollars(SITES_20_CENTS)}.`;
+    ? `The first 30 days are half price: ${quote.half} for one website, ${quote.half10} for ten, and ${quote.half20} for twenty. Then PayPal deducts ${quote.standard}, ${quote.sites10}, or ${quote.sites20} every 30 days.`
+    : `Prices are in ${quote.name}, for the country on this account. PayPal collects US dollars. The first 30 days are half price, then the regular price every 30 days.`;
 
   return (
     <div>
       <header className="page-head">
         <div>
           <p className="eyebrow">Plan</p>
-          <h1>{access.lifetime ? "Lifetime access" : access.introUsed ? "Monthly plan" : `${TRIAL_DAYS} days free`}</h1>
+          <h1>{access.lifetime ? "Lifetime access" : "Half price first month"}</h1>
           <p className="sub">
             {access.lifetime
               ? "This account does not expire. PayPal is not needed."
               : access.introUsed
-                ? `${quote.standard} every 30 days until you cancel. The year is ${quote.annual} once and does not renew.`
-                : `Free for ${TRIAL_DAYS} days. Then PayPal deducts ${quote.standard} every 30 days until you cancel. The year is ${quote.annual} once and does not renew.`}
+                ? `${quote.standard} every 30 days for one website, ${quote.sites10} for ten, or ${quote.sites20} for twenty, until you cancel.`
+                : `${quote.half} for one website, ${quote.half10} for ten, or ${quote.half20} for twenty. Then the regular price every 30 days until you cancel.`}
           </p>
         </div>
       </header>
@@ -80,7 +72,9 @@ export default async function BillingPage({
             <h2 style={{ marginTop: 10 }}>Paid through {planDate(access.endsAt)}</h2>
             <p className="note">
               {dayPhrase(access.daysLeft)} remaining.
-              {` The next charge is ${quote.standard} every 30 days, or a year is ${quote.annual}.`}
+              {access.sites > 1
+                ? ` This account covers ${access.sites} websites.`
+                : ` This account covers 1 website.`}
             </p>
           </>
         ) : (
@@ -88,8 +82,8 @@ export default async function BillingPage({
             <h2 style={{ marginTop: 10 }}>Protection starts when you pay</h2>
             <p className="note">
               {access.introUsed
-                ? `The free trial has been used. Continue at ${quote.standard} every ${PERIOD_DAYS} days, or ${quote.annual} for the year.`
-                : `The first ${TRIAL_DAYS} days are free. Then PayPal deducts ${quote.standard} every 30 days until you cancel.`}
+                ? `The half-price month has been used. Continue at ${quote.standard} for one website, ${quote.sites10} for ten, or ${quote.sites20} for twenty, every 30 days.`
+                : `The first 30 days are half price. Then PayPal deducts the regular price every 30 days until you cancel.`}
             </p>
           </>
         )}
@@ -111,38 +105,38 @@ export default async function BillingPage({
       {access.lifetime ? null : (
       <section className="plans">
         <article className="card">
-          <span className="card-label">{access.introUsed ? "30 days" : `${TRIAL_DAYS} days free`}</span>
-          <p className="price">
-            {monthPrice}
-          </p>
+          <span className="card-label">1 website</span>
+          <p className="price">{access.introUsed ? quote.standard : quote.half}</p>
           <p className="note">
-            One website.{" "}
             {access.introUsed
-              ? `${quote.standard} is deducted from PayPal every 30 days until you cancel.`
-              : `Free for ${TRIAL_DAYS} days, then PayPal deducts ${quote.standard} every 30 days until you cancel.`}
+              ? `${quote.standard} every 30 days until you cancel.`
+              : `${quote.half} for the first 30 days, then ${quote.standard} every 30 days until you cancel.`}
           </p>
-          <PayPalCheckout plan="month" label={access.introUsed ? "Subscribe with PayPal" : "Start free trial"} />
-        </article>
-
-        <article className="card">
-          <span className="card-label">Annual</span>
-          <p className="price">{quote.annual}</p>
-          <p className="note">One website. One payment for 365 days. This plan does not renew.</p>
-          <PayPalCheckout plan="year" label={`Pay ${quote.annual} with PayPal`} />
+          <PayPalCheckout plan="month" label="Subscribe with PayPal" />
         </article>
 
         <article className="card">
           <span className="card-label">10 websites</span>
-          <p className="price">{quote.sites10}</p>
-          <p className="note">Best for growing businesses managing multiple websites. {quote.sites10} every 30 days until you cancel.</p>
-          <PayPalCheckout plan="sites10" label={`Subscribe for ${quote.sites10}`} />
+          <p className="price">{access.introUsed ? quote.sites10 : quote.half10}</p>
+          <p className="note">
+            Best for growing businesses managing multiple websites.{" "}
+            {access.introUsed
+              ? `${quote.sites10} every 30 days until you cancel.`
+              : `${quote.half10} for the first 30 days, then ${quote.sites10} every 30 days until you cancel.`}
+          </p>
+          <PayPalCheckout plan="sites10" label="Subscribe with PayPal" />
         </article>
 
         <article className="card">
           <span className="card-label">20 websites</span>
-          <p className="price">{quote.sites20}</p>
-          <p className="note">Best for growing businesses managing multiple websites. {quote.sites20} every 30 days until you cancel.</p>
-          <PayPalCheckout plan="sites20" label={`Subscribe for ${quote.sites20}`} />
+          <p className="price">{access.introUsed ? quote.sites20 : quote.half20}</p>
+          <p className="note">
+            Best for growing businesses managing multiple websites.{" "}
+            {access.introUsed
+              ? `${quote.sites20} every 30 days until you cancel.`
+              : `${quote.half20} for the first 30 days, then ${quote.sites20} every 30 days until you cancel.`}
+          </p>
+          <PayPalCheckout plan="sites20" label="Subscribe with PayPal" />
         </article>
       </section>
       )}

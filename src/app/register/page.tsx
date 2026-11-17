@@ -1,7 +1,7 @@
 import { RegisterForm } from "@/components/RegisterForm";
 import { Mark } from "@/components/Mark";
 import { safePlan } from "@/lib/auth";
-import { ANNUAL_CENTS, dollars, SITES_10_CENTS, SITES_20_CENTS, STANDARD_CENTS } from "@/lib/billing";
+import { dollars, INTRO_CENTS, SITES_10_CENTS, SITES_10_INTRO_CENTS, SITES_20_CENTS, SITES_20_INTRO_CENTS, STANDARD_CENTS } from "@/lib/billing";
 import { allUsdRates, convertUsdCents, countryChoices, currencyForCountry, formatMoney } from "@/lib/residence-currency";
 
 export const dynamic = "force-dynamic";
@@ -22,29 +22,34 @@ export default async function RegisterPage({
   const back = plan ? `/register?plan=${plan}` : "/register";
   const countries = countryChoices();
   const rates = await allUsdRates();
-  const quotes: Record<string, { currency: string; intro: string; standard: string; annual: string; sites10: string; sites20: string }> = {};
+  const quotes: Record<string, { currency: string; half: string; standard: string; half10: string; sites10: string; half20: string; sites20: string }> = {};
   for (const country of countries) {
     const currency = currencyForCountry(country.code);
+    const half = quote(INTRO_CENTS, currency, rates);
     const standard = quote(STANDARD_CENTS, currency, rates);
-    const annual = quote(ANNUAL_CENTS, currency, rates);
+    const half10 = quote(SITES_10_INTRO_CENTS, currency, rates);
     const sites10 = quote(SITES_10_CENTS, currency, rates);
+    const half20 = quote(SITES_20_INTRO_CENTS, currency, rates);
     const sites20 = quote(SITES_20_CENTS, currency, rates);
-    const same = [standard, annual, sites10, sites20].every((item) => item.currency === currency);
+    const priced = [half, standard, half10, sites10, half20, sites20];
+    const same = priced.every((item) => item.currency === currency);
     quotes[country.code] = {
       currency: same ? currency : "USD",
-      intro: "Free",
+      half: half.text,
       standard: standard.text,
-      annual: annual.text,
+      half10: half10.text,
       sites10: sites10.text,
+      half20: half20.text,
       sites20: sites20.text,
     };
   }
   const fallback = {
     currency: "USD",
-    intro: "Free",
+    half: dollars(INTRO_CENTS),
     standard: dollars(STANDARD_CENTS),
-    annual: dollars(ANNUAL_CENTS),
+    half10: dollars(SITES_10_INTRO_CENTS),
     sites10: dollars(SITES_10_CENTS),
+    half20: dollars(SITES_20_INTRO_CENTS),
     sites20: dollars(SITES_20_CENTS),
   };
 
