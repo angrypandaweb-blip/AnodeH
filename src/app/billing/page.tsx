@@ -29,11 +29,11 @@ export default async function BillingPage({
 
   if (params.subscription_id) {
     const result = await confirmPayPalSubscription(params.subscription_id);
-    if (result.ok) redirect(`/dashboard?purchase=${encodeURIComponent(result.transactionId)}`);
+    if (result.ok) redirect(`/thank-you?purchase=${encodeURIComponent(result.transactionId)}`);
     payError = result.error || "PayPal has not confirmed this subscription.";
   } else if (params.token) {
     const result = await capturePayPalOrder(params.token);
-    if (result.ok) redirect(`/dashboard?purchase=${encodeURIComponent(result.transactionId)}`);
+    if (result.ok) redirect(`/thank-you?purchase=${encodeURIComponent(result.transactionId)}`);
     payError = result.error || "PayPal has not confirmed this payment.";
   }
 
