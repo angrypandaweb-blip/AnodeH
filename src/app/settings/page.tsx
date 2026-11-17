@@ -177,7 +177,7 @@ export default async function SettingsPage({
         <span className="card-label">Site tag</span>
         <p className="note">
           This account covers {siteLabel}. {(companies ? companies.companies.length : domains.length)} of {access.sites} {(companies ? companies.companies.length : domains.length) === 1 ? "is" : "are"} saved.
-          {companies ? " Open a company to see its clicks and its Google Ads account." : ""}
+          {companies ? " Click a company to open its results." : ""}
         </p>
         {companies ? (
           <>
@@ -207,13 +207,10 @@ export default async function SettingsPage({
                         <button type="submit">Save account</button>
                       </div>
                     </form>
-                    {company.domain === companies.active ? null : (
-                      <form action={switchCompany}>
-                        <input type="hidden" name="domain" value={company.domain} />
-                        <input type="hidden" name="return" value="/settings" />
-                        <button type="submit">Open</button>
-                      </form>
-                    )}
+                    <form action={switchCompany}>
+                      <input type="hidden" name="domain" value={company.domain} />
+                      <button type="submit">{company.domain === companies.active ? "Showing these results" : "See results"}</button>
+                    </form>
                     <form action={removeCompany}>
                       <input type="hidden" name="domain" value={company.domain} />
                       <button className="ghost" type="submit">Remove</button>

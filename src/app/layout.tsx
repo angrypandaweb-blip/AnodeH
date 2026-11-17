@@ -69,8 +69,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <small>{brandDomain}</small>
               </span>
             </a>
-            {companies && companies.companies.length > 1 ? (
+            {companies && companies.companies.length > 0 ? (
               <CompanySwitch companies={companies.companies} active={companies.active} />
+            ) : companies ? (
+              <p className="company-empty"><a href="/settings">Add a company</a></p>
             ) : null}
             <Nav unread={unread} />
           </aside>
