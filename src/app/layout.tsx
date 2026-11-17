@@ -13,6 +13,7 @@ import { getAccess, planSummary, quotesFor } from "@/lib/billing";
 import { getPolicy } from "@/lib/engine";
 import { sendDueDailyReport, sendWelcomeSampleOnce } from "@/lib/email-reports";
 import { unreadCount } from "@/lib/queries";
+import { visitorIp } from "@/lib/visitor-country";
 import "./globals.css";
 
 const display = Fraunces({ subsets: ["latin"], variable: "--font-display" });
@@ -58,6 +59,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const openCompany = companies?.companies.find((company) => company.domain === companies.active);
   const watching = openCompany ? openCompany.adsAccount : user.adsAccount;
   const brandDomain = openCompany?.domain || policy.domain;
+  const ip = await visitorIp();
   return (
     <html lang="en">
       <body className={`${display.variable} ${sans.variable}`}>
@@ -68,6 +70,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <span>
                 <span className="brand-name">AnodeH</span>
                 <small>{brandDomain}</small>
+                {ip ? <small className="mono">{ip}</small> : null}
               </span>
             </a>
             {companies && companies.companies.length > 0 ? (
