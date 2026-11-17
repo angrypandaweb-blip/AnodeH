@@ -2,6 +2,7 @@ import { Fraunces, Outfit } from "next/font/google";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Assistant } from "@/components/Assistant";
+import { GoogleTag } from "@/components/GoogleTag";
 import { Mark } from "@/components/Mark";
 import { Nav } from "@/components/Nav";
 import { logoutAccount } from "@/app/actions";
@@ -32,6 +33,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     return (
       <html lang="en">
         <body className={`${display.variable} ${sans.variable}`}>
+          <GoogleTag />
           {children}
           <Assistant />
         </body>
@@ -89,6 +91,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </form>
           </footer>
         </div>
+        <GoogleTag />
         <Assistant />
       </body>
     </html>
