@@ -79,7 +79,7 @@ export default async function SettingsPage({
           </>
         ) : (
           <p className="note">
-            {googleAdsSetupError()} The OAuth client needs the scope https://www.googleapis.com/auth/adwords and this redirect URI: {origin}/api/google-ads/callback. On the Google Ads API overview page, upgrade access from Test to Explorer.
+            {googleAdsSetupError()} The OAuth client needs the scope https://www.googleapis.com/auth/adwords and this redirect URI: {origin}/api/google-ads/callback. Upgrade access from Test to Explorer on the <a href="https://console.cloud.google.com/google/ads-apis/overview" target="_blank" rel="noreferrer">Google Ads API overview page</a>.
           </p>
         )}
       </article>
