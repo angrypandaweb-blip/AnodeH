@@ -1,5 +1,5 @@
 import { headers } from "next/headers";
-import { deleteAllow, removeCompany, saveAdsAccount, saveAverageClickPrice, saveCompany, saveTrackedDomain, switchCompany, updateCompanyAccount, updateSettings } from "@/app/actions";
+import { deleteAllow, removeCompany, saveAdsAccount, saveAverageClickPrice, saveCompany, saveCompanyClickPrice, saveTrackedDomain, switchCompany, updateCompanyAccount, updateSettings } from "@/app/actions";
 import { AllowForm } from "@/components/AllowForm";
 import { getUser } from "@/lib/auth";
 import { getAccess } from "@/lib/billing";
@@ -79,6 +79,11 @@ export default async function SettingsPage({
                 <input type="text" name="adsAccount" inputMode="numeric" placeholder="123-456-7890" />
                 <small>Optional. Ten digits, with or without dashes.</small>
               </label>
+              <label>
+                Average Google click ({currency})
+                <input type="text" name="price" inputMode="decimal" placeholder="15.50" aria-label="Average Google click for the new company" />
+                <small>Optional. What one paid click costs on this website.</small>
+              </label>
               <div>
                 <button type="submit">Add company</button>
               </div>
@@ -86,6 +91,31 @@ export default async function SettingsPage({
           ) : (
             <p className="note">All {access.sites} websites are in use. Remove one to add a different company.</p>
           )}
+          {companies.companies.length ? (
+            <>
+              <p className="note">Average Google click cost for each company already saved.</p>
+              {companies.companies.map((company) => (
+                <form action={saveCompanyClickPrice} className="form-grid company-price" key={company.domain}>
+                  <input type="hidden" name="domain" value={company.domain} />
+                  <label>
+                    {company.domain} ({currency})
+                    <input
+                      type="text"
+                      name="price"
+                      inputMode="decimal"
+                      defaultValue={company.clickPrice || averagePrice}
+                      placeholder="15.50"
+                      aria-label={`Average Google click for ${company.domain}`}
+                    />
+                    <small>Overview multiplies this website&apos;s paid clicks by this amount. Organic visits stay at zero. Leave it blank to use the account estimate, or the built-in estimate when none is saved.</small>
+                  </label>
+                  <div>
+                    <button type="submit">Save price</button>
+                  </div>
+                </form>
+              ))}
+            </>
+          ) : null}
         </article>
       ) : null}
 
@@ -186,6 +216,7 @@ export default async function SettingsPage({
         ) : null}
       </article>
 
+      {companies ? null : (
       <article className="card">
         <span className="card-label">Average click</span>
         <form action={saveAverageClickPrice} className="form-grid">
@@ -199,6 +230,7 @@ export default async function SettingsPage({
           </div>
         </form>
       </article>
+      )}
 
       <article className="card">
         <span className="card-label">Site tag</span>

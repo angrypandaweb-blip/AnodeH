@@ -1,17 +1,23 @@
 import { cache } from "react";
+import { clickPrice } from "@/lib/click-price";
 import { coveredDomains, trackedDomain } from "@/lib/domain";
 import { execute, getDb, queryAll, queryOne } from "@/lib/db";
 import { normalizeAdsAccount } from "@/lib/format";
 import { storedSites } from "@/lib/site-plans";
 
-export type Company = { domain: string; adsAccount: string };
+export type Company = { domain: string; adsAccount: string; clickPrice: string };
+
+function storedClickPrice(value: unknown): string {
+  const price = clickPrice(String(value || ""));
+  return price == null ? "" : String(price);
+}
 
 export function companyList(stored: string | undefined, primary: string, extra: string | undefined, adsAccount: string): Company[] {
   const saved = parseCompanies(stored);
   if (saved.length) return saved;
   const domains = coveredDomains(primary, extra).filter((domain) => domain !== "anodeh.com");
   const account = normalizeAdsAccount(adsAccount) || "";
-  return domains.map((domain, index) => ({ domain, adsAccount: index === 0 ? account : "" }));
+  return domains.map((domain, index) => ({ domain, adsAccount: index === 0 ? account : "", clickPrice: "" }));
 }
 
 export function parseCompanies(stored: string | undefined): Company[] {
@@ -26,10 +32,14 @@ export function parseCompanies(stored: string | undefined): Company[] {
   const companies: Company[] = [];
   for (const item of value) {
     if (!item || typeof item !== "object") continue;
-    const record = item as { domain?: unknown; adsAccount?: unknown };
+    const record = item as { domain?: unknown; adsAccount?: unknown; clickPrice?: unknown };
     const domain = trackedDomain(String(record.domain || ""));
     if (!domain || companies.some((company) => company.domain === domain)) continue;
-    companies.push({ domain, adsAccount: normalizeAdsAccount(String(record.adsAccount || "")) || "" });
+    companies.push({
+      domain,
+      adsAccount: normalizeAdsAccount(String(record.adsAccount || "")) || "",
+      clickPrice: storedClickPrice(record.clickPrice),
+    });
   }
   return companies;
 }
