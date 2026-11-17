@@ -135,16 +135,18 @@ export async function saveCompany(formData: FormData) {
   const user = await getUser();
   if (!user) redirect("/login?next=/settings");
   const domain = trackedDomain(String(formData.get("domain") || ""));
-  const adsAccount = normalizeAdsAccount(String(formData.get("adsAccount") || ""));
-  if (!domain) redirect(withError("/settings", "Enter the domain you want to track, like example.com."));
-  if (!adsAccount) redirect(withError("/settings", "Enter a 10-digit Google Ads account number, like 123-456-7890."));
+  const rawAds = String(formData.get("adsAccount") || "").trim();
+  const parsedAds = rawAds ? normalizeAdsAccount(rawAds) : "";
+  if (!domain) redirect(`${withError("/settings", "Enter the website address, like example.com.")}#add-company`);
+  if (rawAds && !parsedAds) redirect(`${withError("/settings", "Enter a 10-digit Google Ads account number, like 123-456-7890, or leave it blank.")}#add-company`);
+  const adsAccount = parsedAds || "";
   const access = await getAccess(user.id);
   const { companies, active } = await loadCompanies(user.id);
   if (companies.some((company) => company.domain === domain)) {
-    redirect(withError("/settings", "That website is already on this account."));
+    redirect(`${withError("/settings", "That website is already on this account.")}#add-company`);
   }
   if (companies.length >= access.sites) {
-    redirect(withError("/settings", `This account covers ${access.sites} websites. Remove one before adding another.`));
+    redirect(`${withError("/settings", `This account covers ${access.sites} websites. Remove one before adding another.`)}#add-company`);
   }
   await persistCompanies(user.id, [...companies, { domain, adsAccount }], active || domain);
   refresh();
