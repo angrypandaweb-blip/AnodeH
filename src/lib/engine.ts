@@ -76,6 +76,24 @@ export function isAllowed(ip: string, values: string[]): boolean {
   });
 }
 
+export function allowClickClauses(column: string, values: string[]) {
+  const clauses: string[] = [];
+  const params: string[] = [];
+  for (const value of values) {
+    if (value.endsWith("/24")) {
+      const prefix = value.split(".").slice(0, 3).join(".");
+      if (!prefix) continue;
+      clauses.push(`${column} NOT LIKE ?`);
+      params.push(`${prefix}.%`);
+      continue;
+    }
+    if (!value) continue;
+    clauses.push(`${column} != ?`);
+    params.push(value);
+  }
+  return { clauses, params };
+}
+
 export function to24(ip: string): string | null {
   const parts = ip.split(".");
   if (parts.length !== 4) return null;
