@@ -69,22 +69,38 @@ export async function dailySeries() {
   const now = new Date();
   now.setHours(0, 0, 0, 0);
   const start = Math.floor(now.getTime() / 1000) - 6 * 86400;
-  const rows = await queryAll<{ ts: number; action: string }>(
+  const rows = await queryAll<{ ts: number; action: string; channel: string; reasons: string }>(
     await getDb(),
-    "SELECT ts, action FROM clicks WHERE user_id = ? AND ts >= ?",
+    "SELECT ts, action, channel, reasons FROM clicks WHERE user_id = ? AND ts >= ?",
     [await mine(), start],
   );
-  const days: { ts: number; allow: number; other: number }[] = [];
+  const days: { ts: number; allow: number; organic: number; flagged: number; repeat: number }[] = [];
   for (let i = 0; i < 7; i++) {
-    days.push({ ts: start + i * 86400, allow: 0, other: 0 });
+    days.push({ ts: start + i * 86400, allow: 0, organic: 0, flagged: 0, repeat: 0 });
   }
   for (const row of rows) {
     const index = Math.floor((row.ts - start) / 86400);
     if (index < 0 || index > 6) continue;
-    if (row.action === "allow") days[index].allow += 1;
-    else days[index].other += 1;
+    const organic = row.channel === "organic";
+    const repeated = reasonCodes(row.reasons).includes("repeat_ip");
+    const day = days[index];
+    if (organic && row.action === "allow") day.allow += 1;
+    else if (organic && row.action === "flag") day.flagged += 1;
+    else if (organic) day.organic += 1;
+    else if (repeated) day.repeat += 1;
+    else if (row.action === "allow") day.allow += 1;
+    else day.flagged += 1;
   }
   return days;
+}
+
+function reasonCodes(raw: string): string[] {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? parsed.map((reason) => String(reason)) : [];
+  } catch {
+    return [];
+  }
 }
 
 export async function recentRisky(limit = 6): Promise<ClickRow[]> {

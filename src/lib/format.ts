@@ -36,3 +36,13 @@ export function scoreBand(score: number): "ok" | "watch" | "stop" {
   if (score >= 40) return "watch";
   return "ok";
 }
+
+export function scoreTone(score: number): { background: string; color: string } {
+  const t = Math.min(1, Math.max(0, score) / 70);
+  const hue = Math.round(142 - t * 142);
+  const light = Math.round(93 - t * 48);
+  return {
+    background: `hsl(${hue} 68% ${light}%)`,
+    color: light < 58 ? "#ffffff" : `hsl(${hue} 62% 24%)`,
+  };
+}

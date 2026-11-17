@@ -1,7 +1,7 @@
 import { unblock } from "@/app/actions";
 import { getUser } from "@/lib/auth";
 import { CAMPAIGNS } from "@/lib/campaigns";
-import { compact, scoreBand, when } from "@/lib/format";
+import { compact, scoreTone, when } from "@/lib/format";
 import { placeFor } from "@/lib/residence-currency";
 import { refreshGoogleAdsIfStale } from "@/lib/google-ads";
 import { blockCounts, capacity, googleCampaigns, googleLink, listBlocks } from "@/lib/queries";
@@ -152,7 +152,7 @@ export default async function ProtectionPage({
               const range = block.kind === "subnet";
               return (
                 <article className="click" key={block.id}>
-                  <div className={`click-score pill ${scoreBand(block.score)}`} aria-label={`Score ${block.score}`}>
+                  <div className="click-score" style={scoreTone(block.score)} aria-label={`Score ${block.score}`}>
                     {block.score}
                   </div>
                   <div>

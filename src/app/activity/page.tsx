@@ -1,7 +1,7 @@
 import { manualBlock } from "@/app/actions";
 import { activitySince, type ActivityRange } from "@/lib/activity-range";
 import { getUser } from "@/lib/auth";
-import { compact, scoreBand, when } from "@/lib/format";
+import { compact, scoreTone, when } from "@/lib/format";
 import { activityCounts, googleLink, listClicks } from "@/lib/queries";
 import { formatMoney, placeFor, reportCurrency, usdRate } from "@/lib/residence-currency";
 import { REASON_LABELS } from "@/lib/score";
@@ -42,11 +42,14 @@ function activityHref(action: string, query: string, range: ActivityRange, traff
   return qs ? `/activity?${qs}` : "/activity";
 }
 
-function reasonList(raw: string): string[] {
+function reasonList(raw: string): { code: string; label: string }[] {
   try {
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
-    return parsed.map((reason) => REASON_LABELS[String(reason)] ?? String(reason));
+    return parsed.map((reason) => {
+      const code = String(reason);
+      return { code, label: REASON_LABELS[code] ?? code };
+    });
   } catch {
     return [];
   }
@@ -140,6 +143,7 @@ export default async function ActivityPage({
             </div>
             {rows.map((click) => {
               const reasons = reasonList(click.reasons);
+              const organic = click.channel === "organic";
               const held = click.campaign_type === "pmax";
               const kind = TYPE_LABEL[click.campaign_type as keyof typeof TYPE_LABEL] ?? click.campaign_type;
               const actionLabel = ACTION_LABEL[click.action as keyof typeof ACTION_LABEL] ?? click.action;
@@ -149,7 +153,7 @@ export default async function ActivityPage({
                 : null;
               return (
                 <article className="click" key={click.id}>
-                  <div className={`click-score pill ${scoreBand(click.score)}`} aria-label={`Score ${click.score}`}>
+                  <div className="click-score" style={scoreTone(click.score)} aria-label={`Score ${click.score}`}>
                     {click.score}
                   </div>
                   <div>
@@ -160,9 +164,14 @@ export default async function ActivityPage({
                       <span className={`pill ${click.channel === "organic" ? "organic" : "paid"}`}>{click.channel === "organic" ? "Organic" : "Paid"}</span>
                     </div>
                     <div className="reasons">
-                      {reasons.length === 0 ? <span className="reason">No risk signals</span> : null}
-                      {reasons.map((reason) => (
-                        <span className="reason" key={reason}>{reason}</span>
+                      {reasons.length === 0 ? <span className={`reason ${organic ? "organic" : ""}`}>No risk signals</span> : null}
+                      {reasons.map((reason, index) => (
+                        <span
+                          className={`reason ${organic ? "organic" : ""} ${!organic && reason.code === "repeat_ip" ? "repeat" : ""}`}
+                          key={`${reason.code}-${index}`}
+                        >
+                          {reason.label}
+                        </span>
                       ))}
                     </div>
                   </div>
