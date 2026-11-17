@@ -2,7 +2,7 @@ import { Mark } from "@/components/Mark";
 import { getUser } from "@/lib/auth";
 import { dollars, getAccess, quotesFor, STANDARD_CENTS, ANNUAL_CENTS, TRIAL_DAYS } from "@/lib/billing";
 import { formatMoney, reportCurrency } from "@/lib/residence-currency";
-import { visitorCountry } from "@/lib/visitor-country";
+import { visitorPlace, visitPlaceLabel } from "@/lib/visitor-country";
 
 export const dynamic = "force-dynamic";
 
@@ -31,12 +31,19 @@ export default async function LandingPage() {
   const yearHref = user ? (subscribed ? "/dashboard" : "/billing") : "/register?plan=year";
   const monthLabel = subscribed ? "Open dashboard" : access.introUsed ? "Subscribe with PayPal" : "Start free trial";
   const yearLabel = user ? (subscribed ? "Open dashboard" : "Pay for the year") : "Pay for the year";
-  const seen = user?.country || (await visitorCountry());
-  const [quote, local] = await Promise.all([
+  const visit = await visitorPlace();
+  const seen = user?.country || visit.country;
+  const visitLabel = visitPlaceLabel(visit);
+  const [quote, sampleLocal] = await Promise.all([
     quotesFor(user?.email || "", seen),
-    reportCurrency(user?.email || "", seen),
+    reportCurrency("", visit.country || seen),
   ]);
-  const sample = (usd: number) => formatMoney(Math.round(usd * local.rate), local.currency, 0);
+  const sample = (usd: number) => formatMoney(Math.round(usd * sampleLocal.rate), sampleLocal.currency, 0);
+  const sampleLead = visitLabel
+    ? `A sample week for a visit from ${visitLabel}. Amounts are in ${sampleLocal.name}. This is not a live account.`
+    : "A sample week, in the same layout subscribers open. Spend, invalid cost, and the clicks worth blocking are on one screen.";
+  const homeSource = visitLabel || "Sample visit";
+  const awaySource = visit.name ? `Outside ${visit.name}` : "Off-target country";
   const standard = quote?.standard ?? dollars(STANDARD_CENTS);
   const annual = quote?.annual ?? dollars(ANNUAL_CENTS);
 
@@ -62,16 +69,20 @@ export default async function LandingPage() {
         <p className="lede">
           AnodeH scores invalid traffic on your Google Ads campaigns and writes the exclusions for you. The budget stays with people who might become customers.
         </p>
+        <div className="hero-actions">
+          <a className="btn" href="#preview">See a sample</a>
+          <a className="btn ghost" href={startHref}>{startLabel}</a>
+        </div>
       </section>
 
       <section id="preview" className="preview">
         <h2>The dashboard you get</h2>
-        <p className="lede">A sample week, in the same layout subscribers open. Spend, invalid cost, and the clicks worth blocking are on one screen.</p>
+        <p className="lede">{sampleLead}</p>
         <div className="preview-frame">
           <div className="preview-top">
             <div>
               <strong>Google Ads 123-456-7890</strong>
-              <span>Sample week · not your live account</span>
+              <span>{visitLabel ? `Sample visit from ${visitLabel}` : "Sample week · not your live account"}</span>
             </div>
             <span className="offer-tag">What you see after you subscribe</span>
           </div>
@@ -154,21 +165,21 @@ export default async function LandingPage() {
                 <tr>
                   <td>Today, 2:14 PM</td>
                   <td>Nonbrand — Hiking<div className="muted">hiking backpack sale</div></td>
-                  <td><div className="mono">34.201.88.24</div><div className="muted">Amazon · US</div></td>
+                  <td><div className="mono">203.0.113.24</div><div className="muted">Datacenter · {homeSource}</div></td>
                   <td><span className="pill stop">82</span></td>
                   <td>Datacenter, instant bounce</td>
                 </tr>
                 <tr>
                   <td>Today, 11:02 AM</td>
                   <td>Brand — Exact<div className="muted">northwind tents</div></td>
-                  <td><div className="mono">73.184.22.10</div><div className="muted">Comcast · US</div></td>
+                  <td><div className="mono">203.0.113.10</div><div className="muted">Home connection · {homeSource}</div></td>
                   <td><span className="pill watch">71</span></td>
                   <td>Repeat address, short visit</td>
                 </tr>
                 <tr>
                   <td>Yesterday, 6:40 PM</td>
                   <td>Performance Max<div className="muted">Conversion held when blocked</div></td>
-                  <td><div className="mono">185.220.101.33</div><div className="muted">Mullvad · DE</div></td>
+                  <td><div className="mono">203.0.113.33</div><div className="muted">VPN · {awaySource}</div></td>
                   <td><span className="pill stop">88</span></td>
                   <td>VPN, off-target country</td>
                 </tr>
