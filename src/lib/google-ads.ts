@@ -378,10 +378,18 @@ export async function pullGoogleAds(userId: string) {
 
 export async function refreshGoogleAdsIfStale(userId: string) {
   try {
-    const link = await queryOne<{ synced_at: number }>(await getDb(), "SELECT synced_at FROM google_ads WHERE user_id = ?", [userId]);
+    const db = await getDb();
+    const link = await queryOne<{ synced_at: number; customer_id: string }>(
+      db,
+      "SELECT synced_at, customer_id FROM google_ads WHERE user_id = ?",
+      [userId],
+    );
     if (!link) return false;
+    const account = await queryOne<{ ads_account: string }>(db, "SELECT ads_account FROM users WHERE id = ?", [userId]);
+    const wanted = (account?.ads_account || "").replace(/\D/g, "");
+    const current = (link.customer_id || "").replace(/\D/g, "");
     const age = Math.floor(Date.now() / 1000) - link.synced_at;
-    if (age >= 0 && age < STALE_SECONDS) return true;
+    if (age >= 0 && age < STALE_SECONDS && (!wanted || current === wanted)) return true;
     await pullGoogleAds(userId);
     return true;
   } catch {

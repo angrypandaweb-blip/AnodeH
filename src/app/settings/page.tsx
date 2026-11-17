@@ -1,8 +1,9 @@
 import { headers } from "next/headers";
-import { deleteAllow, removeTrackedDomain, saveAdsAccount, saveAverageClickPrice, saveTrackedDomain, updateSettings } from "@/app/actions";
+import { deleteAllow, removeCompany, saveAdsAccount, saveAverageClickPrice, saveCompany, saveTrackedDomain, switchCompany, updateCompanyAccount, updateSettings } from "@/app/actions";
 import { AllowForm } from "@/components/AllowForm";
 import { getUser } from "@/lib/auth";
 import { getAccess } from "@/lib/billing";
+import { loadCompanies } from "@/lib/companies";
 import { coveredDomains } from "@/lib/domain";
 import { getPolicy } from "@/lib/engine";
 import { allowlist, savedClickPrice, savedDomainRecord } from "@/lib/queries";
@@ -36,6 +37,7 @@ export default async function SettingsPage({
     savedDomainRecord(),
     getAccess(),
   ]);
+  const companies = user && access.sites > 1 ? await loadCompanies(user.id) : null;
   const domains = coveredDomains(policy.domain, domainRecord).filter((domain) => domain !== "anodeh.com");
   const siteLabel = access.sites === 1 ? "1 website" : `${access.sites} websites`;
   const currency = placeFor(user?.country || "", user?.email || "").currency;
@@ -60,6 +62,7 @@ export default async function SettingsPage({
       {params.saved ? <p className="banner">Saved.</p> : null}
       {params.error ? <p className="banner warn">{params.error}</p> : null}
 
+      {companies ? null : (
       <article className="card">
         <span className="card-label">Google Ads account</span>
         <p className="note">
@@ -87,6 +90,7 @@ export default async function SettingsPage({
           </div>
         </form>
       </article>
+      )}
 
       <article className="card">
         <span className="card-label">Scoring</span>
@@ -171,35 +175,70 @@ export default async function SettingsPage({
 
       <article className="card">
         <span className="card-label">Site tag</span>
-        <p className="note">This account covers {siteLabel}. {domains.length} of {access.sites} {domains.length === 1 ? "is" : "are"} saved.</p>
-        {access.sites > 1 ? (
+        <p className="note">
+          This account covers {siteLabel}. {(companies ? companies.companies.length : domains.length)} of {access.sites} {(companies ? companies.companies.length : domains.length) === 1 ? "is" : "are"} saved.
+          {companies ? " Open a company to see its clicks and its Google Ads account." : ""}
+        </p>
+        {companies ? (
           <>
-            {domains.length ? (
+            {companies.companies.length ? (
               <ul className="accounts">
-                {domains.map((domain) => (
-                  <li key={domain}>
-                    <span className="mono">{domain}</span>
-                    <form action={removeTrackedDomain}>
-                      <input type="hidden" name="domain" value={domain} />
+                {companies.companies.map((company) => (
+                  <li key={company.domain} className="company-row">
+                    <span>
+                      <strong className="mono">{company.domain}</strong>
+                      <div className="muted">{company.domain === companies.active ? "Viewing this company" : "Saved"}</div>
+                    </span>
+                    <form action={updateCompanyAccount} className="form-grid">
+                      <input type="hidden" name="domain" value={company.domain} />
+                      <label>
+                        Google Ads account
+                        <input
+                          type="text"
+                          name="adsAccount"
+                          inputMode="numeric"
+                          defaultValue={company.adsAccount}
+                          placeholder="123-456-7890"
+                          aria-label={`Google Ads account for ${company.domain}`}
+                          required
+                        />
+                      </label>
+                      <div>
+                        <button type="submit">Save account</button>
+                      </div>
+                    </form>
+                    {company.domain === companies.active ? null : (
+                      <form action={switchCompany}>
+                        <input type="hidden" name="domain" value={company.domain} />
+                        <input type="hidden" name="return" value="/settings" />
+                        <button type="submit">Open</button>
+                      </form>
+                    )}
+                    <form action={removeCompany}>
+                      <input type="hidden" name="domain" value={company.domain} />
                       <button className="ghost" type="submit">Remove</button>
                     </form>
                   </li>
                 ))}
               </ul>
             ) : null}
-            {domains.length < access.sites ? (
-              <form action={saveTrackedDomain} className="form-grid">
+            {companies.companies.length < access.sites ? (
+              <form action={saveCompany} className="form-grid">
                 <label>
-                  Add a website
+                  Website
                   <input type="text" name="domain" placeholder="example.com" required />
-                  <small>The same tag goes on every website in this list.</small>
+                </label>
+                <label>
+                  Google Ads account
+                  <input type="text" name="adsAccount" inputMode="numeric" placeholder="123-456-7890" required />
+                  <small>The 10-digit customer ID for this website.</small>
                 </label>
                 <div>
-                  <button type="submit">Add website</button>
+                  <button type="submit">Add company</button>
                 </div>
               </form>
             ) : (
-              <p className="note">All {access.sites} websites are in use. Remove one to add a different site.</p>
+              <p className="note">All {access.sites} websites are in use. Remove one to add a different company.</p>
             )}
           </>
         ) : (
@@ -214,7 +253,7 @@ export default async function SettingsPage({
             </div>
           </form>
         )}
-        <p className="note">Paste this on {domains.length > 1 ? "each website above" : domains[0] || "the website you add"}. It sends the visit when the visitor leaves, or after eight seconds. A blocked visitor is then sent to anodeh.com/blocked. Allowed and flagged visitors stay on the page.</p>
+        <p className="note">Paste this on {(companies ? companies.companies.length : domains.length) > 1 ? "each website above" : (companies?.companies[0]?.domain || domains[0] || "the website you add")}. It sends the visit when the visitor leaves, or after eight seconds. A blocked visitor is then sent to anodeh.com/blocked. Allowed and flagged visitors stay on the page.</p>
         <pre className="snippet">{snippet}</pre>
       </article>
 

@@ -150,6 +150,7 @@ async function migrate(db: Client) {
   await addColumn(db, "users", "country", "TEXT NOT NULL DEFAULT ''");
   await addColumn(db, "clicks", "user_id", "TEXT NOT NULL DEFAULT ''");
   await addColumn(db, "clicks", "channel", "TEXT NOT NULL DEFAULT ''");
+  await addColumn(db, "clicks", "site", "TEXT NOT NULL DEFAULT ''");
   await execute(
     db,
     `UPDATE clicks SET channel = CASE
