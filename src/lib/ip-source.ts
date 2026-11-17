@@ -61,6 +61,13 @@ export function publicIpv4(value: string | null) {
   return isPublicIpv4(mapped) ? mapped : "";
 }
 
+export function publicVisitorIp(forwarded: string | null, real: string | null) {
+  const first = firstForwardedIp(forwarded);
+  if (isPublicIp(first)) return first;
+  const fallback = (real || "").trim();
+  return isPublicIp(fallback) ? fallback : "";
+}
+
 export function countryHeader(value: string | null) {
   const code = (value || "").trim().toUpperCase();
   return knownCountry(code) ? code : "";

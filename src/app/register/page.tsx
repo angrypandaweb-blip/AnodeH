@@ -3,6 +3,7 @@ import { Mark } from "@/components/Mark";
 import { safePlan } from "@/lib/auth";
 import { dollars, INTRO_CENTS, SITES_10_CENTS, SITES_10_INTRO_CENTS, SITES_20_CENTS, SITES_20_INTRO_CENTS, STANDARD_CENTS } from "@/lib/billing";
 import { allUsdRates, convertUsdCents, countryChoices, currencyForCountry, formatMoney } from "@/lib/residence-currency";
+import { visitorIp, visitorPlace } from "@/lib/visitor-country";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ export default async function RegisterPage({
 }) {
   const params = await searchParams;
   const plan = safePlan(params.plan);
+  const [place, ip] = await Promise.all([visitorPlace(), visitorIp()]);
   const back = plan ? `/register?plan=${plan}` : "/register";
   const countries = countryChoices();
   const rates = await allUsdRates();
@@ -68,7 +70,17 @@ export default async function RegisterPage({
       <section className="hero" style={{ textAlign: "left", maxWidth: 480 }}>
         <p className="kicker">Create an account</p>
         <h1>Create your account.</h1>
-        <RegisterForm plan={plan} back={back} error={params.error} countries={countries} quotes={quotes} fallback={fallback} />
+        <RegisterForm
+          plan={plan}
+          back={back}
+          error={params.error}
+          countries={countries}
+          quotes={quotes}
+          fallback={fallback}
+          detectedCountry={place.country}
+          detectedName={place.name}
+          ip={ip}
+        />
       </section>
     </div>
   );

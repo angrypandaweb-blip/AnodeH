@@ -20,6 +20,9 @@ export function RegisterForm({
   countries,
   quotes,
   fallback,
+  detectedCountry,
+  detectedName,
+  ip,
 }: {
   plan: "" | "month" | "sites10" | "sites20";
   back: string;
@@ -27,8 +30,12 @@ export function RegisterForm({
   countries: { code: string; name: string }[];
   quotes: Record<string, Quote>;
   fallback: Quote;
+  detectedCountry: string;
+  detectedName: string;
+  ip: string;
 }) {
-  const [country, setCountry] = useState("");
+  const known = countries.some((item) => item.code === detectedCountry) ? detectedCountry : "";
+  const [country, setCountry] = useState(known);
   const price = quotes[country] || fallback;
   const paypal = price.currency === "USD" ? "" : " PayPal collects the US dollar price.";
   const copy = plan === "month"
@@ -42,6 +49,12 @@ export function RegisterForm({
   return (
     <>
       <p className="lede" style={{ marginLeft: 0 }}>{copy}</p>
+      {ip || detectedName ? (
+        <p className="note">
+          {ip ? <>Your IP address is <span className="mono">{ip}</span>. </> : null}
+          {detectedName ? <>This IP is in {detectedName}, so the prices start in that country&apos;s currency.</> : null}
+        </p>
+      ) : null}
       {error ? <p className="banner warn">{error}</p> : null}
       <form action={registerAccount} className="form-grid">
         <input type="hidden" name="return" value={back} />
