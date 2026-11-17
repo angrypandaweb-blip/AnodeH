@@ -209,6 +209,7 @@ td { padding: 10px 10px 10px 0; border-top: 1px solid var(--line); vertical-alig
 .pill.block, .pill.stop { background: var(--brass); color: white; }
 .pill.paid { background: #e8f0fe; color: var(--cc-navy); }
 .pill.organic { background: #e5f6ea; color: #157347; }
+.organic-note { flex-basis: 100%; color: #157347; font-size: 12px; }
 .toolbar {
   display: flex;
   justify-content: space-between;

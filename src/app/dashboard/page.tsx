@@ -176,7 +176,7 @@ export default async function OverviewPage({
             {link ? <span><i className="swatch ok" /> Clicks from Google Ads</span> : (
               <>
                 <span><i className="swatch ok" /> Allowed</span>
-                <span><i className="swatch organic" /> Organic</span>
+                <span><i className="swatch organic" /> Organic · free click</span>
                 <span><i className="swatch bad" /> Flagged</span>
                 <span><i className="swatch repeat" /> Paid repeat IP</span>
               </>
