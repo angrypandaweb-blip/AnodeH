@@ -102,9 +102,9 @@ export default async function OverviewPage({
               <em>{compact(stats.invalid)} flagged or blocked · {compact(todayInvalid)} today</em>
             </article>
             <article className="metric">
-              <span>Invalid cost</span>
+              <span>Estimated invalid cost</span>
               <strong>{priced(stats.waste)}</strong>
-              <em>of {priced(stats.spend)} monitored</em>
+              <em>of {priced(stats.spend)} estimated</em>
             </article>
             <article className="metric">
               <span>Exclusions</span>

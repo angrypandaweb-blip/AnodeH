@@ -87,9 +87,9 @@ export default async function LandingPage() {
               <em>231 flagged or blocked · 22 today</em>
             </article>
             <article className="metric">
-              <span>Invalid cost</span>
+              <span>Estimated invalid cost</span>
               <strong>{sample(64)}</strong>
-              <em>of {sample(467)} monitored</em>
+              <em>of {sample(467)} estimated</em>
             </article>
             <article className="metric">
               <span>Exclusions</span>
