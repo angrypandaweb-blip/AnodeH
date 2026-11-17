@@ -27,6 +27,14 @@ export const metadata = {
   title: { default: "AnodeH", template: "%s · AnodeH" },
   description: home.description,
   applicationName: "AnodeH",
+  icons: {
+    icon: [
+      { url: "/favicon-48.png", sizes: "48x48", type: "image/png" },
+      { url: "/favicon-96.png", sizes: "96x96", type: "image/png" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    apple: [{ url: "/apple-icon", sizes: "180x180", type: "image/png" }],
+  },
   openGraph: {
     type: "website",
     siteName: "AnodeH",
@@ -35,7 +43,7 @@ export const metadata = {
     description: home.description,
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: home.title,
     description: home.description,
   },
