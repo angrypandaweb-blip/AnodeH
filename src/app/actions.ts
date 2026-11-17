@@ -140,6 +140,12 @@ export async function saveCompany(formData: FormData) {
   if (!domain) redirect(`${withError("/settings", "Enter the website address, like example.com.")}#add-company`);
   if (rawAds && !parsedAds) redirect(`${withError("/settings", "Enter a 10-digit Google Ads account number, like 123-456-7890, or leave it blank.")}#add-company`);
   const adsAccount = parsedAds || "";
+  const rawPrice = String(formData.get("price") || "");
+  const parsedPrice = rawPrice.trim() ? clickPrice(rawPrice) : null;
+  if (rawPrice.trim() && parsedPrice == null) {
+    redirect(`${withError("/settings", "Enter the average cost of one Google click, like 15.50.")}#add-company`);
+  }
+  const clickPriceValue = parsedPrice == null ? "" : String(parsedPrice);
   const access = await getAccess(user.id);
   const { companies } = await loadCompanies(user.id);
   if (companies.some((company) => company.domain === domain)) {
@@ -148,7 +154,7 @@ export async function saveCompany(formData: FormData) {
   if (companies.length >= access.sites) {
     redirect(`${withError("/settings", `This account covers ${access.sites} websites. Remove one before adding another.`)}#add-company`);
   }
-  await persistCompanies(user.id, [...companies, { domain, adsAccount }], domain);
+  await persistCompanies(user.id, [...companies, { domain, adsAccount, clickPrice: clickPriceValue }], domain);
   refresh();
   redirect("/dashboard");
 }
@@ -165,7 +171,7 @@ export async function updateCompanyAccount(formData: FormData) {
   if (!companies.some((company) => company.domain === domain)) redirect("/settings");
   await persistCompanies(
     user.id,
-    companies.map((company) => (company.domain === domain ? { domain, adsAccount } : company)),
+    companies.map((company) => (company.domain === domain ? { domain, adsAccount, clickPrice: company.clickPrice } : company)),
     active,
   );
   refresh();
@@ -193,6 +199,28 @@ export async function switchCompany(formData: FormData) {
   await persistCompanies(user.id, companies, domain);
   refresh();
   redirect(String(formData.get("return") || "") === "/settings" ? "/settings" : "/dashboard");
+}
+
+export async function saveCompanyClickPrice(formData: FormData) {
+  const user = await getUser();
+  if (!user) redirect("/login?next=/settings");
+  const domain = trackedDomain(String(formData.get("domain") || ""));
+  const raw = String(formData.get("price") || "");
+  const price = raw.trim() ? clickPrice(raw) : null;
+  if (raw.trim() && price == null) {
+    redirect(`${withError("/settings", "Enter the average cost of one Google click, like 15.50.")}#add-company`);
+  }
+  const { companies, active } = await loadCompanies(user.id);
+  if (!domain || !companies.some((company) => company.domain === domain)) redirect("/settings#add-company");
+  await persistCompanies(
+    user.id,
+    companies.map((company) =>
+      company.domain === domain ? { ...company, clickPrice: price == null ? "" : String(price) } : company,
+    ),
+    active,
+  );
+  refresh();
+  redirect("/settings?saved=1#add-company");
 }
 
 export async function saveAverageClickPrice(formData: FormData) {

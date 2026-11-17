@@ -50,7 +50,7 @@ export default async function OverviewPage({
   const place = placeFor(user?.country || "", user?.email || "");
   const local = await reportCurrency(user?.email || "", user?.country || "");
   const priced = (usd: number) => formatMoney(usd * local.rate, local.currency);
-  const average = clickPrice(await savedClickPrice());
+  const average = clickPrice(openCompany?.clickPrice || (await savedClickPrice()));
   const monitored = average == null ? null : monitoredFromAverage(stats.paid, stats.invalidPaid, average);
   const estimatedWaste = monitored ? formatMoney(monitored.waste, local.currency) : priced(stats.waste);
   const estimatedSpend = monitored ? formatMoney(monitored.spend, local.currency) : priced(stats.spend);
