@@ -1,5 +1,5 @@
 import { headers } from "next/headers";
-import { createAllow, deleteAllow, updateSettings } from "@/app/actions";
+import { createAllow, deleteAllow, saveTrackedDomain, updateSettings } from "@/app/actions";
 import { getUser } from "@/lib/auth";
 import { getPolicy } from "@/lib/engine";
 import { allowlist } from "@/lib/queries";
@@ -124,7 +124,17 @@ export default async function SettingsPage({
 
       <article className="card">
         <span className="card-label">Site tag</span>
-        <p className="note">Paste this on {policy.domain}. It sends the visit when the visitor leaves, or after eight seconds. A blocked visitor is then sent to anodeh.com/blocked. Allowed and flagged visitors stay on the page.</p>
+        <form action={saveTrackedDomain} className="form-grid">
+          <label>
+            Domain to track
+            <input type="text" name="domain" defaultValue={policy.domain.toLowerCase() === "anodeh.com" ? "" : policy.domain} placeholder="example.com" required />
+            <small>This is the site where the tag is pasted.</small>
+          </label>
+          <div>
+            <button type="submit">Save domain</button>
+          </div>
+        </form>
+        <p className="note">Paste this on {policy.domain.toLowerCase() === "anodeh.com" ? "the domain above" : policy.domain}. It sends the visit when the visitor leaves, or after eight seconds. A blocked visitor is then sent to anodeh.com/blocked. Allowed and flagged visitors stay on the page.</p>
         <pre className="snippet">{snippet}</pre>
       </article>
 

@@ -18,6 +18,7 @@ import { createPayPalCheckout } from "@/lib/billing";
 import { execute, getDb, queryOne } from "@/lib/db";
 import { knownCountry } from "@/lib/residence-currency";
 import { passwordResetLink, sendPasswordReset, sendSignupNotice, sendSupportRequest, sendWelcome } from "@/lib/email-reports";
+import { trackedDomain } from "@/lib/domain";
 import { disconnectGoogleAds, pullGoogleAds } from "@/lib/google-ads";
 import { resetDemo, simulateScenario } from "@/lib/seed";
 import type { Sensitivity } from "@/lib/types";
@@ -74,6 +75,20 @@ export async function saveAdsAccount(formData: FormData) {
     redirect(withError("/settings", "Enter a 10-digit Google Ads account number, like 123-456-7890."));
   }
   await execute(await getDb(), "UPDATE users SET ads_account = ? WHERE id = ?", [adsAccount, user.id]);
+  refresh();
+  redirect("/settings?saved=1");
+}
+
+export async function saveTrackedDomain(formData: FormData) {
+  const user = await getUser();
+  if (!user) redirect("/login?next=/settings");
+  const domain = trackedDomain(String(formData.get("domain") || ""));
+  if (!domain) redirect(withError("/settings", "Enter the domain you want to track, like example.com."));
+  await execute(
+    await getDb(),
+    "INSERT INTO user_settings (user_id, key, value) VALUES (?, 'domain', ?) ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value",
+    [user.id, domain],
+  );
   refresh();
   redirect("/settings?saved=1");
 }
@@ -153,8 +168,9 @@ export async function registerAccount(formData: FormData) {
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
   const country = String(formData.get("country") || "").trim().toUpperCase();
-  if (name.length < 1 || name.length > 80 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 8 || !knownCountry(country)) {
-    redirect(withError(back, "Enter your name, a valid email, a password of at least 8 characters, and your country."));
+  const domain = trackedDomain(String(formData.get("domain") || ""));
+  if (name.length < 1 || name.length > 80 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 8 || !knownCountry(country) || !domain) {
+    redirect(withError(back, "Enter your name, a valid email, a password of at least 8 characters, your country, and the domain you want to track."));
   }
   const db = await getDb();
   const existing = await queryOne<{ id: string }>(db, "SELECT id FROM users WHERE lower(email) = ?", [email]);
@@ -162,21 +178,31 @@ export async function registerAccount(formData: FormData) {
   const id = `u${randomBytes(6).toString("hex")}`;
   const createdAt = Math.floor(Date.now() / 1000);
   const domainKey = `cf_${randomBytes(8).toString("hex")}`;
+  const tx = await db.transaction("write");
   try {
     await execute(
-      db,
+      tx,
       "INSERT INTO users (id, email, name, password_hash, created_at, ads_account, domain_key, country) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
       [id, email, name, await hashPassword(password), createdAt, "", domainKey, country],
     );
+    await execute(
+      tx,
+      "INSERT INTO user_settings (user_id, key, value) VALUES (?, 'domain', ?)",
+      [id, domain],
+    );
+    await tx.commit();
   } catch (error) {
+    await tx.rollback();
     if (String(error).includes("UNIQUE")) {
       redirect(withError(back, "That email already has an account. Log in with it. Each person needs their own email."));
     }
     throw error;
+  } finally {
+    tx.close();
   }
   await Promise.all([
-    sendSignupNotice({ id, name, email, country, createdAt }).catch(() => undefined),
-    sendWelcome({ id, name, email, domainKey }).catch(() => undefined),
+    sendSignupNotice({ id, name, email, country, createdAt, domain }).catch(() => undefined),
+    sendWelcome({ id, name, email, domainKey, domain }).catch(() => undefined),
   ]);
   await setSession(id);
   redirect("/dashboard");

@@ -25,18 +25,20 @@ const notice = signupNotice({
   name: "Ada Lovelace",
   email: "ada@example.com",
   country: "ZA",
+  domain: "example.com",
   createdAt: Math.floor(Date.parse("2026-11-17T07:30:00Z") / 1000),
 });
 assert.match(notice.subject, /Ada Lovelace/);
 assert.match(notice.text, /ada@example.com/);
 assert.match(notice.text, /South Africa/);
+assert.match(notice.text, /example.com/);
 assert.match(notice.text, /17 Nov 2026, 09:30 SAST/);
 assert.doesNotMatch(notice.text, /password_hash|secret-pass|cf_/i);
 assert.doesNotMatch(notice.html, /password_hash|secret-pass/i);
 
-const welcome = welcomeLetter({ name: "Ada Lovelace", domainKey: "cf_samplekey" });
+const welcome = welcomeLetter({ name: "Ada Lovelace", domainKey: "cf_samplekey", domain: "example.com" });
 assert.equal(welcome.subject, "Welcome to AnodeH");
-assert.match(welcome.text, /Paste the site tag/);
+assert.match(welcome.text, /Paste the site tag on example.com/);
 assert.match(welcome.text, /<script src="https:\/\/anodeh.com\/cf.js" data-key="cf_samplekey" async><\/script>/);
 assert.match(welcome.text, /support@anodeh.com/);
 assert.match(welcome.text, /https:\/\/anodeh.com\/support/);

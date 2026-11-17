@@ -56,6 +56,11 @@ export function RegisterForm({
             ))}
           </select>
         </label>
+        <label>
+          Domain to track
+          <input type="text" name="domain" placeholder="example.com" autoComplete="url" required />
+          <small>The site where you will paste the AnodeH tag.</small>
+        </label>
         <button className="btn" type="submit">Create account</button>
       </form>
     </>
