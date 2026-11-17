@@ -495,7 +495,7 @@ async function createMonthlySubscription(
       shipping_preference: "NO_SHIPPING",
       user_action: "SUBSCRIBE_NOW",
       return_url: `${origin}/billing`,
-      cancel_url: `${origin}/billing?canceled=1`,
+      cancel_url: `${origin}/`,
     },
   });
   const approve = created.payload?.links?.find((link) => link.rel === "approve")?.href;
