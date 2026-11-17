@@ -366,6 +366,8 @@ textarea { font: inherit; width: 100%; box-sizing: border-box; min-height: 140px
 .accounts li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
 .accounts li.company-row { display: grid; gap: 10px; }
 .note { font-size: 13px; color: var(--ink-soft); }
+.note a { color: var(--moss); font-weight: 600; }
+#add-company { scroll-margin-top: 16px; }
 .plans { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
 .price {
   font-family: var(--font-sans), "Segoe UI", sans-serif;

@@ -62,6 +62,33 @@ export default async function SettingsPage({
       {params.saved ? <p className="banner">Saved.</p> : null}
       {params.error ? <p className="banner warn">{params.error}</p> : null}
 
+      {companies ? (
+        <article className="card" id="add-company">
+          <span className="card-label">Add a company</span>
+          <p className="note">
+            {companies.companies.length} of {access.sites} websites are saved. Add the next website here. The Google Ads account can be filled in now or after.
+          </p>
+          {companies.companies.length < access.sites ? (
+            <form action={saveCompany} className="form-grid">
+              <label>
+                Website
+                <input type="text" name="domain" placeholder="example.com" required />
+              </label>
+              <label>
+                Google Ads account
+                <input type="text" name="adsAccount" inputMode="numeric" placeholder="123-456-7890" />
+                <small>Optional. Ten digits, with or without dashes.</small>
+              </label>
+              <div>
+                <button type="submit">Add company</button>
+              </div>
+            </form>
+          ) : (
+            <p className="note">All {access.sites} websites are in use. Remove one to add a different company.</p>
+          )}
+        </article>
+      ) : null}
+
       {companies ? null : (
       <article className="card">
         <span className="card-label">Google Ads account</span>
@@ -219,24 +246,7 @@ export default async function SettingsPage({
                 ))}
               </ul>
             ) : null}
-            {companies.companies.length < access.sites ? (
-              <form action={saveCompany} className="form-grid">
-                <label>
-                  Website
-                  <input type="text" name="domain" placeholder="example.com" required />
-                </label>
-                <label>
-                  Google Ads account
-                  <input type="text" name="adsAccount" inputMode="numeric" placeholder="123-456-7890" required />
-                  <small>The 10-digit customer ID for this website.</small>
-                </label>
-                <div>
-                  <button type="submit">Add company</button>
-                </div>
-              </form>
-            ) : (
-              <p className="note">All {access.sites} websites are in use. Remove one to add a different company.</p>
-            )}
+            <p className="note"><a href="#add-company">Add another company</a></p>
           </>
         ) : (
           <form action={saveTrackedDomain} className="form-grid">
