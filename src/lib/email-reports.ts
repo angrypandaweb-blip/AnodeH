@@ -2,6 +2,7 @@ import { startOfZonedDay, zonedDate } from "./activity-range";
 import { execute, getDb, queryAll, queryOne } from "./db";
 import { escapeHtml, mailConfigured, sendMail } from "./mail";
 import { when } from "./format";
+import { clickPrice, monitoredFromAverage } from "./click-price";
 import { convertUsdCents, formatMoney, placeFor, reportCurrency } from "./residence-currency";
 import { reasonText } from "./score";
 
@@ -353,12 +354,21 @@ export async function sendPurchaseReceipt(receipt: PurchaseReceipt) {
 }
 
 async function clickSummary(userId: string, start: number, end: number) {
-  const totals = await queryOne<{ clicks: number; invalid: number | null; spend: number | null; waste: number | null }>(
+  const totals = await queryOne<{
+    clicks: number;
+    invalid: number | null;
+    spend: number | null;
+    waste: number | null;
+    paid: number | null;
+    invalidPaid: number | null;
+  }>(
     await getDb(),
     `SELECT COUNT(*) AS clicks,
             SUM(CASE WHEN action != 'allow' THEN 1 ELSE 0 END) AS invalid,
             SUM(cost) AS spend,
-            SUM(CASE WHEN action != 'allow' THEN cost ELSE 0 END) AS waste
+            SUM(CASE WHEN action != 'allow' THEN cost ELSE 0 END) AS waste,
+            SUM(CASE WHEN channel != 'organic' THEN 1 ELSE 0 END) AS paid,
+            SUM(CASE WHEN channel != 'organic' AND action != 'allow' THEN 1 ELSE 0 END) AS invalidPaid
      FROM clicks WHERE user_id = ? AND ts >= ? AND ts < ?`,
     [userId, start, end],
   );
@@ -379,6 +389,8 @@ async function clickSummary(userId: string, start: number, end: number) {
     invalid: totals?.invalid ?? 0,
     spend: totals?.spend ?? 0,
     waste: totals?.waste ?? 0,
+    paid: totals?.paid ?? 0,
+    invalidPaid: totals?.invalidPaid ?? 0,
     campaigns,
     googleClicks: google?.c ?? 0,
   };
@@ -413,9 +425,18 @@ async function sendDailyReportTo(user: Person, day: ReturnType<typeof previousJo
   }
   const summary = await clickSummary(user.id, day.start, day.end);
   const local = await reportCurrency(user.email, user.country);
-  const spendText = formatMoney(summary.spend * local.rate, local.currency);
-  const wasteText = formatMoney(summary.waste * local.rate, local.currency);
-  const currencyNote = local.currency === "USD" ? "" : `Amounts are in ${local.name}, for where this account is based.`;
+  const savedPrice = await queryOne<{ value: string }>(
+    await getDb(),
+    "SELECT value FROM user_settings WHERE user_id = ? AND key = 'avg_click_price'",
+    [user.id],
+  );
+  const average = clickPrice(savedPrice?.value || "");
+  const monitored = average == null ? null : monitoredFromAverage(summary.paid, summary.invalidPaid, average);
+  const spendText = formatMoney(monitored ? monitored.spend : summary.spend * local.rate, local.currency);
+  const wasteText = formatMoney(monitored ? monitored.waste : summary.waste * local.rate, local.currency);
+  const currencyNote = average == null
+    ? (local.currency === "USD" ? "" : `Amounts are in ${local.name}, for where this account is based.`)
+    : `Each paid click is counted at ${formatMoney(average, local.currency)}.`;
   const campaignLines = summary.campaigns.map((row) => `${row.campaign}: ${row.c}`);
   const lines = [
     `Hello ${user.name},`,
@@ -423,8 +444,8 @@ async function sendDailyReportTo(user: Person, day: ReturnType<typeof previousJo
     `Dashboard clicks for ${day.label}:`,
     `${summary.clicks} clicks`,
     `${summary.invalid} flagged or blocked`,
-    `${spendText} monitored`,
-    `${wasteText} invalid cost`,
+    `${spendText} ${average == null ? "monitored" : "estimated"}`,
+    `${wasteText} ${average == null ? "invalid cost" : "estimated invalid cost"}`,
   ];
   if (summary.googleClicks) lines.push(`${summary.googleClicks} clicks downloaded from Google Ads`);
   lines.push(
@@ -447,8 +468,8 @@ async function sendDailyReportTo(user: Person, day: ReturnType<typeof previousJo
 <ul>
 <li>${summary.clicks} clicks</li>
 <li>${summary.invalid} flagged or blocked</li>
-<li>${escapeHtml(spendText)} monitored</li>
-<li>${escapeHtml(wasteText)} invalid cost</li>
+<li>${escapeHtml(spendText)} ${average == null ? "monitored" : "estimated"}</li>
+<li>${escapeHtml(wasteText)} ${average == null ? "invalid cost" : "estimated invalid cost"}</li>
 ${summary.googleClicks ? `<li>${summary.googleClicks} clicks downloaded from Google Ads</li>` : ""}
 </ul>
 ${campaignHtml}

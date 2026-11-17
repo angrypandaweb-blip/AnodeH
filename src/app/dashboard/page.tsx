@@ -3,10 +3,11 @@ import { LiveRefresh } from "@/components/LiveRefresh";
 import { getUser } from "@/lib/auth";
 import { reasonText } from "@/lib/score";
 import { compact, dayLabel, percent, scoreTone, when } from "@/lib/format";
+import { clickPrice, monitoredFromAverage } from "@/lib/click-price";
 import { formatMoney, moneyInCurrency, placeFor, reportCurrency } from "@/lib/residence-currency";
 import { getPolicy } from "@/lib/engine";
 import { refreshGoogleAdsIfStale } from "@/lib/google-ads";
-import { alerts, capacity, dailySeries, googleDaily, googleLink, recentRisky, weekStats } from "@/lib/queries";
+import { alerts, capacity, dailySeries, googleDaily, googleLink, recentRisky, savedClickPrice, weekStats } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,11 @@ export default async function OverviewPage({
   const place = placeFor(user?.country || "", user?.email || "");
   const local = await reportCurrency(user?.email || "", user?.country || "");
   const priced = (usd: number) => formatMoney(usd * local.rate, local.currency);
+  const average = clickPrice(await savedClickPrice());
+  const monitored = average == null ? null : monitoredFromAverage(stats.paid, stats.invalidPaid, average);
+  const estimatedWaste = monitored ? formatMoney(monitored.waste, local.currency) : priced(stats.waste);
+  const estimatedSpend = monitored ? formatMoney(monitored.spend, local.currency) : priced(stats.spend);
+  const estimatedNote = average == null ? "estimated" : `at ${formatMoney(average, local.currency)} each`;
   const adsCurrency = /^[A-Z]{3}$/.test(link?.currency || "") ? link?.currency || "" : "";
   const googlePrice = adsCurrency ? await moneyInCurrency(googleCost, adsCurrency, local.currency) : priced(0);
 
@@ -103,8 +109,8 @@ export default async function OverviewPage({
             </article>
             <article className="metric">
               <span>Estimated invalid cost</span>
-              <strong>{priced(stats.waste)}</strong>
-              <em>of {priced(stats.spend)} estimated</em>
+              <strong>{estimatedWaste}</strong>
+              <em>of {estimatedSpend} {estimatedNote}</em>
             </article>
             <article className="metric">
               <span>Exclusions</span>

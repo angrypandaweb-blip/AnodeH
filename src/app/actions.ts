@@ -18,6 +18,7 @@ import { createPayPalCheckout } from "@/lib/billing";
 import { execute, getDb, queryOne } from "@/lib/db";
 import { knownCountry } from "@/lib/residence-currency";
 import { passwordResetLink, sendPasswordReset, sendSignupNotice, sendSupportRequest, sendWelcome } from "@/lib/email-reports";
+import { clickPrice } from "@/lib/click-price";
 import { trackedDomain } from "@/lib/domain";
 import { disconnectGoogleAds, pullGoogleAds } from "@/lib/google-ads";
 import { resetDemo, simulateScenario } from "@/lib/seed";
@@ -88,6 +89,26 @@ export async function saveTrackedDomain(formData: FormData) {
     await getDb(),
     "INSERT INTO user_settings (user_id, key, value) VALUES (?, 'domain', ?) ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value",
     [user.id, domain],
+  );
+  refresh();
+  redirect("/settings?saved=1");
+}
+
+export async function saveAverageClickPrice(formData: FormData) {
+  const user = await getUser();
+  if (!user) redirect("/login?next=/settings");
+  const raw = String(formData.get("price") || "");
+  if (!raw.trim()) {
+    await execute(await getDb(), "DELETE FROM user_settings WHERE user_id = ? AND key = 'avg_click_price'", [user.id]);
+    refresh();
+    redirect("/settings?saved=1");
+  }
+  const price = clickPrice(raw);
+  if (price == null) redirect(withError("/settings", "Enter the average cost of one Google click, like 15.50."));
+  await execute(
+    await getDb(),
+    "INSERT INTO user_settings (user_id, key, value) VALUES (?, 'avg_click_price', ?) ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value",
+    [user.id, String(price)],
   );
   refresh();
   redirect("/settings?saved=1");

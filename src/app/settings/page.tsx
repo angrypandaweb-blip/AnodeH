@@ -1,8 +1,9 @@
 import { headers } from "next/headers";
-import { createAllow, deleteAllow, saveTrackedDomain, updateSettings } from "@/app/actions";
+import { createAllow, deleteAllow, saveAverageClickPrice, saveTrackedDomain, updateSettings } from "@/app/actions";
 import { getUser } from "@/lib/auth";
 import { getPolicy } from "@/lib/engine";
-import { allowlist } from "@/lib/queries";
+import { allowlist, savedClickPrice } from "@/lib/queries";
+import { placeFor } from "@/lib/residence-currency";
 import { lastMailError } from "@/lib/email-reports";
 import { mailConfigured } from "@/lib/mail";
 import { THRESHOLDS } from "@/lib/score";
@@ -22,7 +23,14 @@ export default async function SettingsPage({
   searchParams: Promise<{ saved?: string; error?: string }>;
 }) {
   const params = await searchParams;
-  const [policy, allowed, headerList, user] = await Promise.all([getPolicy(), allowlist(), headers(), getUser()]);
+  const [policy, allowed, headerList, user, averagePrice] = await Promise.all([
+    getPolicy(),
+    allowlist(),
+    headers(),
+    getUser(),
+    savedClickPrice(),
+  ]);
+  const currency = placeFor(user?.country || "", user?.email || "").currency;
   const mailError = user ? await lastMailError(user.id) : "";
   const host = headerList.get("x-forwarded-host") || headerList.get("host") || "localhost:3000";
   const proto = headerList.get("x-forwarded-proto") || "http";
@@ -120,6 +128,20 @@ export default async function SettingsPage({
             ))}
           </ul>
         ) : null}
+      </article>
+
+      <article className="card">
+        <span className="card-label">Average click</span>
+        <form action={saveAverageClickPrice} className="form-grid">
+          <label>
+            Average Google click ({currency})
+            <input type="text" name="price" inputMode="decimal" defaultValue={averagePrice} placeholder="15.50" aria-label={`Average Google click in ${currency}`} />
+            <small>Overview multiplies paid clicks by this amount. Organic visits stay at zero. Leave it blank to use the built-in estimate.</small>
+          </label>
+          <div>
+            <button type="submit">Save price</button>
+          </div>
+        </form>
       </article>
 
       <article className="card">

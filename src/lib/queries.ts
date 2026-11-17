@@ -45,6 +45,8 @@ export async function weekStats() {
     waste: number | null;
     spend: number | null;
     blocked: number | null;
+    paid: number | null;
+    invalidPaid: number | null;
   }>(
     db,
     `SELECT
@@ -52,7 +54,9 @@ export async function weekStats() {
        SUM(CASE WHEN action != 'allow' THEN 1 ELSE 0 END) AS invalid,
        SUM(CASE WHEN action != 'allow' THEN cost ELSE 0 END) AS waste,
        SUM(cost) AS spend,
-       SUM(CASE WHEN action = 'block' THEN 1 ELSE 0 END) AS blocked
+       SUM(CASE WHEN action = 'block' THEN 1 ELSE 0 END) AS blocked,
+       SUM(CASE WHEN channel != 'organic' THEN 1 ELSE 0 END) AS paid,
+       SUM(CASE WHEN channel != 'organic' AND action != 'allow' THEN 1 ELSE 0 END) AS invalidPaid
      FROM clicks WHERE user_id = ? AND ts >= ?`,
     [userId, since],
   );
@@ -62,7 +66,18 @@ export async function weekStats() {
     waste: row?.waste ?? 0,
     spend: row?.spend ?? 0,
     blocked: row?.blocked ?? 0,
+    paid: row?.paid ?? 0,
+    invalidPaid: row?.invalidPaid ?? 0,
   };
+}
+
+export async function savedClickPrice() {
+  const row = await queryOne<{ value: string }>(
+    await getDb(),
+    "SELECT value FROM user_settings WHERE user_id = ? AND key = 'avg_click_price'",
+    [await mine()],
+  );
+  return row?.value || "";
 }
 
 export async function dailySeries() {
