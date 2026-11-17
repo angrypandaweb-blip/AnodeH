@@ -77,6 +77,13 @@ const ANSWERS: { test: RegExp; answer: AssistantAnswer }[] = [
     },
   },
   {
+    test: /wordpress|shopify|wix|squarespace|webflow|godaddy|framer|tag manager|gtm|paste|footer|theme\.liquid|custom code/,
+    answer: {
+      text: "Copy the script in Settings and paste that same script on every page, just before </body>. It must be the script itself. Google Tag Manager and other tools that add it after the page loads cannot read the key.\nWordPress: a header and footer plugin, or the theme footer, before </body>.\nShopify: Online Store, Themes, Edit code, theme.liquid, before </body>.\nWix: Settings, Custom code, Body - end.\nSquarespace: Settings, Advanced, Code Injection, Footer.\nWebflow: Project settings, Custom code, Footer code.\nGoDaddy and other builders: custom code or the footer, then paste it there.",
+      links: [{ label: "Settings", href: "/settings" }],
+    },
+  },
+  {
     test: /support|contact|help me|install the tag/,
     answer: {
       text: "Send a support request and it goes to support@anodeh.com. The site tag is in Settings. Paste it on every page of your site, just before the closing body tag.",
