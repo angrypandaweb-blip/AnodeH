@@ -24,9 +24,9 @@ export function RegisterForm({
   const price = quotes[country] || fallback;
   const paypal = price.currency === "USD" ? "" : " PayPal collects the US dollar price.";
   const copy = plan === "month"
-    ? `Monthly plan. 7 days free, then ${price.standard} every 30 days. PayPal deducts that automatically.${paypal} The dashboard opens after the account is created.`
+    ? `Monthly plan. 7 days free, then ${price.standard} every 30 days. PayPal deducts that automatically.${paypal} The plan page opens after the account is created.`
     : plan === "year"
-      ? `Annual plan. ${price.annual} for 365 days, with no renewal.${paypal} The dashboard opens after the account is created.`
+      ? `Annual plan. ${price.annual} for 365 days, with no renewal.${paypal} The plan page opens after the account is created.`
       : "Create an account and the scored clicks, exclusions, and settings are on the next page.";
 
   return (
@@ -35,6 +35,7 @@ export function RegisterForm({
       {error ? <p className="banner warn">{error}</p> : null}
       <form action={registerAccount} className="form-grid">
         <input type="hidden" name="return" value={back} />
+        <input type="hidden" name="plan" value={plan} />
         <label>
           Name
           <input type="text" name="name" autoComplete="name" required />

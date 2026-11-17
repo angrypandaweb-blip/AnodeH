@@ -56,7 +56,7 @@ export default async function RegisterPage({
       </header>
       <section className="hero" style={{ textAlign: "left", maxWidth: 480 }}>
         <p className="kicker">Create an account</p>
-        <h1>Open the dashboard.</h1>
+        <h1>Create your account.</h1>
         <RegisterForm plan={plan} back={back} error={params.error} countries={countries} quotes={quotes} fallback={fallback} />
       </section>
     </div>
