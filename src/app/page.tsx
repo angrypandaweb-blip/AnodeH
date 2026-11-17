@@ -26,7 +26,7 @@ const BENEFITS = [
 export default async function LandingPage() {
   const [access, user] = await Promise.all([getAccess(), getUser()]);
   const subscribed = access.status === "active";
-  const startHref = user ? (subscribed ? "/dashboard" : "/billing") : "/login";
+  const startHref = user ? (subscribed ? "/dashboard" : "/billing") : "/register?plan=month";
   const startLabel = subscribed ? "Open dashboard" : access.introUsed ? "Continue to payment" : "Start free trial";
   const monthHref = user ? (subscribed ? "/dashboard" : "/billing") : "/register?plan=month";
   const yearHref = user ? (subscribed ? "/dashboard" : "/billing") : "/register?plan=year";
