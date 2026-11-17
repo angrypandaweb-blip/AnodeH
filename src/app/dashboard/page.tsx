@@ -2,7 +2,7 @@ import { clearAlerts, runScenario, syncGoogleAds } from "@/app/actions";
 import { LiveRefresh } from "@/components/LiveRefresh";
 import { getUser } from "@/lib/auth";
 import { reasonText } from "@/lib/score";
-import { compact, dayLabel, percent, scoreBand, when } from "@/lib/format";
+import { compact, dayLabel, percent, scoreTone, when } from "@/lib/format";
 import { formatMoney, moneyInCurrency, placeFor, reportCurrency } from "@/lib/residence-currency";
 import { getPolicy } from "@/lib/engine";
 import { refreshGoogleAdsIfStale } from "@/lib/google-ads";
@@ -39,11 +39,11 @@ export default async function OverviewPage({
   const risky = await recentRisky();
   const caps = await capacity();
   const notes = await alerts(true);
-  const max = Math.max(1, ...series.map((day) => day.allow + day.other));
+  const max = Math.max(1, ...series.map((day) => day.allow + day.organic + day.flagged + day.repeat));
   const notice = params.notice ? NOTICES[params.notice] : undefined;
   const n = Math.max(0, Math.min(1000, Number(params.n) || 0));
   const hottest = caps.fullest / caps.cap;
-  const todayInvalid = series.at(-1)?.other ?? 0;
+  const todayInvalid = series.at(-1) ? series.at(-1)!.organic + series.at(-1)!.flagged + series.at(-1)!.repeat : 0;
   const place = placeFor(user?.country || "", user?.email || "");
   const local = await reportCurrency(user?.email || "", user?.country || "");
   const priced = (usd: number) => formatMoney(usd * local.rate, local.currency);
@@ -155,14 +155,17 @@ export default async function OverviewPage({
                   );
                 })
               : series.map((day) => {
-                  const total = day.allow + day.other;
+                  const total = day.allow + day.organic + day.flagged + day.repeat;
                   const height = Math.max(4, Math.round((total / max) * 150));
+                  const countClass = day.repeat > 0 ? "repeat" : day.organic > 0 && day.flagged === 0 ? "organic" : "";
                   return (
                     <div className="bar-col" key={day.ts}>
-                      <span className="bar-count">{day.other}</span>
+                      <span className={`bar-count ${countClass}`}>{day.organic + day.flagged + day.repeat}</span>
                       <div className="stack" style={{ height }}>
                         <div className="ok" style={{ flex: day.allow }} />
-                        <div className="bad" style={{ flex: day.other }} />
+                        <div className="organic" style={{ flex: day.organic }} />
+                        <div className="bad" style={{ flex: day.flagged }} />
+                        <div className="repeat" style={{ flex: day.repeat }} />
                       </div>
                       <span>{dayLabel(day.ts, place.timeZone)}</span>
                     </div>
@@ -173,7 +176,9 @@ export default async function OverviewPage({
             {link ? <span><i className="swatch ok" /> Clicks from Google Ads</span> : (
               <>
                 <span><i className="swatch ok" /> Allowed</span>
-                <span><i className="swatch bad" /> Flagged or blocked</span>
+                <span><i className="swatch organic" /> Organic</span>
+                <span><i className="swatch bad" /> Flagged</span>
+                <span><i className="swatch repeat" /> Paid repeat IP</span>
               </>
             )}
           </div>
@@ -254,7 +259,7 @@ export default async function OverviewPage({
                       <div className="mono">{click.ip}</div>
                       <div className="muted">{[click.isp, click.country].filter(Boolean).join(" · ")}</div>
                     </td>
-                    <td><span className={`pill ${scoreBand(click.score)}`}>{click.score}</span></td>
+                    <td><span className="pill" style={scoreTone(click.score)}>{click.score}</span></td>
                     <td>{reasonText(JSON.parse(click.reasons) as string[])}</td>
                   </tr>
                 ))}

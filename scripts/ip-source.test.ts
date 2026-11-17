@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { assistantReply } from "../src/lib/assistant";
 import { provinceName, visitCampaignName } from "../src/lib/campaigns";
+import { scoreTone } from "../src/lib/format";
 import { actionForChannel } from "../src/lib/score";
 import { countryHeader, firstForwardedIp, isPublicIp, isPublicIpv4, readIpSource } from "../src/lib/ip-source";
 
@@ -38,5 +39,11 @@ assert.equal(isPublicIp("::1"), false);
 assert.equal(firstForwardedIp("102.182.56.44, 10.0.0.1"), "102.182.56.44");
 assert.equal(countryHeader("za"), "ZA");
 assert.equal(countryHeader("XX"), "");
+function hue(score: number) {
+  return Number(scoreTone(score).background.match(/hsl\((\d+)/)?.[1]);
+}
+assert.ok(hue(0) > hue(28) && hue(28) > hue(45) && hue(45) > hue(80));
+assert.equal(scoreTone(90).color, "#ffffff");
+assert.notEqual(scoreTone(28).color, "#ffffff");
 
 console.log("ip source tests passed");
