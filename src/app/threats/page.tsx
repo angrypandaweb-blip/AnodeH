@@ -3,8 +3,11 @@ import { getUser } from "@/lib/auth";
 import { compact } from "@/lib/format";
 import { topDevices, topIps, topPlacements } from "@/lib/queries";
 import { placeFor } from "@/lib/residence-currency";
+import { noIndex } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+export const metadata = noIndex;
 
 const RANGES = [
   { id: "day", label: "Daily" },

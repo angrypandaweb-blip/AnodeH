@@ -1,13 +1,11 @@
 import { Mark } from "@/components/Mark";
 import { submitSupport } from "@/app/actions";
 import { getUser } from "@/lib/auth";
+import { pageMeta } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = {
-  title: "Support · AnodeH",
-  description: "Send a support request to AnodeH.",
-};
+export const metadata = pageMeta("/support");
 
 export default async function SupportPage({
   searchParams,

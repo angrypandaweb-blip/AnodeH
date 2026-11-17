@@ -1,0 +1,94 @@
+import type { Metadata } from "next";
+
+export const SITE = "https://anodeh.com";
+
+export const home = {
+  title: "AnodeH — Block the clicks that were never going to buy",
+  description:
+    "AnodeH scores each Google Ads click and writes IP exclusions for Search and Display. Datacenter, VPN, repeat, and bounce traffic stay off the budget.",
+};
+
+export const searchPages = [
+  {
+    path: "/",
+    title: home.title,
+    description: home.description,
+  },
+  {
+    path: "/blocked",
+    title: "This visit was blocked",
+    description:
+      "This click was blocked as invalid traffic. AnodeH stops datacenter, VPN, repeat, and bounce clicks from spending a Google Ads budget.",
+  },
+  {
+    path: "/privacy",
+    title: "Privacy",
+    description:
+      "How AnodeH handles an account, the site tag, recorded clicks, and a connected Google Ads account. What is stored, and what is not shared.",
+  },
+  {
+    path: "/terms",
+    title: "Terms",
+    description:
+      "Terms for an AnodeH plan. The first 30 days are half price. After that PayPal charges the regular price every 30 days until you cancel.",
+  },
+  {
+    path: "/support",
+    title: "Support",
+    description:
+      "Help with the AnodeH site tag, a Google Ads account, or a subscription. Send a request and it goes to support@anodeh.com.",
+  },
+  {
+    path: "/login",
+    title: "Log in",
+    description: "Log in to AnodeH to see scored clicks, exclusions, and the Google Ads account you are watching.",
+  },
+  {
+    path: "/register",
+    title: "Create an account",
+    description:
+      "Create an AnodeH account for 1, 10, or 20 websites. The first 30 days are half price, then PayPal bills every 30 days.",
+  },
+] as const;
+
+export const noIndex: Metadata = {
+  robots: { index: false, follow: false },
+};
+
+export function pageMeta(path: string): Metadata {
+  const page = searchPages.find((item) => item.path === path);
+  if (!page) return {};
+  const titled = path === "/" ? page.title : `${page.title} · AnodeH`;
+  return {
+    title: path === "/" ? { absolute: page.title } : page.title,
+    description: page.description,
+    alternates: { canonical: path },
+    openGraph: {
+      title: titled,
+      description: page.description,
+      url: path,
+    },
+    twitter: {
+      title: titled,
+      description: page.description,
+    },
+  };
+}
+
+export function homeJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "AnodeH",
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Web",
+    url: SITE,
+    description: home.description,
+    offers: {
+      "@type": "Offer",
+      price: "69.00",
+      priceCurrency: "USD",
+      description: "One website. The first 30 days are $34.50, then $69 every 30 days.",
+    },
+  };
+}

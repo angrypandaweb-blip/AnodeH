@@ -13,6 +13,7 @@ import { getAccess, planSummary, quotesFor } from "@/lib/billing";
 import { getPolicy } from "@/lib/engine";
 import { sendDueDailyReport, sendWelcomeSampleOnce } from "@/lib/email-reports";
 import { unreadCount } from "@/lib/queries";
+import { home } from "@/lib/seo";
 import { visitorIp } from "@/lib/visitor-country";
 import "./globals.css";
 
@@ -22,8 +23,23 @@ const sans = Outfit({ subsets: ["latin"], weight: ["400", "500", "600"], variabl
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "AnodeH",
-  description: "Click fraud protection for paid traffic.",
+  metadataBase: new URL("https://anodeh.com"),
+  title: { default: "AnodeH", template: "%s · AnodeH" },
+  description: home.description,
+  applicationName: "AnodeH",
+  openGraph: {
+    type: "website",
+    siteName: "AnodeH",
+    url: "https://anodeh.com",
+    title: home.title,
+    description: home.description,
+  },
+  twitter: {
+    card: "summary",
+    title: home.title,
+    description: home.description,
+  },
+  robots: { index: true, follow: true },
   verification: {
     google: "jDX_WTdutPb1ZMxbs55K_XFQtc0xrytxYSfb4gW9bj0",
   },

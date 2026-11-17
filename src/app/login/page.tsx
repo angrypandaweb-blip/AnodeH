@@ -1,8 +1,11 @@
 import { loginAccount } from "@/app/actions";
 import { Mark } from "@/components/Mark";
 import { safeNext } from "@/lib/auth";
+import { pageMeta } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+export const metadata = pageMeta("/login");
 
 export default async function LoginPage({
   searchParams,
