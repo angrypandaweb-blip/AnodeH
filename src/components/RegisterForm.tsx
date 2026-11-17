@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { registerAccount } from "@/app/actions";
+import { Recaptcha } from "@/components/Recaptcha";
 
 type Quote = {
   currency: string;
@@ -23,6 +24,7 @@ export function RegisterForm({
   detectedCountry,
   detectedName,
   ip,
+  siteKey,
 }: {
   plan: "" | "month" | "sites10" | "sites20";
   back: string;
@@ -33,6 +35,7 @@ export function RegisterForm({
   detectedCountry: string;
   detectedName: string;
   ip: string;
+  siteKey: string;
 }) {
   const known = countries.some((item) => item.code === detectedCountry) ? detectedCountry : "";
   const [country, setCountry] = useState(known);
@@ -85,6 +88,7 @@ export function RegisterForm({
           <input type="text" name="domain" placeholder="example.com" autoComplete="url" required />
           <small>The site where you will paste the AnodeH tag.</small>
         </label>
+        <Recaptcha siteKey={siteKey} />
         <button className="btn" type="submit">Create account</button>
       </form>
     </>
