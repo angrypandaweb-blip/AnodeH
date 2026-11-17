@@ -325,10 +325,8 @@ export async function resetPassword(formData: FormData) {
 export async function beginCheckout(formData: FormData) {
   const choice = String(formData.get("plan")) === "year" ? "year" : "month";
   const result = await createPayPalCheckout(choice);
-  if ("error" in result) {
-    redirect(`/billing?error=${encodeURIComponent(result.error || "PayPal could not start the payment.")}`);
-  }
-  redirect(result.url);
+  if ("url" in result && result.url) return { url: result.url };
+  return { error: ("error" in result && result.error) || "PayPal could not start the payment." };
 }
 
 
