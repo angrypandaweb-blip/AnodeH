@@ -90,7 +90,7 @@ export default async function LandingPage() {
             <article className="metric">
               <span>Invalid cost</span>
               <strong>{sample(64)}</strong>
-              <em>of {sample(4013)} monitored</em>
+              <em>of {sample(3612)} monitored</em>
             </article>
             <article className="metric">
               <span>Exclusions</span>
