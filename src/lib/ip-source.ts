@@ -54,6 +54,13 @@ export function firstForwardedIp(value: string | null) {
   return value?.split(",")[0]?.trim() || "";
 }
 
+export function publicIpv4(value: string | null) {
+  const raw = firstForwardedIp(value);
+  if (isPublicIpv4(raw)) return raw;
+  const mapped = raw.toLowerCase().startsWith("::ffff:") ? raw.slice(7) : "";
+  return isPublicIpv4(mapped) ? mapped : "";
+}
+
 export function countryHeader(value: string | null) {
   const code = (value || "").trim().toUpperCase();
   return knownCountry(code) ? code : "";

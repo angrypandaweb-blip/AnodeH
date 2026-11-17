@@ -3,7 +3,7 @@ import { assistantReply } from "../src/lib/assistant";
 import { provinceName, visitCampaignName } from "../src/lib/campaigns";
 import { scoreTone } from "../src/lib/format";
 import { actionForChannel } from "../src/lib/score";
-import { countryHeader, firstForwardedIp, isPublicIp, isPublicIpv4, readIpSource } from "../src/lib/ip-source";
+import { countryHeader, firstForwardedIp, isPublicIp, isPublicIpv4, publicIpv4, readIpSource } from "../src/lib/ip-source";
 
 const source = readIpSource({
   success: true,
@@ -40,6 +40,10 @@ assert.equal(isPublicIpv4("192.168.0.4"), false);
 assert.equal(isPublicIp("2001:4860:4860::8888"), true);
 assert.equal(isPublicIp("::1"), false);
 assert.equal(firstForwardedIp("102.182.56.44, 10.0.0.1"), "102.182.56.44");
+assert.equal(publicIpv4("102.182.56.44, 10.0.0.1"), "102.182.56.44");
+assert.equal(publicIpv4("::ffff:102.182.56.44"), "102.182.56.44");
+assert.equal(publicIpv4("10.0.0.1"), "");
+assert.equal(publicIpv4("2001:4860:4860::8888"), "");
 assert.equal(countryHeader("za"), "ZA");
 assert.equal(countryHeader("XX"), "");
 function hue(score: number) {
