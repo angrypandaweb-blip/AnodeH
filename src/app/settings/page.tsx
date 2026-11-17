@@ -42,9 +42,7 @@ export default async function SettingsPage({
   const siteLabel = access.sites === 1 ? "1 website" : `${access.sites} websites`;
   const currency = placeFor(user?.country || "", user?.email || "").currency;
   const mailError = user ? await lastMailError(user.id) : "";
-  const host = headerList.get("x-forwarded-host") || headerList.get("host") || "localhost:3000";
-  const proto = headerList.get("x-forwarded-proto") || "http";
-  const snippet = `<script src="${proto}://${host}/cf.js" data-key="${policy.domainKey}" async></script>`;
+  const snippet = `<script src="https://anodeh.com/cf.js" data-key="${policy.domainKey}" async></script>`;
   const visitorIp = publicIpv4(headerList.get("x-forwarded-for")) || publicIpv4(headerList.get("x-real-ip"));
 
   return (
@@ -201,7 +199,7 @@ export default async function SettingsPage({
       </article>
 
       <article className="card">
-        <span className="card-label">Site tag</span>
+        <span className="card-label">Paste to site</span>
         <p className="note">
           This account covers {siteLabel}. {(companies ? companies.companies.length : domains.length)} of {access.sites} {(companies ? companies.companies.length : domains.length) === 1 ? "is" : "are"} saved.
           {companies ? " Click a company to open its results." : ""}
@@ -260,7 +258,7 @@ export default async function SettingsPage({
             </div>
           </form>
         )}
-        <p className="note">Paste this on {(companies ? companies.companies.length : domains.length) > 1 ? "each website above" : (companies?.companies[0]?.domain || domains[0] || "the website you add")}. It sends the visit when the visitor leaves, or after eight seconds. A blocked visitor is then sent to anodeh.com/blocked. Allowed and flagged visitors stay on the page.</p>
+        <p className="note">Paste this on {(companies ? companies.companies.length : domains.length) > 1 ? "each website above" : (companies?.companies[0]?.domain || domains[0] || "the website you add")}, just before the closing body tag. It loads https://anodeh.com/cf.js and sends the visit when the visitor leaves, or after eight seconds. A blocked visitor is then sent to anodeh.com/blocked. Allowed and flagged visitors stay on the page.</p>
         <pre className="snippet">{snippet}</pre>
       </article>
 
