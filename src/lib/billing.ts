@@ -161,6 +161,32 @@ export function paypalLive() {
   return process.env.PAYPAL_ENV === "live";
 }
 
+export function publicOrigin(hostHeader: string | null, protoHeader: string | null) {
+  const host = (hostHeader ?? "").split(",")[0]?.trim() ?? "";
+  if (!host || /[\s/]/.test(host)) return null;
+  const local = host.startsWith("localhost") || host.startsWith("127.0.0.1");
+  const proto = (protoHeader ?? "").split(",")[0]?.trim();
+  return `${local && proto === "http" ? "http" : "https"}://${host}`;
+}
+
+class PayPalTimeout extends Error {
+  constructor() {
+    super("PayPal took too long to answer. Try again.");
+    this.name = "PayPalTimeout";
+  }
+}
+
+async function paypalFetch(url: string, init: RequestInit) {
+  try {
+    return await fetch(url, { ...init, signal: AbortSignal.timeout(20_000) });
+  } catch (error) {
+    if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
+      throw new PayPalTimeout();
+    }
+    throw error;
+  }
+}
+
 function usd(cents: number) {
   return (cents / 100).toFixed(2);
 }
@@ -168,7 +194,7 @@ function usd(cents: number) {
 async function paypalToken() {
   const id = process.env.PAYPAL_CLIENT_ID || "";
   const secret = process.env.PAYPAL_CLIENT_SECRET || "";
-  const response = await fetch(`${paypalBase()}/v1/oauth2/token`, {
+  const response = await paypalFetch(`${paypalBase()}/v1/oauth2/token`, {
     method: "POST",
     headers: {
       Authorization: `Basic ${Buffer.from(`${id}:${secret}`).toString("base64")}`,
@@ -237,7 +263,26 @@ function paypalError(payload: { message?: string; details?: { description?: stri
   return payload?.details?.[0]?.description || payload?.message || fallback;
 }
 
+function paypalRedirectHost(url: URL) {
+  return (
+    url.protocol === "https:" &&
+    (url.hostname === "paypal.com" ||
+      url.hostname === "www.paypal.com" ||
+      url.hostname === "sandbox.paypal.com" ||
+      url.hostname === "www.sandbox.paypal.com")
+  );
+}
+
 export async function createPayPalCheckout(choice: "month" | "year") {
+  try {
+    return await startPayPalCheckout(choice);
+  } catch (error) {
+    if (error instanceof PayPalTimeout) return { error: error.message };
+    throw error;
+  }
+}
+
+async function startPayPalCheckout(choice: "month" | "year") {
   if (!paymentsConfigured()) {
     return { error: "Add PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET to .env.local, then restart the app." };
   }
@@ -253,11 +298,13 @@ export async function createPayPalCheckout(choice: "month" | "year") {
   }
 
   const spec = PLANS[plan];
+  const amount = usd(spec.cents);
+  const label = spec.name.replaceAll("—", "-");
 
   const origin = await siteOrigin();
   if (!origin) return { error: "Could not determine the site address for checkout." };
 
-  const response = await fetch(`${paypalBase()}/v2/checkout/orders`, {
+  const response = await paypalFetch(`${paypalBase()}/v2/checkout/orders`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -268,16 +315,34 @@ export async function createPayPalCheckout(choice: "month" | "year") {
       purchase_units: [
         {
           custom_id: plan,
-          description: spec.name,
-          amount: { currency_code: "USD", value: usd(spec.cents) },
+          description: label,
+          amount: {
+            currency_code: "USD",
+            value: amount,
+            breakdown: { item_total: { currency_code: "USD", value: amount } },
+          },
+          items: [
+            {
+              name: label,
+              quantity: "1",
+              category: "DIGITAL_GOODS",
+              unit_amount: { currency_code: "USD", value: amount },
+            },
+          ],
         },
       ],
-      application_context: {
-        brand_name: "AnodeH",
-        user_action: "PAY_NOW",
-        shipping_preference: "NO_SHIPPING",
-        return_url: `${origin}/billing`,
-        cancel_url: `${origin}/billing?canceled=1`,
+      payment_source: {
+        paypal: {
+          experience_context: {
+            brand_name: "AnodeH",
+            locale: "en-US",
+            landing_page: "LOGIN",
+            shipping_preference: "NO_SHIPPING",
+            user_action: "PAY_NOW",
+            return_url: `${origin}/billing`,
+            cancel_url: `${origin}/billing?canceled=1`,
+          },
+        },
       },
     }),
   });
@@ -287,14 +352,15 @@ export async function createPayPalCheckout(choice: "month" | "year") {
     details?: { description?: string }[];
     links?: { href?: string; rel?: string }[];
   } | null;
-  const approve = payload?.links?.find((link) => link.rel === "approve" || link.rel === "payer-action")?.href;
+  const approve =
+    payload?.links?.find((link) => link.rel === "payer-action")?.href ||
+    payload?.links?.find((link) => link.rel === "approve")?.href;
   if (!response.ok || !payload?.id || !approve) {
     return { error: paypalError(payload, "PayPal could not start the payment.") };
   }
 
   const redirectUrl = new URL(approve);
-  const allowed = redirectUrl.protocol === "https:" && (redirectUrl.hostname === "www.paypal.com" || redirectUrl.hostname === "www.sandbox.paypal.com");
-  if (!allowed) return { error: "PayPal returned an unexpected payment link." };
+  if (!paypalRedirectHost(redirectUrl)) return { error: "PayPal returned an unexpected payment link." };
 
   await execute(
     await getDb(),
@@ -305,6 +371,15 @@ export async function createPayPalCheckout(choice: "month" | "year") {
 }
 
 export async function capturePayPalOrder(orderId: string) {
+  try {
+    return await capturePayPalOrderInner(orderId);
+  } catch (error) {
+    if (error instanceof PayPalTimeout) return { ok: false as const, error: error.message };
+    throw error;
+  }
+}
+
+async function capturePayPalOrderInner(orderId: string) {
   if (!/^[A-Za-z0-9]+$/.test(orderId)) return { ok: false as const, error: "Unknown PayPal payment." };
   const checkout = await queryOne<{ plan: string; amount: number }>(
     await getDb(),
@@ -316,7 +391,7 @@ export async function capturePayPalOrder(orderId: string) {
   const token = await paypalToken();
   if (!token) return { ok: false as const, error: "PayPal did not accept the client id and secret." };
 
-  let response = await fetch(`${paypalBase()}/v2/checkout/orders/${orderId}/capture`, {
+  let response = await paypalFetch(`${paypalBase()}/v2/checkout/orders/${orderId}/capture`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -325,7 +400,7 @@ export async function capturePayPalOrder(orderId: string) {
     },
   });
   if (response.status === 422) {
-    response = await fetch(`${paypalBase()}/v2/checkout/orders/${orderId}`, {
+    response = await paypalFetch(`${paypalBase()}/v2/checkout/orders/${orderId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
   }
@@ -344,9 +419,7 @@ export async function capturePayPalOrder(orderId: string) {
 
 async function siteOrigin() {
   const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host");
-  const proto = h.get("x-forwarded-proto") ?? "http";
-  return host ? `${proto}://${host}` : null;
+  return publicOrigin(h.get("x-forwarded-host") ?? h.get("host"), h.get("x-forwarded-proto"));
 }
 
 function paypalMode() {
@@ -354,7 +427,7 @@ function paypalMode() {
 }
 
 async function paypalJson(token: string, path: string, body: unknown) {
-  const response = await fetch(`${paypalBase()}${path}`, {
+  const response = await paypalFetch(`${paypalBase()}${path}`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -415,7 +488,8 @@ async function monthlyPlanId(token: string, trial: boolean) {
 
   const created = await paypalJson(token, "/v1/billing/plans", {
     product_id: productId,
-    name: trial ? "AnodeH monthly — 7 day free trial" : "AnodeH monthly",
+    name: trial ? "AnodeH monthly - 7 day free trial" : "AnodeH monthly",
+    status: "ACTIVE",
     billing_cycles: cycles,
     payment_preferences: {
       auto_bill_outstanding: true,
@@ -442,6 +516,7 @@ async function createMonthlySubscription(token: string, plan: "intro" | "month",
     custom_id: plan,
     application_context: {
       brand_name: "AnodeH",
+      locale: "en-US",
       shipping_preference: "NO_SHIPPING",
       user_action: "SUBSCRIBE_NOW",
       return_url: `${origin}/billing`,
@@ -453,8 +528,7 @@ async function createMonthlySubscription(token: string, plan: "intro" | "month",
     return { error: paypalError(created.payload, "PayPal could not start the monthly subscription.") };
   }
   const redirectUrl = new URL(approve);
-  const allowed = redirectUrl.protocol === "https:" && (redirectUrl.hostname === "www.paypal.com" || redirectUrl.hostname === "www.sandbox.paypal.com");
-  if (!allowed) return { error: "PayPal returned an unexpected payment link." };
+  if (!paypalRedirectHost(redirectUrl)) return { error: "PayPal returned an unexpected payment link." };
   return { url: approve };
 }
 
@@ -480,7 +554,7 @@ async function applySubscription(
   const token = await paypalToken();
   if (!token) return { ok: false, error: "PayPal did not accept the client id and secret.", active: false };
 
-  const response = await fetch(`${paypalBase()}/v1/billing/subscriptions/${id}`, {
+  const response = await paypalFetch(`${paypalBase()}/v1/billing/subscriptions/${id}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   const subscription = (await response.json().catch(() => null)) as PayPalSubscription | null;
@@ -534,9 +608,14 @@ export async function confirmPayPalSubscription(subscriptionId: string) {
   if (!/^I-[A-Za-z0-9]+$/.test(subscriptionId)) {
     return { ok: false as const, error: "Unknown PayPal subscription." };
   }
-  const result = await applySubscription(subscriptionId);
-  if (!result.ok) return { ok: false as const, error: result.error };
-  return { ok: true as const, transactionId: result.transactionId };
+  try {
+    const result = await applySubscription(subscriptionId);
+    if (!result.ok) return { ok: false as const, error: result.error };
+    return { ok: true as const, transactionId: result.transactionId };
+  } catch (error) {
+    if (error instanceof PayPalTimeout) return { ok: false as const, error: error.message };
+    throw error;
+  }
 }
 
 export async function syncPayPalSubscription(userId?: string) {
@@ -547,5 +626,10 @@ export async function syncPayPalSubscription(userId?: string) {
   const paidUntil = Number((await setting("paid_until", userId)) || 0);
   const now = nowSec();
   if (now - synced < 6 * 60 * 60 && paidUntil > now + 2 * DAY) return;
-  await applySubscription(id, userId);
+  try {
+    await applySubscription(id, userId);
+  } catch (error) {
+    if (error instanceof PayPalTimeout) return;
+    throw error;
+  }
 }

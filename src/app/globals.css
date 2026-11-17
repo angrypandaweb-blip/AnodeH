@@ -176,6 +176,7 @@ button.ghost {
 }
 .btn.danger { background: var(--heat); }
 button:hover { filter: brightness(1.05); }
+button:disabled { cursor: wait; opacity: 0.7; }
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible {
   outline: 2px solid var(--brass);
   outline-offset: 2px;

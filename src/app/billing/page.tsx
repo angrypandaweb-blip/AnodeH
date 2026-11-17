@@ -1,4 +1,4 @@
-import { beginCheckout } from "@/app/actions";
+import { PayPalCheckout } from "@/components/PayPalCheckout";
 import {
   capturePayPalOrder,
   confirmPayPalSubscription,
@@ -118,24 +118,14 @@ export default async function BillingPage({
               ? `${quote.standard} is deducted from PayPal every 30 days until you cancel.`
               : `Free for ${TRIAL_DAYS} days, then PayPal deducts ${quote.standard} every 30 days until you cancel.`}
           </p>
-          <form action={beginCheckout}>
-            <input type="hidden" name="plan" value="month" />
-            <button className="btn" type="submit">
-              {access.introUsed ? "Subscribe with PayPal" : "Start free trial"}
-            </button>
-          </form>
+          <PayPalCheckout plan="month" label={access.introUsed ? "Subscribe with PayPal" : "Start free trial"} />
         </article>
 
         <article className="card">
           <span className="card-label">Annual</span>
           <p className="price">{quote.annual}</p>
           <p className="note">One payment for 365 days. This plan does not renew.</p>
-          <form action={beginCheckout}>
-            <input type="hidden" name="plan" value="year" />
-            <button className="btn" type="submit">
-              Pay {quote.annual} with PayPal
-            </button>
-          </form>
+          <PayPalCheckout plan="year" label={`Pay ${quote.annual} with PayPal`} />
         </article>
       </section>
       )}
