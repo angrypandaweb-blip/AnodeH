@@ -1,7 +1,7 @@
 import { getUser } from "./auth";
 import { loadCompanies } from "./companies";
 import { getDb, queryAll, queryOne } from "./db";
-import { EXCLUSION_CAP } from "./engine";
+import { allowClickClauses, EXCLUSION_CAP } from "./engine";
 import { googleClickPriceExpr } from "./google-cost";
 
 async function mine() {
@@ -11,10 +11,28 @@ async function mine() {
 
 async function clickScope() {
   const userId = await mine();
-  if (!userId) return { userId, site: "", includeUntagged: false };
+  if (!userId) return { userId, site: "", includeUntagged: false, allowed: [] as string[] };
   const bundle = await loadCompanies(userId);
   const site = bundle.multi ? bundle.active : "";
-  return { userId, site, includeUntagged: Boolean(site) && bundle.companies[0]?.domain === site };
+  const allowed = await queryAll<{ value: string }>(
+    await getDb(),
+    "SELECT value FROM allowlist WHERE user_id = ?",
+    [userId],
+  );
+  return {
+    userId,
+    site,
+    includeUntagged: Boolean(site) && bundle.companies[0]?.domain === site,
+    allowed: allowed.map((row) => row.value),
+  };
+}
+
+function hideAllowed(column: string, values: string[]) {
+  const filter = allowClickClauses(column, values);
+  return {
+    sql: filter.clauses.length ? ` AND ${filter.clauses.join(" AND ")}` : "",
+    params: filter.params,
+  };
 }
 
 function siteSql(column: string, site: string, includeUntagged: boolean) {
@@ -51,9 +69,10 @@ export type ClickRow = {
 
 export async function weekStats() {
   const db = await getDb();
-  const { userId, site, includeUntagged } = await clickScope();
+  const { userId, site, includeUntagged, allowed } = await clickScope();
   const since = Math.floor(Date.now() / 1000) - 7 * 86400;
   const siteFilter = siteSql("site", site, includeUntagged);
+  const hide = hideAllowed("ip", allowed);
   const row = await queryOne<{
     clicks: number;
     invalid: number | null;
@@ -72,8 +91,8 @@ export async function weekStats() {
        SUM(CASE WHEN action = 'block' THEN 1 ELSE 0 END) AS blocked,
        SUM(CASE WHEN channel != 'organic' THEN 1 ELSE 0 END) AS paid,
        SUM(CASE WHEN channel != 'organic' AND action != 'allow' THEN 1 ELSE 0 END) AS invalidPaid
-     FROM clicks WHERE user_id = ? AND ts >= ?${siteFilter}`,
-    site ? [userId, since, site] : [userId, since],
+     FROM clicks WHERE user_id = ? AND ts >= ?${siteFilter}${hide.sql}`,
+    site ? [userId, since, site, ...hide.params] : [userId, since, ...hide.params],
   );
   return {
     clicks: row?.clicks ?? 0,
@@ -108,11 +127,12 @@ export async function dailySeries() {
   const now = new Date();
   now.setHours(0, 0, 0, 0);
   const start = Math.floor(now.getTime() / 1000) - 6 * 86400;
-  const { userId, site, includeUntagged } = await clickScope();
+  const { userId, site, includeUntagged, allowed } = await clickScope();
+  const hide = hideAllowed("ip", allowed);
   const rows = await queryAll<{ ts: number; action: string; channel: string; reasons: string }>(
     await getDb(),
-    `SELECT ts, action, channel, reasons FROM clicks WHERE user_id = ? AND ts >= ?${siteSql("site", site, includeUntagged)}`,
-    site ? [userId, start, site] : [userId, start],
+    `SELECT ts, action, channel, reasons FROM clicks WHERE user_id = ? AND ts >= ?${siteSql("site", site, includeUntagged)}${hide.sql}`,
+    site ? [userId, start, site, ...hide.params] : [userId, start, ...hide.params],
   );
   const days: { ts: number; allow: number; organic: number; flagged: number; repeat: number }[] = [];
   for (let i = 0; i < 7; i++) {
@@ -144,17 +164,18 @@ function reasonCodes(raw: string): string[] {
 }
 
 export async function recentRisky(limit = 6): Promise<ClickRow[]> {
-  const { userId, site, includeUntagged } = await clickScope();
+  const { userId, site, includeUntagged, allowed } = await clickScope();
+  const hide = hideAllowed("ip", allowed);
   return queryAll<ClickRow>(
     await getDb(),
     `SELECT c.*, NULL AS block_id FROM clicks c
-     WHERE user_id = ? AND action != 'allow'${siteSql("site", site, includeUntagged)} ORDER BY ts DESC LIMIT ?`,
-    site ? [userId, site, limit] : [userId, limit],
+     WHERE user_id = ? AND action != 'allow'${siteSql("site", site, includeUntagged)}${hide.sql} ORDER BY ts DESC LIMIT ?`,
+    site ? [userId, site, ...hide.params, limit] : [userId, ...hide.params, limit],
   );
 }
 
 export async function activityCounts(query: string, since: number | null = null, traffic = "all", action = "all") {
-  const { userId, site, includeUntagged } = await clickScope();
+  const { userId, site, includeUntagged, allowed } = await clickScope();
   const where = ["user_id = ?"];
   const params: (string | number)[] = [userId];
   if (site) {
@@ -165,6 +186,9 @@ export async function activityCounts(query: string, since: number | null = null,
     where.push("ts >= ?");
     params.push(since);
   }
+  const hide = allowClickClauses("ip", allowed);
+  where.push(...hide.clauses);
+  params.push(...hide.params);
   if (query) {
     where.push("(ip LIKE ? OR campaign LIKE ? OR keyword LIKE ? OR placement LIKE ?)");
     const like = `%${query}%`;
@@ -194,7 +218,7 @@ export async function activityCounts(query: string, since: number | null = null,
 
 export async function listClicks(action: string, query: string, page: number, pageSize = 40, since: number | null = null, traffic = "all") {
   const db = await getDb();
-  const { userId, site, includeUntagged } = await clickScope();
+  const { userId, site, includeUntagged, allowed } = await clickScope();
   const where = ["c.user_id = ?"];
   const params: (string | number)[] = [userId];
   if (site) {
@@ -213,6 +237,9 @@ export async function listClicks(action: string, query: string, page: number, pa
     where.push("c.channel = ?");
     params.push(traffic);
   }
+  const hide = allowClickClauses("c.ip", allowed);
+  where.push(...hide.clauses);
+  params.push(...hide.params);
   if (query) {
     where.push("(c.ip LIKE ? OR c.campaign LIKE ? OR c.keyword LIKE ? OR c.placement LIKE ?)");
     const like = `%${query}%`;
@@ -316,7 +343,7 @@ export async function unreadCount() {
 }
 
 export async function topIps(since: number | null = null) {
-  const { userId, site, includeUntagged } = await clickScope();
+  const { userId, site, includeUntagged, allowed } = await clickScope();
   const where = ["user_id = ?"];
   const params: (string | number)[] = [userId];
   if (site) {
@@ -327,6 +354,9 @@ export async function topIps(since: number | null = null) {
     where.push("ts >= ?");
     params.push(since);
   }
+  const hide = allowClickClauses("c.ip", allowed);
+  where.push(...hide.clauses);
+  params.push(...hide.params);
   const price = googleClickPriceExpr("c");
   return queryAll<{ ip: string; isp: string; network: string; clicks: number; invalid: number; google_cost: number | null; priced_clicks: number }>(
     await getDb(),
@@ -342,7 +372,7 @@ export async function topIps(since: number | null = null) {
 }
 
 export async function topDevices(since: number | null = null) {
-  const { userId, site, includeUntagged } = await clickScope();
+  const { userId, site, includeUntagged, allowed } = await clickScope();
   const where = ["user_id = ?"];
   const params: (string | number)[] = [userId];
   if (site) {
@@ -353,6 +383,9 @@ export async function topDevices(since: number | null = null) {
     where.push("ts >= ?");
     params.push(since);
   }
+  const hide = allowClickClauses("ip", allowed);
+  where.push(...hide.clauses);
+  params.push(...hide.params);
   return queryAll<{ device_hash: string; ips: number; clicks: number; network: string; invalid: number }>(
     await getDb(),
     `SELECT device_hash,
@@ -368,7 +401,7 @@ export async function topDevices(since: number | null = null) {
 }
 
 export async function topPlacements(since: number | null = null) {
-  const { userId, site, includeUntagged } = await clickScope();
+  const { userId, site, includeUntagged, allowed } = await clickScope();
   const where = ["user_id = ?", "placement != ''"];
   const params: (string | number)[] = [userId];
   if (site) {
@@ -379,6 +412,9 @@ export async function topPlacements(since: number | null = null) {
     where.push("ts >= ?");
     params.push(since);
   }
+  const hide = allowClickClauses("c.ip", allowed);
+  where.push(...hide.clauses);
+  params.push(...hide.params);
   const price = googleClickPriceExpr("c");
   return queryAll<{ placement: string; clicks: number; invalid: number; google_cost: number | null; priced_clicks: number }>(
     await getDb(),
