@@ -16,6 +16,9 @@ assert.deepEqual(companies, [
 assert.equal(activeCompany(companies, "other.co.za"), "other.co.za");
 assert.equal(activeCompany(companies, "missing.com"), "shop.example.com");
 
+const savedSite = parseCompanies(JSON.stringify([{ domain: "anodeh.com", adsAccount: "5618283221" }]));
+assert.deepEqual(savedSite, [{ domain: "anodeh.com", adsAccount: "561-828-3221" }]);
+
 const legacy = companyList(undefined, "First.com", JSON.stringify(["second.com", "anodeh.com"]), "111-222-3333");
 assert.deepEqual(legacy, [
   { domain: "first.com", adsAccount: "111-222-3333" },
