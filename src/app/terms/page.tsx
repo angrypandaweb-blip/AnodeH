@@ -1,5 +1,5 @@
 import { Mark } from "@/components/Mark";
-import { ANNUAL_CENTS, dollars, INTRO_CENTS, STANDARD_CENTS } from "@/lib/billing";
+import { ANNUAL_CENTS, dollars, STANDARD_CENTS, TRIAL_DAYS } from "@/lib/billing";
 
 export const metadata = {
   title: "Terms · AnodeH",
@@ -29,7 +29,7 @@ export default function TermsPage() {
 
         <h2>Payment</h2>
         <p>
-          The monthly plan charges {dollars(INTRO_CENTS)} for the first 30 days, then {dollars(STANDARD_CENTS)} every 30 days through PayPal until you cancel in PayPal.
+          The monthly plan is free for {TRIAL_DAYS} days. After that PayPal deducts {dollars(STANDARD_CENTS)} every 30 days until you cancel in PayPal.
           The annual plan is {dollars(ANNUAL_CENTS)} once and does not renew on its own.
           An account shows these prices in the currency of the country saved at registration. PayPal collects the US dollar amounts.
         </p>

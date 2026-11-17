@@ -16,7 +16,7 @@ const ANSWERS: { test: RegExp; answer: AssistantAnswer }[] = [
   {
     test: /price|pricing|plan|cost|how much|\$|paypal|month|annual|year/,
     answer: {
-      text: "The first 30 days are $34.50, then $69 every 30 days, or $759 for the year. The page shows that price in the visitor’s currency. PayPal collects the US dollar amount.",
+      text: "The monthly plan is free for 7 days, then $69 every 30 days. PayPal deducts that from the account automatically until you cancel. The year is $759 once. The page shows that price in the visitor’s currency. PayPal collects the US dollar amount.",
       links: [{ label: "Plans", href: "/billing" }],
     },
   },

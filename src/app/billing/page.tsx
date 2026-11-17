@@ -5,7 +5,6 @@ import {
   dayPhrase,
   dollars,
   getAccess,
-  INTRO_CENTS,
   paymentsConfigured,
   paypalLive,
   PERIOD_DAYS,
@@ -13,6 +12,7 @@ import {
   quotesFor,
   STANDARD_CENTS,
   ANNUAL_CENTS,
+  TRIAL_DAYS,
 } from "@/lib/billing";
 import { getUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -41,21 +41,23 @@ export default async function BillingPage({
   const access = await getAccess();
   const quote = await quotesFor(user?.email || "", user?.country || "");
   const ready = paymentsConfigured();
-  const monthPrice = access.introUsed ? quote.standard : quote.intro;
+  const monthPrice = access.introUsed ? quote.standard : "Free";
   const paypalNote = quote.currency === "USD"
-    ? "The monthly plan is charged automatically by PayPal in US dollars."
-    : `Prices are in ${quote.name}, for the country on this account. PayPal collects the US dollar price: ${dollars(INTRO_CENTS)} for the first 30 days, then ${dollars(STANDARD_CENTS)} every 30 days. The year is ${dollars(ANNUAL_CENTS)}.`;
+    ? `The monthly plan is free for ${TRIAL_DAYS} days, then PayPal deducts ${dollars(STANDARD_CENTS)} every 30 days automatically.`
+    : `Prices are in ${quote.name}, for the country on this account. PayPal collects US dollars: nothing for ${TRIAL_DAYS} days, then ${dollars(STANDARD_CENTS)} every 30 days. The year is ${dollars(ANNUAL_CENTS)}.`;
 
   return (
     <div>
       <header className="page-head">
         <div>
           <p className="eyebrow">Plan</p>
-          <h1>{access.lifetime ? "Lifetime access" : "Half off the first 30 days"}</h1>
+          <h1>{access.lifetime ? "Lifetime access" : access.introUsed ? "Monthly plan" : `${TRIAL_DAYS} days free`}</h1>
           <p className="sub">
             {access.lifetime
               ? "This account does not expire. PayPal is not needed."
-              : `The first 30 days are ${quote.intro}. Then ${quote.standard} every 30 days until you cancel. The year is ${quote.annual} once and does not renew.`}
+              : access.introUsed
+                ? `${quote.standard} every 30 days until you cancel. The year is ${quote.annual} once and does not renew.`
+                : `Free for ${TRIAL_DAYS} days. Then PayPal deducts ${quote.standard} every 30 days until you cancel. The year is ${quote.annual} once and does not renew.`}
           </p>
         </div>
       </header>
@@ -76,9 +78,7 @@ export default async function BillingPage({
             <h2 style={{ marginTop: 10 }}>Paid through {planDate(access.endsAt)}</h2>
             <p className="note">
               {dayPhrase(access.daysLeft)} remaining.
-              {access.introUsed
-                ? ` The next 30 days are ${quote.standard}, or a year is ${quote.annual}.`
-                : ` The first 30-day price of ${quote.intro} is still available, or a year is ${quote.annual}.`}
+              {` The next charge is ${quote.standard} every 30 days, or a year is ${quote.annual}.`}
             </p>
           </>
         ) : (
@@ -86,8 +86,8 @@ export default async function BillingPage({
             <h2 style={{ marginTop: 10 }}>Protection starts when you pay</h2>
             <p className="note">
               {access.introUsed
-                ? `The introductory price has been used. Continue at ${quote.standard} for ${PERIOD_DAYS} days, or ${quote.annual} for the year.`
-                : `The first ${PERIOD_DAYS} days are ${quote.intro}. Then ${quote.standard} every 30 days until you cancel.`}
+                ? `The free trial has been used. Continue at ${quote.standard} every ${PERIOD_DAYS} days, or ${quote.annual} for the year.`
+                : `The first ${TRIAL_DAYS} days are free. Then PayPal deducts ${quote.standard} every 30 days until you cancel.`}
             </p>
           </>
         )}
@@ -109,20 +109,19 @@ export default async function BillingPage({
       {access.lifetime ? null : (
       <section className="plans">
         <article className="card">
-          <span className="card-label">{access.introUsed ? "30 days" : "First 30 days"}</span>
+          <span className="card-label">{access.introUsed ? "30 days" : `${TRIAL_DAYS} days free`}</span>
           <p className="price">
             {monthPrice}
-            {access.introUsed ? null : <s className="was">{quote.standard}</s>}
           </p>
           <p className="note">
             {access.introUsed
-              ? `${quote.standard} is charged every 30 days until you cancel.`
-              : `${quote.intro} today, then ${quote.standard} every 30 days until you cancel.`}
+              ? `${quote.standard} is deducted from PayPal every 30 days until you cancel.`
+              : `Free for ${TRIAL_DAYS} days, then PayPal deducts ${quote.standard} every 30 days until you cancel.`}
           </p>
           <form action={beginCheckout}>
             <input type="hidden" name="plan" value="month" />
             <button className="btn" type="submit">
-              Subscribe with PayPal
+              {access.introUsed ? "Subscribe with PayPal" : "Start free trial"}
             </button>
           </form>
         </article>

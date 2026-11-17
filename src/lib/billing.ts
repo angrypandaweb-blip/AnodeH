@@ -5,6 +5,7 @@ import { sendPurchaseReceipt } from "@/lib/email-reports";
 import { convertUsdCents, formatMoney, reportCurrency } from "@/lib/residence-currency";
 
 export const PERIOD_DAYS = 30;
+export const TRIAL_DAYS = 7;
 export const YEAR_DAYS = 365;
 export const STANDARD_CENTS = 6900;
 export const INTRO_CENTS = 3450;
@@ -112,14 +113,13 @@ export async function quotesFor(email: string, country: string): Promise<PlanQuo
   return {
     currency: local.currency,
     name: local.name,
-    intro: money(INTRO_CENTS),
+    intro: "Free",
     standard: money(STANDARD_CENTS),
     annual: money(ANNUAL_CENTS),
   };
 }
 
 export function planSummary(access: Access, quote?: PlanQuote) {
-  const intro = quote?.intro ?? dollars(INTRO_CENTS);
   const standard = quote?.standard ?? dollars(STANDARD_CENTS);
   const annual = quote?.annual ?? dollars(ANNUAL_CENTS);
   if (access.lifetime) {
@@ -132,8 +132,8 @@ export function planSummary(access: Access, quote?: PlanQuote) {
     return { title: "Plan unpaid", detail: `${standard} / 30 days or ${annual}/year` };
   }
   return {
-    title: `First 30 days · ${intro}`,
-    detail: `Then ${standard} or ${annual}/year`,
+    title: `${TRIAL_DAYS} days free`,
+    detail: `Then ${standard} every 30 days, or ${annual}/year`,
   };
 }
 
@@ -386,8 +386,8 @@ async function paypalProductId(token: string) {
   return created.payload.id;
 }
 
-async function monthlyPlanId(token: string, intro: boolean) {
-  const key = `paypal_plan_${intro ? "intro" : "month"}_${paypalMode()}`;
+async function monthlyPlanId(token: string, trial: boolean) {
+  const key = `paypal_plan_${trial ? "trial7" : "month"}_${paypalMode()}`;
   const existing = await setting(key);
   if (existing) return existing;
   const productId = await paypalProductId(token);
@@ -396,18 +396,18 @@ async function monthlyPlanId(token: string, intro: boolean) {
   const regular = {
     frequency: { interval_unit: "DAY", interval_count: PERIOD_DAYS },
     tenure_type: "REGULAR",
-    sequence: intro ? 2 : 1,
+    sequence: trial ? 2 : 1,
     total_cycles: 0,
     pricing_scheme: { fixed_price: { value: usd(STANDARD_CENTS), currency_code: "USD" } },
   };
-  const cycles = intro
+  const cycles = trial
     ? [
         {
-          frequency: { interval_unit: "DAY", interval_count: PERIOD_DAYS },
+          frequency: { interval_unit: "DAY", interval_count: TRIAL_DAYS },
           tenure_type: "TRIAL",
           sequence: 1,
           total_cycles: 1,
-          pricing_scheme: { fixed_price: { value: usd(INTRO_CENTS), currency_code: "USD" } },
+          pricing_scheme: { fixed_price: { value: "0.00", currency_code: "USD" } },
         },
         regular,
       ]
@@ -415,7 +415,7 @@ async function monthlyPlanId(token: string, intro: boolean) {
 
   const created = await paypalJson(token, "/v1/billing/plans", {
     product_id: productId,
-    name: intro ? "AnodeH monthly — first 30 days half off" : "AnodeH monthly",
+    name: trial ? "AnodeH monthly — 7 day free trial" : "AnodeH monthly",
     billing_cycles: cycles,
     payment_preferences: {
       auto_bill_outstanding: true,
@@ -492,22 +492,25 @@ async function applySubscription(
 
   const active = subscription.status === "ACTIVE";
   const payment = subscription.billing_info?.last_payment;
-  const paidCents = Math.round(Number(payment?.amount?.value) * 100);
-  const knownAmount = paidCents === INTRO_CENTS || paidCents === STANDARD_CENTS;
-  const periodEnd = isoToSec(subscription.billing_info?.next_billing_time) || isoToSec(payment?.time) + PERIOD_DAYS * DAY;
-  if (!active || payment?.amount?.currency_code !== "USD" || !knownAmount || periodEnd <= nowSec()) {
+  const paidCents = payment ? Math.round(Number(payment.amount?.value) * 100) : 0;
+  const knownAmount = !payment || paidCents === 0 || paidCents === INTRO_CENTS || paidCents === STANDARD_CENTS;
+  const nextBilling = isoToSec(subscription.billing_info?.next_billing_time);
+  const periodEnd = nextBilling || (payment?.time && paidCents > 0 ? isoToSec(payment.time) + PERIOD_DAYS * DAY : 0);
+  const currencyOk = !payment || payment.amount?.currency_code === "USD";
+  if (!active || !currencyOk || !knownAmount || periodEnd <= nowSec()) {
     return {
       ok: false,
       active,
-      error: active ? "PayPal has not collected the monthly payment yet." : "The PayPal subscription is not active.",
+      error: active ? "PayPal has not started the subscription yet." : "The PayPal subscription is not active.",
     };
   }
 
   const currentPaid = Number((await setting("paid_until", owner)) || 0);
   await saveSetting("paid_until", String(Math.max(currentPaid, periodEnd)), owner);
   await saveSetting("paypal_subscription", id, owner);
-  if (paidCents === INTRO_CENTS) await saveSetting("intro_used", "1", owner);
-  const paymentId = `${id}:${payment?.time || periodEnd}`;
+  await saveSetting("intro_used", "1", owner);
+  if (!payment || paidCents <= 0) return { ok: true, active: true };
+  const paymentId = `${id}:${payment.time || periodEnd}`;
   const existingPayment = await queryOne<{ id: string }>(await getDb(), "SELECT id FROM payments WHERE id = ?", [paymentId]);
   await execute(
     await getDb(),

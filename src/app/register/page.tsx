@@ -1,7 +1,7 @@
 import { RegisterForm } from "@/components/RegisterForm";
 import { Mark } from "@/components/Mark";
 import { safePlan } from "@/lib/auth";
-import { ANNUAL_CENTS, dollars, INTRO_CENTS, STANDARD_CENTS } from "@/lib/billing";
+import { ANNUAL_CENTS, dollars, STANDARD_CENTS } from "@/lib/billing";
 import { allUsdRates, convertUsdCents, countryChoices, currencyForCountry, formatMoney } from "@/lib/residence-currency";
 
 export const dynamic = "force-dynamic";
@@ -25,20 +25,19 @@ export default async function RegisterPage({
   const quotes: Record<string, { currency: string; intro: string; standard: string; annual: string }> = {};
   for (const country of countries) {
     const currency = currencyForCountry(country.code);
-    const intro = quote(INTRO_CENTS, currency, rates);
     const standard = quote(STANDARD_CENTS, currency, rates);
     const annual = quote(ANNUAL_CENTS, currency, rates);
-    const same = intro.currency === currency && standard.currency === currency && annual.currency === currency;
+    const same = standard.currency === currency && annual.currency === currency;
     quotes[country.code] = {
       currency: same ? currency : "USD",
-      intro: intro.text,
+      intro: "Free",
       standard: standard.text,
       annual: annual.text,
     };
   }
   const fallback = {
     currency: "USD",
-    intro: dollars(INTRO_CENTS),
+    intro: "Free",
     standard: dollars(STANDARD_CENTS),
     annual: dollars(ANNUAL_CENTS),
   };
