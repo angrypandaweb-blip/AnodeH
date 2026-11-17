@@ -13,4 +13,6 @@ assert.equal(convertUsdCents(3450, 18), 621);
 assert.match(formatMoney(convertUsdCents(3450, 18), "ZAR"), /621/);
 assert.match(formatMoney(21, "ZAR"), /R/);
 assert.match(formatMoney(21, "USD"), /\$/);
+assert.equal(formatMoney(4180, "USD", 0), "$4,180");
+assert.equal(formatMoney(Math.round(642 * 18), "ZAR", 0).replace(/\u00a0|\u202f/g, " "), "R 11 556");
 console.log("residence currency tests passed");

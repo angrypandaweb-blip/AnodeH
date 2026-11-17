@@ -141,9 +141,10 @@ export function currencyName(currency: string): string {
   return new Intl.DisplayNames("en", { type: "currency" }).of(currency) || currency;
 }
 
-export function formatMoney(value: number, currency: string): string {
+export function formatMoney(value: number, currency: string, fractionDigits?: number): string {
   const locale = currency === "ZAR" ? "en-ZA" : currency === "GBP" ? "en-GB" : currency === "EUR" ? "de-DE" : "en-US";
-  return value.toLocaleString(locale, { style: "currency", currency });
+  const digits = fractionDigits === undefined ? {} : { minimumFractionDigits: fractionDigits, maximumFractionDigits: fractionDigits };
+  return value.toLocaleString(locale, { style: "currency", currency, ...digits });
 }
 
 const rates = new Map<string, number>();
