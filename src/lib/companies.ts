@@ -28,7 +28,7 @@ export function parseCompanies(stored: string | undefined): Company[] {
     if (!item || typeof item !== "object") continue;
     const record = item as { domain?: unknown; adsAccount?: unknown };
     const domain = trackedDomain(String(record.domain || ""));
-    if (!domain || domain === "anodeh.com" || companies.some((company) => company.domain === domain)) continue;
+    if (!domain || companies.some((company) => company.domain === domain)) continue;
     companies.push({ domain, adsAccount: normalizeAdsAccount(String(record.adsAccount || "")) || "" });
   }
   return companies;
