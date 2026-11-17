@@ -1,14 +1,30 @@
-import { clearAlerts, runScenario } from "@/app/actions";
+import { clearAlerts, manualBlock, runScenario } from "@/app/actions";
 import { LiveRefresh } from "@/components/LiveRefresh";
 import { getUser } from "@/lib/auth";
-import { reasonText } from "@/lib/score";
-import { compact, dayLabel, percent, scoreTone, when } from "@/lib/format";
+import { compact, percent, scoreTone, when } from "@/lib/format";
 import { formatMoney, moneyInCurrency, placeFor, reportCurrency } from "@/lib/residence-currency";
 import { getPolicy } from "@/lib/engine";
 import { refreshGoogleAdsIfStale } from "@/lib/google-ads";
-import { alerts, capacity, dailySeries, googleDaily, googleLink, recentRisky, weekStats } from "@/lib/queries";
+import { alerts, capacity, dailySeries, googleDaily, googleLink, listClicks, weekStats } from "@/lib/queries";
+import { REASON_LABELS } from "@/lib/score";
 
 export const dynamic = "force-dynamic";
+
+const ACTION_LABEL = { allow: "Allowed", flag: "Flagged", block: "Blocked" } as const;
+const TYPE_LABEL = { search: "Search", display: "Display", pmax: "Performance Max" } as const;
+
+function reasonList(raw: string): { code: string; label: string }[] {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((reason) => {
+      const code = String(reason);
+      return { code, label: REASON_LABELS[code] ?? code };
+    });
+  } catch {
+    return [];
+  }
+}
 
 const NOTICES: Record<string, (n: number) => string> = {
   shoppers: (n) => `Added ${n} engaged residential visits. They stay billable.`,
@@ -22,7 +38,7 @@ const NOTICES: Record<string, (n: number) => string> = {
 export default async function OverviewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ notice?: string; n?: string }>;
+  searchParams: Promise<{ notice?: string; n?: string; error?: string }>;
 }) {
   const params = await searchParams;
   const [policy, user] = await Promise.all([getPolicy(), getUser()]);
@@ -32,12 +48,12 @@ export default async function OverviewPage({
   const googleClicksTotal = googleDays.reduce((sum, day) => sum + day.clicks, 0);
   const googleCost = googleDays.reduce((sum, day) => sum + day.cost_micros, 0) / 1_000_000;
   const hasGoogleTotals = googleClicksTotal > 0 || googleCost > 0;
+  const since = Math.floor(Date.now() / 1000) - 7 * 86400;
   const stats = await weekStats();
   const series = await dailySeries();
-  const risky = await recentRisky();
+  const { rows } = await listClicks("all", "", 0, 8, since, "all");
   const caps = await capacity();
   const notes = await alerts(true);
-  const max = Math.max(1, ...series.map((day) => day.allow + day.organic + day.flagged + day.repeat));
   const notice = params.notice ? NOTICES[params.notice] : undefined;
   const n = Math.max(0, Math.min(1000, Number(params.n) || 0));
   const hottest = caps.fullest / caps.cap;
@@ -71,6 +87,7 @@ export default async function OverviewPage({
         )}
       </header>
 
+      {params.error ? <p className="banner warn">{params.error}</p> : null}
       {notice && params.notice !== "google" ? <p className="banner">{notice(n)}</p> : null}
       {!link && !user?.adsAccount ? (
         <p className="banner warn">
@@ -128,91 +145,98 @@ export default async function OverviewPage({
         )}
       </section>
 
-      <section className="split">
-        <article className="card">
-          <span className="card-label">Clicks by day</span>
-          <div className="chart" aria-hidden>
-            {series.map((day) => {
-              const total = day.allow + day.organic + day.flagged + day.repeat;
-              const height = Math.max(4, Math.round((total / max) * 150));
-              const countClass = day.repeat > 0 ? "repeat" : day.organic > 0 && day.flagged === 0 ? "organic" : "";
+      <article className="card">
+        <span className="card-label">Latest scored clicks</span>
+        {rows.length === 0 ? <p className="note">No scored visits in the last 7 days.</p> : null}
+        {rows.length > 0 ? (
+          <div className="click-list">
+            <div className="click-head" aria-hidden>
+              <span>Score</span>
+              <span>Click</span>
+              <span>Source</span>
+              <span>Exclude</span>
+            </div>
+            {rows.map((click) => {
+              const reasons = reasonList(click.reasons);
+              const organic = click.channel === "organic";
+              const held = click.campaign_type === "pmax";
+              const kind = TYPE_LABEL[click.campaign_type as keyof typeof TYPE_LABEL] ?? click.campaign_type;
+              const actionLabel = ACTION_LABEL[click.action as keyof typeof ACTION_LABEL] ?? click.action;
+              const detail = click.keyword || click.placement || kind;
               return (
-                <div className="bar-col" key={day.ts}>
-                  <span className={`bar-count ${countClass}`}>{day.organic + day.flagged + day.repeat}</span>
-                  <div className="stack" style={{ height }}>
-                    <div className="ok" style={{ flex: day.allow }} />
-                    <div className="organic" style={{ flex: day.organic }} />
-                    <div className="bad" style={{ flex: day.flagged }} />
-                    <div className="repeat" style={{ flex: day.repeat }} />
+                <article className="click" key={click.id}>
+                  <div className="click-score" style={scoreTone(click.score)} aria-label={`Score ${click.score}`}>
+                    {click.score}
                   </div>
-                  <span>{dayLabel(day.ts, place.timeZone)}</span>
-                </div>
+                  <div>
+                    <div className="click-title">
+                      <strong>{click.campaign}</strong>
+                      <span className="muted">{detail}</span>
+                      <span className={`pill ${click.action}`}>{actionLabel}</span>
+                      <span className={`pill ${organic ? "organic" : "paid"}`}>{organic ? "Organic" : "Paid"}</span>
+                      {organic ? <span className="organic-note">Free click. Google Ads does not charge for it.</span> : null}
+                    </div>
+                    <div className="reasons">
+                      {reasons.length === 0 ? <span className={`reason ${organic ? "organic" : ""}`}>No risk signals</span> : null}
+                      {reasons.map((reason, index) => (
+                        <span
+                          className={`reason ${organic ? "organic" : ""} ${!organic && reason.code === "repeat_ip" ? "repeat" : ""}`}
+                          key={`${reason.code}-${index}`}
+                        >
+                          {reason.label}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="click-source">
+                    <div className="mono">{click.ip}</div>
+                    <div className="muted">{[click.isp, click.country].filter(Boolean).join(" · ")}</div>
+                    <div className="muted">{when(click.ts, place.timeZone)}</div>
+                  </div>
+                  <div className="click-side">
+                    {click.block_id ? <span className="pill block">Excluded</span> : null}
+                    {!click.block_id && held ? <span className="muted">Conversion held</span> : null}
+                    {!click.block_id && !held ? (
+                      <form action={manualBlock}>
+                        <input type="hidden" name="ip" value={click.ip} />
+                        <input type="hidden" name="campaign" value={click.campaign} />
+                        <input type="hidden" name="score" value={String(click.score)} />
+                        <input type="hidden" name="return" value="/dashboard" />
+                        <button className="ghost" type="submit">Exclude</button>
+                      </form>
+                    ) : null}
+                  </div>
+                </article>
               );
             })}
           </div>
-          <div className="legend">
-            <span><i className="swatch ok" /> Allowed</span>
-            <span><i className="swatch organic" /> Organic · free click</span>
-            <span><i className="swatch bad" /> Flagged</span>
-            <span><i className="swatch repeat" /> Paid repeat IP</span>
-          </div>
-        </article>
-        <article className="card">
-          <span className="card-label">Exclusion room</span>
-          <div className="capacity">
-            <div className={`track ${hottest >= 0.8 ? "hot" : hottest >= 0.5 ? "warn" : ""}`}>
-              <span style={{ width: `${Math.min(100, hottest * 100)}%` }} />
-            </div>
-            <p className="note">
-              Google Ads keeps about 500 IP exclusions per campaign. AnodeH spends that list on addresses likely to return, and lets them expire.
-            </p>
-          </div>
-          {caps.rows.length === 0 ? <p className="note">No active exclusions yet.</p> : null}
-          {caps.rows.map((row) => (
-            <div className="cap-row" key={row.campaign}>
-              <span>{row.campaign}</span>
-              <span className="mono">{row.c}/{caps.cap}</span>
-            </div>
-          ))}
-          {notes.length > 0 ? (
-            <form action={clearAlerts}>
-              <p className="banner warn">{notes[0].message}</p>
-              <button className="ghost" type="submit">Dismiss alerts</button>
-            </form>
-          ) : null}
-        </article>
-      </section>
+        ) : null}
+        <p className="note"><a href="/activity">Open Activity</a> for the full list.</p>
+      </article>
 
       <article className="card">
-        <span className="card-label">Latest scored clicks</span>
-        <table>
-          <thead>
-            <tr>
-              <th>When</th>
-              <th>Campaign</th>
-              <th>Source</th>
-              <th>Score</th>
-              <th>Why</th>
-            </tr>
-          </thead>
-          <tbody>
-            {risky.map((click) => (
-              <tr key={click.id}>
-                <td>{when(click.ts, place.timeZone)}</td>
-                <td>
-                  {click.campaign}
-                  <div className="muted">{click.campaign_type === "pmax" ? "Conversion held when blocked" : click.keyword || click.placement || "—"}</div>
-                </td>
-                <td>
-                  <div className="mono">{click.ip}</div>
-                  <div className="muted">{[click.isp, click.country].filter(Boolean).join(" · ")}</div>
-                </td>
-                <td><span className="pill" style={scoreTone(click.score)}>{click.score}</span></td>
-                <td>{reasonText(JSON.parse(click.reasons) as string[])}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <span className="card-label">Exclusion room</span>
+        <div className="capacity">
+          <div className={`track ${hottest >= 0.8 ? "hot" : hottest >= 0.5 ? "warn" : ""}`}>
+            <span style={{ width: `${Math.min(100, hottest * 100)}%` }} />
+          </div>
+          <p className="note">
+            Google Ads keeps about 500 IP exclusions per campaign. AnodeH spends that list on addresses likely to return, and lets them expire.
+          </p>
+        </div>
+        {caps.rows.length === 0 ? <p className="note">No active exclusions yet.</p> : null}
+        {caps.rows.map((row) => (
+          <div className="cap-row" key={row.campaign}>
+            <span>{row.campaign}</span>
+            <span className="mono">{row.c}/{caps.cap}</span>
+          </div>
+        ))}
+        {notes.length > 0 ? (
+          <form action={clearAlerts}>
+            <p className="banner warn">{notes[0].message}</p>
+            <button className="ghost" type="submit">Dismiss alerts</button>
+          </form>
+        ) : null}
       </article>
     </div>
   );

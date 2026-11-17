@@ -106,8 +106,9 @@ export async function deleteAllow(formData: FormData) {
 }
 
 function activityReturn(value: string) {
-  if (!value.startsWith("/activity") || value.startsWith("//")) return "/activity";
-  return value;
+  if (value.startsWith("//")) return "/activity";
+  if (value.startsWith("/activity") || value.startsWith("/dashboard")) return value;
+  return "/activity";
 }
 
 export async function manualBlock(formData: FormData) {
