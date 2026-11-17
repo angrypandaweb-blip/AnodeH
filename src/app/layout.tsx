@@ -6,12 +6,14 @@ import { CompanySwitch } from "@/components/CompanySwitch";
 import { GoogleTag } from "@/components/GoogleTag";
 import { Mark } from "@/components/Mark";
 import { Nav } from "@/components/Nav";
+import { PurchaseConversion } from "@/components/PurchaseConversion";
 import { logoutAccount } from "@/app/actions";
 import { getUser } from "@/lib/auth";
 import { loadCompanies } from "@/lib/companies";
 import { getAccess, planSummary, quotesFor } from "@/lib/billing";
 import { getPolicy } from "@/lib/engine";
 import { sendDueDailyReport, sendWelcomeSampleOnce } from "@/lib/email-reports";
+import { purchaseTransactionId } from "@/lib/google-conversion";
 import { unreadCount } from "@/lib/queries";
 import { home } from "@/lib/seo";
 import { visitorIp } from "@/lib/visitor-country";
@@ -47,13 +49,20 @@ export const metadata = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   await sendWelcomeSampleOnce().catch(() => undefined);
-  const path = (await headers()).get("x-pathname") || "/";
-  const bare = path === "/" || path === "/blocked" || path === "/login" || path === "/register" || path === "/forgot-password" || path === "/reset-password" || path === "/privacy" || path === "/terms" || path === "/support";
+  const headerList = await headers();
+  const path = headerList.get("x-pathname") || "/";
+  const search = headerList.get("x-search") || "";
+  const purchaseId = path === "/thank-you"
+    ? purchaseTransactionId(new URLSearchParams(search.startsWith("?") ? search.slice(1) : search).get("purchase") || undefined)
+    : "";
+  const purchaseTag = path === "/thank-you" ? <PurchaseConversion transactionId={purchaseId} /> : null;
+  const bare = path === "/" || path === "/blocked" || path === "/login" || path === "/register" || path === "/forgot-password" || path === "/reset-password" || path === "/privacy" || path === "/terms" || path === "/support" || path === "/thank-you";
   if (bare) {
     return (
       <html lang="en">
         <body className={`${display.variable} ${sans.variable}`}>
           <GoogleTag />
+          {purchaseTag}
           {children}
           <Assistant />
           <script src="https://anodeh.com/cf.js" data-key="cf_502ff663e79ffa28" async />
@@ -65,7 +74,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   if (!user) redirect(`/login?next=${encodeURIComponent(path)}`);
   await sendDueDailyReport(user.id).catch(() => undefined);
   const access = await getAccess();
-  if (access.status === "unpaid" && path !== "/billing" && path !== "/thank-you" && !path.startsWith("/billing/")) {
+  if (access.status === "unpaid" && path !== "/billing" && !path.startsWith("/billing/")) {
     redirect("/billing");
   }
   const plan = planSummary(access, await quotesFor(user.email, user.country));
@@ -79,6 +88,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en">
       <body className={`${display.variable} ${sans.variable}`}>
+        <GoogleTag />
         <div className="app">
           <aside className="sidebar">
             <a className="brand" href="/dashboard">
@@ -125,7 +135,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </form>
           </footer>
         </div>
-        <GoogleTag />
         <Assistant />
         <script src="https://anodeh.com/cf.js" data-key="cf_502ff663e79ffa28" async />
       </body>
