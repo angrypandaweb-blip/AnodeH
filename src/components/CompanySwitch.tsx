@@ -2,22 +2,27 @@
 
 import { switchCompany } from "@/app/actions";
 
-export function CompanySwitch({ companies, active }: { companies: { domain: string }[]; active: string }) {
+export function CompanySwitch({
+  companies,
+  active,
+  spread = false,
+}: {
+  companies: { domain: string; adsAccount: string }[];
+  active: string;
+  spread?: boolean;
+}) {
   return (
-    <form action={switchCompany} className="company-switch">
-      <label>
-        Company
-        <select
-          name="domain"
-          defaultValue={active}
-          aria-label="Company"
-          onChange={(event) => event.currentTarget.form?.requestSubmit()}
-        >
-          {companies.map((company) => (
-            <option key={company.domain} value={company.domain}>{company.domain}</option>
-          ))}
-        </select>
-      </label>
-    </form>
+    <div className={spread ? "company-list spread" : "company-list"}>
+      <p>Companies</p>
+      {companies.map((company) => (
+        <form key={company.domain} action={switchCompany}>
+          <input type="hidden" name="domain" value={company.domain} />
+          <button type="submit" className={company.domain === active ? "active" : undefined} aria-current={company.domain === active ? "true" : undefined}>
+            <strong>{company.domain}</strong>
+            <small>{company.adsAccount || "No Ads account yet"}</small>
+          </button>
+        </form>
+      ))}
+    </div>
   );
 }

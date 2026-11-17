@@ -1,4 +1,5 @@
 import { clearAlerts } from "@/app/actions";
+import { CompanySwitch } from "@/components/CompanySwitch";
 import { LiveRefresh } from "@/components/LiveRefresh";
 import { getUser } from "@/lib/auth";
 import { loadCompanies } from "@/lib/companies";
@@ -71,6 +72,10 @@ export default async function OverviewPage({
           </p>
         </div>
       </header>
+
+      {companies?.multi && companies.companies.length ? (
+        <CompanySwitch companies={companies.companies} active={companies.active} spread />
+      ) : null}
 
       {notice && params.notice !== "google" ? <p className="banner">{notice(n)}</p> : null}
 

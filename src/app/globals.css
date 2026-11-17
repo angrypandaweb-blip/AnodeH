@@ -102,8 +102,24 @@ h1, h2, .metric strong, .brand-name, .price {
 .account-foot { grid-column: 2; padding: 0 32px 32px; max-width: 1180px; }
 .account-foot .plan-link { max-width: 280px; }
 .account-foot form { margin-top: 12px; }
-.company-switch { padding: 0 8px 14px; }
-.company-switch select { width: 100%; }
+.company-list { padding: 0 8px 14px; display: grid; gap: 4px; max-height: 280px; overflow: auto; }
+.company-list p { margin: 0 2px 4px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.company-list form { margin: 0; }
+.company-list button {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.company-list button strong { display: block; font-weight: 600; font-size: 13px; }
+.company-list button small { display: block; color: var(--muted); font-size: 11px; font-weight: 500; }
+.company-list button:hover, .company-list button.active { background: var(--paper); }
+.company-list button.active { color: var(--moss); }
+.company-list.spread { max-height: none; padding: 0 0 16px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.company-empty { margin: 0; padding: 0 18px 14px; font-size: 13px; }
+.company-empty a { color: var(--moss); font-weight: 600; }
 .side-foot { margin-top: 12px; padding: 0 8px; color: var(--muted); font-size: 12px; line-height: 1.4; }
 .side-foot strong { color: var(--ink); font-weight: 600; display: block; }
 .side-foot a, .banner a { color: inherit; font-weight: 600; }
