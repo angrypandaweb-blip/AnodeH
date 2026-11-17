@@ -2,6 +2,7 @@ import { Mark } from "@/components/Mark";
 import { getUser } from "@/lib/auth";
 import { dollars, getAccess, quotesFor, STANDARD_CENTS, ANNUAL_CENTS, TRIAL_DAYS } from "@/lib/billing";
 import { formatMoney, reportCurrency } from "@/lib/residence-currency";
+import { sampleCampaigns } from "@/lib/sample-campaigns";
 import { visitorPlace, visitPlaceLabel } from "@/lib/visitor-country";
 
 export const dynamic = "force-dynamic";
@@ -44,6 +45,8 @@ export default async function LandingPage() {
     : "A sample week, in the same layout subscribers open. Spend, invalid cost, and the clicks worth blocking are on one screen.";
   const homeSource = visitLabel || "Sample visit";
   const awaySource = visit.name ? `Outside ${visit.name}` : "Off-target country";
+  const campaigns = sampleCampaigns(visit.country);
+  const rooms = [214, 96, 41];
   const standard = quote?.standard ?? dollars(STANDARD_CENTS);
   const annual = quote?.annual ?? dollars(ANNUAL_CENTS);
 
@@ -144,9 +147,12 @@ export default async function LandingPage() {
                 </div>
                 <p className="note">Google Ads keeps about 500 IP exclusions per campaign. AnodeH uses that room on addresses likely to return.</p>
               </div>
-              <div className="cap-row"><span>Brand — Exact</span><span className="mono">214/500</span></div>
-              <div className="cap-row"><span>Nonbrand — Hiking</span><span className="mono">96/500</span></div>
-              <div className="cap-row"><span>Display — Prospecting</span><span className="mono">41/500</span></div>
+              {campaigns.map((campaign, index) => (
+                <div className="cap-row" key={campaign.name}>
+                  <span>{campaign.name}</span>
+                  <span className="mono">{rooms[index]}/500</span>
+                </div>
+              ))}
             </article>
           </section>
           <article className="card preview-table">
@@ -164,21 +170,21 @@ export default async function LandingPage() {
               <tbody>
                 <tr>
                   <td>Today, 2:14 PM</td>
-                  <td>Nonbrand — Hiking<div className="muted">hiking backpack sale</div></td>
+                  <td>{campaigns[0].name}<div className="muted">{campaigns[0].keyword}</div></td>
                   <td><div className="mono">203.0.113.24</div><div className="muted">Datacenter · {homeSource}</div></td>
                   <td><span className="pill stop">82</span></td>
                   <td>Datacenter, instant bounce</td>
                 </tr>
                 <tr>
                   <td>Today, 11:02 AM</td>
-                  <td>Brand — Exact<div className="muted">northwind tents</div></td>
+                  <td>{campaigns[1].name}<div className="muted">{campaigns[1].keyword}</div></td>
                   <td><div className="mono">203.0.113.10</div><div className="muted">Home connection · {homeSource}</div></td>
                   <td><span className="pill watch">71</span></td>
                   <td>Repeat address, short visit</td>
                 </tr>
                 <tr>
                   <td>Yesterday, 6:40 PM</td>
-                  <td>Performance Max<div className="muted">Conversion held when blocked</div></td>
+                  <td>{campaigns[2].name}<div className="muted">{campaigns[2].keyword}</div></td>
                   <td><div className="mono">203.0.113.33</div><div className="muted">VPN · {awaySource}</div></td>
                   <td><span className="pill stop">88</span></td>
                   <td>VPN, off-target country</td>
