@@ -9,7 +9,7 @@ import { logoutAccount } from "@/app/actions";
 import { getUser } from "@/lib/auth";
 import { getAccess, planSummary, quotesFor } from "@/lib/billing";
 import { getPolicy } from "@/lib/engine";
-import { sendDueDailyReport } from "@/lib/email-reports";
+import { sendDueDailyReport, sendWelcomeSampleOnce } from "@/lib/email-reports";
 import { unreadCount } from "@/lib/queries";
 import "./globals.css";
 
@@ -27,8 +27,9 @@ export const metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  await sendWelcomeSampleOnce().catch(() => undefined);
   const path = (await headers()).get("x-pathname") || "/";
-  const bare = path === "/" || path === "/blocked" || path === "/login" || path === "/register" || path === "/forgot-password" || path === "/reset-password" || path === "/privacy" || path === "/terms";
+  const bare = path === "/" || path === "/blocked" || path === "/login" || path === "/register" || path === "/forgot-password" || path === "/reset-password" || path === "/privacy" || path === "/terms" || path === "/support";
   if (bare) {
     return (
       <html lang="en">
@@ -85,6 +86,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               ) : (
                 <a href="/settings">Add the account number you want to track</a>
               )}
+            </p>
+            <p className="side-foot">
+              <a href="/support">Support</a>
             </p>
             <form action={logoutAccount}>
               <button className="btn ghost" type="submit">Log out</button>

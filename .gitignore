@@ -6,3 +6,4 @@ data
 .env.*
 .cursor
 *.tsbuildinfo
+.vercel

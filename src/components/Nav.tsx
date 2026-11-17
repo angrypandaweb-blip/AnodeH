@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/threats", label: "Threats" },
   { href: "/settings", label: "Settings" },
   { href: "/billing", label: "Plan" },
+  { href: "/support", label: "Support" },
 ];
 
 export function Nav({ unread }: { unread: number }) {

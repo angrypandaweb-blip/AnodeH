@@ -6,6 +6,7 @@ import { convertUsdCents, formatMoney, placeFor, reportCurrency } from "./reside
 import { reasonText } from "./score";
 
 const APP = "https://anodeh.com";
+export const SUPPORT_EMAIL = "support@anodeh.com";
 
 export type PurchaseReceipt = {
   userId: string;
@@ -93,6 +94,161 @@ async function markSent(userId: string, kind: string, ref: string) {
     ref,
     Math.floor(Date.now() / 1000),
   ]);
+}
+
+function countryName(code: string) {
+  if (!/^[A-Z]{2}$/.test(code)) return code || "Not given";
+  return new Intl.DisplayNames("en", { type: "region" }).of(code) || code;
+}
+
+function signedUpAt(ts: number) {
+  const label = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Africa/Johannesburg",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date(ts * 1000));
+  return `${label} SAST`;
+}
+
+export function siteTag(domainKey: string) {
+  return `<script src="${APP}/cf.js" data-key="${domainKey}" async></script>`;
+}
+
+export function signupNotice(person: { name: string; email: string; country: string; createdAt: number }) {
+  const country = countryName(person.country);
+  const whenSigned = signedUpAt(person.createdAt);
+  const subject = `New AnodeH signup: ${person.name}`;
+  const text = [
+    "A new account was created.",
+    "",
+    `Name: ${person.name}`,
+    `Email: ${person.email}`,
+    `Country: ${country}`,
+    `Signed up: ${whenSigned}`,
+    "",
+    "The password is not included.",
+    "",
+    "AnodeH",
+  ].join("\n");
+  const html = `<p>A new account was created.</p>
+<ul>
+<li>Name: ${escapeHtml(person.name)}</li>
+<li>Email: ${escapeHtml(person.email)}</li>
+<li>Country: ${escapeHtml(country)}</li>
+<li>Signed up: ${escapeHtml(whenSigned)}</li>
+</ul>
+<p>The password is not included.</p>
+<p>AnodeH</p>`;
+  return { subject, text, html };
+}
+
+export function welcomeLetter(person: { name: string; domainKey: string }, sample = false) {
+  const tag = siteTag(person.domainKey);
+  const subject = sample ? "Sample: Welcome to AnodeH" : "Welcome to AnodeH";
+  const intro = sample
+    ? "This is a sample of the welcome email a new account receives."
+    : `Hello ${person.name},`;
+  const text = [
+    intro,
+    "",
+    "Your AnodeH account is open. Three steps finish the setup.",
+    "",
+    "1. Paste the site tag on your website",
+    "Add this snippet on every page, just before the closing body tag:",
+    tag,
+    "The tag reports the visit when the visitor leaves, or after eight seconds. A blocked paid visitor is sent to the blocked page. Allowed and flagged visitors stay on the page.",
+    "",
+    "2. Connect Google Ads",
+    `Open Settings and connect the account you want AnodeH to watch: ${APP}/settings`,
+    "",
+    "3. Start the plan when you are ready",
+    `The monthly plan is free for 7 days. After that PayPal deducts the regular price every 30 days until you cancel: ${APP}/billing`,
+    "",
+    `Need help adding the tag? Write to ${SUPPORT_EMAIL} or send a request at ${APP}/support.`,
+    "",
+    "AnodeH",
+  ].join("\n");
+  const html = `<p>${escapeHtml(intro)}</p>
+<p>Your AnodeH account is open. Three steps finish the setup.</p>
+<p><strong>1. Paste the site tag on your website</strong><br>
+Add this snippet on every page, just before the closing body tag:</p>
+<pre>${escapeHtml(tag)}</pre>
+<p>The tag reports the visit when the visitor leaves, or after eight seconds. A blocked paid visitor is sent to the blocked page. Allowed and flagged visitors stay on the page.</p>
+<p><strong>2. Connect Google Ads</strong><br>
+<a href="${APP}/settings">Open Settings</a> and connect the account you want AnodeH to watch.</p>
+<p><strong>3. Start the plan when you are ready</strong><br>
+The monthly plan is free for 7 days. After that PayPal deducts the regular price every 30 days until you cancel. <a href="${APP}/billing">Open the plan</a>.</p>
+<p>Need help adding the tag? Write to <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a> or <a href="${APP}/support">send a support request</a>.</p>
+<p>AnodeH</p>`;
+  return { subject, text, html };
+}
+
+export function supportRequestLetter(request: { name: string; email: string; message: string }) {
+  const subject = `AnodeH support request from ${request.name}`;
+  const text = [
+    `Name: ${request.name}`,
+    `Email: ${request.email}`,
+    "",
+    request.message,
+    "",
+    "Reply to this message to answer the person.",
+  ].join("\n");
+  const html = `<p><strong>Name:</strong> ${escapeHtml(request.name)}<br>
+<strong>Email:</strong> ${escapeHtml(request.email)}</p>
+<p>${escapeHtml(request.message).replace(/\n/g, "<br>")}</p>
+<p>Reply to this message to answer the person.</p>`;
+  return { subject, text, html };
+}
+
+export async function sendSignupNotice(person: { id: string; name: string; email: string; country: string; createdAt: number }) {
+  if (!mailConfigured()) return { ok: false as const, error: "Email is not configured." };
+  const letter = signupNotice(person);
+  const sent = await sendMail(SUPPORT_EMAIL, letter.subject, letter.text, letter.html);
+  if (!sent.ok) return sent;
+  await markSent(person.id, "signup", person.id);
+  return { ok: true as const };
+}
+
+export async function sendWelcome(person: { id: string; name: string; email: string; domainKey: string }) {
+  if (!mailConfigured()) return { ok: false as const, error: "Email is not configured." };
+  const letter = welcomeLetter(person);
+  const sent = await sendMail(person.email, letter.subject, letter.text, letter.html);
+  if (!sent.ok) return sent;
+  await markSent(person.id, "welcome", person.id);
+  return { ok: true as const };
+}
+
+export async function sendWelcomeSampleOnce() {
+  if (process.env.VERCEL_ENV !== "production" || !mailConfigured()) return { ok: false as const, skipped: true };
+  if (await alreadySent("welcome-sample", "support")) return { ok: true as const, skipped: true };
+  try {
+    await markSent("system", "welcome-sample", "support");
+  } catch {
+    return { ok: true as const, skipped: true };
+  }
+  const letter = welcomeLetter({ name: "Sample customer", domainKey: "cf_sample" }, true);
+  const sent = await sendMail(SUPPORT_EMAIL, letter.subject, letter.text, letter.html);
+  if (!sent.ok) {
+    await execute(await getDb(), "DELETE FROM email_log WHERE kind = ? AND ref = ?", ["welcome-sample", "support"]);
+    return sent;
+  }
+  return { ok: true as const };
+}
+
+export async function sendSupportRequest(request: { userId: string; name: string; email: string; message: string }) {
+  if (!mailConfigured()) return { ok: false as const, error: "Email is not configured." };
+  const bucket = Math.floor(Date.now() / 1000 / 3600);
+  const ref = `${request.email}:${bucket}`;
+  if (await alreadySent("support", ref)) return { ok: false as const, error: "A request from this email is already in. Write again in an hour, or email support@anodeh.com." };
+  const letter = supportRequestLetter(request);
+  const sent = await sendMail(SUPPORT_EMAIL, letter.subject, letter.text, letter.html, request.email);
+  if (!sent.ok) return sent;
+  await markSent(request.userId || "public", "support", ref);
+  return { ok: true as const };
 }
 
 export function passwordResetLink(host: string, proto: string, token: string) {

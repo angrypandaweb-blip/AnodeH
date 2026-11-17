@@ -249,6 +249,7 @@ export default async function LandingPage() {
       <footer className="site-legal">
         <a href="/privacy">Privacy</a>
         <a href="/terms">Terms</a>
+        <a href="/support">Support</a>
       </footer>
     </div>
   );

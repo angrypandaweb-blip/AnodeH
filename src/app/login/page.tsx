@@ -21,6 +21,7 @@ export default async function LoginPage({
         </a>
         <nav className="site-nav">
           <a href="/register">Register</a>
+          <a href="/support">Support</a>
         </nav>
       </header>
       <section className="hero" style={{ textAlign: "left", maxWidth: 480 }}>
