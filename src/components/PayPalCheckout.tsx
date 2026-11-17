@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { beginCheckout } from "@/app/actions";
 
-export function PayPalCheckout({ plan, label }: { plan: "month" | "year"; label: string }) {
+export function PayPalCheckout({ plan, label }: { plan: "month" | "year" | "sites10" | "sites20"; label: string }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
 

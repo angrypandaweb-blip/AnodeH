@@ -9,8 +9,8 @@ const MONTH = 60 * 60 * 24 * 30;
 
 export type Account = { id: string; email: string; name: string; adsAccount: string; country: string };
 
-export function safePlan(value: string | undefined): "month" | "year" | "" {
-  return value === "month" || value === "year" ? value : "";
+export function safePlan(value: string | undefined): "month" | "year" | "sites10" | "sites20" | "" {
+  return value === "month" || value === "year" || value === "sites10" || value === "sites20" ? value : "";
 }
 
 export function safeNext(value: string | undefined): string {

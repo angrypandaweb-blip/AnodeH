@@ -12,6 +12,8 @@ import {
   quotesFor,
   STANDARD_CENTS,
   ANNUAL_CENTS,
+  SITES_10_CENTS,
+  SITES_20_CENTS,
   TRIAL_DAYS,
 } from "@/lib/billing";
 import { getUser } from "@/lib/auth";
@@ -44,7 +46,7 @@ export default async function BillingPage({
   const monthPrice = access.introUsed ? quote.standard : "Free";
   const paypalNote = quote.currency === "USD"
     ? `The monthly plan is free for ${TRIAL_DAYS} days, then PayPal deducts ${dollars(STANDARD_CENTS)} every 30 days automatically.`
-    : `Prices are in ${quote.name}, for the country on this account. PayPal collects US dollars: nothing for ${TRIAL_DAYS} days, then ${dollars(STANDARD_CENTS)} every 30 days. The year is ${dollars(ANNUAL_CENTS)}.`;
+    : `Prices are in ${quote.name}, for the country on this account. PayPal collects US dollars: nothing for ${TRIAL_DAYS} days, then ${dollars(STANDARD_CENTS)} every 30 days. The year is ${dollars(ANNUAL_CENTS)}. Ten websites are ${dollars(SITES_10_CENTS)} every 30 days, and twenty websites are ${dollars(SITES_20_CENTS)}.`;
 
   return (
     <div>
@@ -114,6 +116,7 @@ export default async function BillingPage({
             {monthPrice}
           </p>
           <p className="note">
+            One website.{" "}
             {access.introUsed
               ? `${quote.standard} is deducted from PayPal every 30 days until you cancel.`
               : `Free for ${TRIAL_DAYS} days, then PayPal deducts ${quote.standard} every 30 days until you cancel.`}
@@ -124,8 +127,22 @@ export default async function BillingPage({
         <article className="card">
           <span className="card-label">Annual</span>
           <p className="price">{quote.annual}</p>
-          <p className="note">One payment for 365 days. This plan does not renew.</p>
+          <p className="note">One website. One payment for 365 days. This plan does not renew.</p>
           <PayPalCheckout plan="year" label={`Pay ${quote.annual} with PayPal`} />
+        </article>
+
+        <article className="card">
+          <span className="card-label">10 websites</span>
+          <p className="price">{quote.sites10}</p>
+          <p className="note">Best for growing businesses managing multiple websites. {quote.sites10} every 30 days until you cancel.</p>
+          <PayPalCheckout plan="sites10" label={`Subscribe for ${quote.sites10}`} />
+        </article>
+
+        <article className="card">
+          <span className="card-label">20 websites</span>
+          <p className="price">{quote.sites20}</p>
+          <p className="note">Best for growing businesses managing multiple websites. {quote.sites20} every 30 days until you cancel.</p>
+          <PayPalCheckout plan="sites20" label={`Subscribe for ${quote.sites20}`} />
         </article>
       </section>
       )}

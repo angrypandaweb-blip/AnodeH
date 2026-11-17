@@ -16,7 +16,7 @@ const ANSWERS: { test: RegExp; answer: AssistantAnswer }[] = [
   {
     test: /price|pricing|plan|cost|how much|\$|paypal|month|annual|year/,
     answer: {
-      text: "The monthly plan is free for 7 days, then $69 every 30 days. PayPal deducts that from the account automatically until you cancel. The year is $759 once. The page shows that price in the visitor’s currency. PayPal collects the US dollar amount.",
+      text: "The monthly plan is one website, free for 7 days, then $69 every 30 days. PayPal deducts that from the account automatically until you cancel. The year is $759 once. An account for 10 websites is $189 every 30 days. An account for 20 websites is $289 every 30 days. The page shows those prices in the visitor’s currency. PayPal collects the US dollar amount.",
       links: [{ label: "Plans", href: "/billing" }],
     },
   },

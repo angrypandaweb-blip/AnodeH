@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { registerAccount } from "@/app/actions";
 
-type Quote = { currency: string; intro: string; standard: string; annual: string };
+type Quote = { currency: string; intro: string; standard: string; annual: string; sites10: string; sites20: string };
 
 export function RegisterForm({
   plan,
@@ -13,7 +13,7 @@ export function RegisterForm({
   quotes,
   fallback,
 }: {
-  plan: "" | "month" | "year";
+  plan: "" | "month" | "year" | "sites10" | "sites20";
   back: string;
   error?: string;
   countries: { code: string; name: string }[];
@@ -24,10 +24,14 @@ export function RegisterForm({
   const price = quotes[country] || fallback;
   const paypal = price.currency === "USD" ? "" : " PayPal collects the US dollar price.";
   const copy = plan === "month"
-    ? `Monthly plan. 7 days free, then ${price.standard} every 30 days. PayPal deducts that automatically.${paypal} The plan page opens after the account is created.`
+    ? `Monthly plan for 1 website. 7 days free, then ${price.standard} every 30 days. PayPal deducts that automatically.${paypal} The plan page opens after the account is created.`
     : plan === "year"
-      ? `Annual plan. ${price.annual} for 365 days, with no renewal.${paypal} The plan page opens after the account is created.`
-      : "Create an account and the scored clicks, exclusions, and settings are on the next page.";
+      ? `Annual plan for 1 website. ${price.annual} for 365 days, with no renewal.${paypal} The plan page opens after the account is created.`
+      : plan === "sites10"
+        ? `10 websites for ${price.sites10} every 30 days. PayPal deducts that automatically.${paypal} After payment, the other websites are added in Settings.`
+        : plan === "sites20"
+          ? `20 websites for ${price.sites20} every 30 days. PayPal deducts that automatically.${paypal} After payment, the other websites are added in Settings.`
+          : "Create an account and the scored clicks, exclusions, and settings are on the next page.";
 
   return (
     <>

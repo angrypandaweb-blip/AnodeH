@@ -27,6 +27,8 @@ assert.equal(actionForChannel("flag", "organic"), "flag");
 assert.match(assistantReply("Do you block organic searches?").text, /not blocked/);
 assert.match(assistantReply("How much is the plan?").text, /free for 7 days/);
 assert.match(assistantReply("How much is the plan?").text, /\$69/);
+assert.match(assistantReply("How much is the plan?").text, /\$189/);
+assert.match(assistantReply("How much is the plan?").text, /\$289/);
 assert.match(assistantReply("I need support with the tag").text, /support@anodeh.com/);
 assert.equal(assistantReply("I need support with the tag").links[0]?.href, "/support");
 assert.equal(assistantReply("   ").links.length, 0);
