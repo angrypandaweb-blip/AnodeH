@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { provinceName } from "./campaigns";
-import { countryHeader, firstForwardedIp, isPublicIp, lookupIpSource } from "./ip-source";
+import { countryHeader, firstForwardedIp, isPublicIp, lookupIpSource, publicVisitorIp } from "./ip-source";
 
 const ZA_REGIONS: Record<string, string> = {
   EC: "Eastern Cape",
@@ -72,6 +72,11 @@ export async function visitorPlace(): Promise<VisitorPlace> {
     city: source?.city || "",
     region: source?.region || "",
   };
+}
+
+export async function visitorIp() {
+  const headerList = await headers();
+  return publicVisitorIp(headerList.get("x-forwarded-for"), headerList.get("x-real-ip"));
 }
 
 export async function visitorCountry() {
