@@ -71,6 +71,15 @@ export async function weekStats() {
   };
 }
 
+export async function savedDomainRecord() {
+  const row = await queryOne<{ value: string }>(
+    await getDb(),
+    "SELECT value FROM user_settings WHERE user_id = ? AND key = 'domains'",
+    [await mine()],
+  );
+  return row?.value;
+}
+
 export async function savedClickPrice() {
   const row = await queryOne<{ value: string }>(
     await getDb(),

@@ -14,12 +14,13 @@ import {
 } from "@/lib/engine";
 import { authReturn, clearSession, getUser, hashPassword, safeNext, safePlan, setSession, verifyPassword } from "@/lib/auth";
 import { normalizeAdsAccount } from "@/lib/format";
-import { createPayPalCheckout } from "@/lib/billing";
+import { createPayPalCheckout, getAccess } from "@/lib/billing";
 import { execute, getDb, queryOne } from "@/lib/db";
 import { knownCountry } from "@/lib/residence-currency";
 import { passwordResetLink, sendPasswordReset, sendSignupNotice, sendSupportRequest, sendWelcome } from "@/lib/email-reports";
 import { clickPrice } from "@/lib/click-price";
-import { trackedDomain } from "@/lib/domain";
+import { coveredDomains, trackedDomain } from "@/lib/domain";
+import { checkoutChoice } from "@/lib/site-plans";
 import { disconnectGoogleAds, pullGoogleAds } from "@/lib/google-ads";
 import { resetDemo, simulateScenario } from "@/lib/seed";
 import type { Sensitivity } from "@/lib/types";
@@ -80,16 +81,51 @@ export async function saveAdsAccount(formData: FormData) {
   redirect("/settings?saved=1");
 }
 
+async function accountDomains(userId: string) {
+  const db = await getDb();
+  const primary = await queryOne<{ value: string }>(db, "SELECT value FROM user_settings WHERE user_id = ? AND key = 'domain'", [userId]);
+  const stored = await queryOne<{ value: string }>(db, "SELECT value FROM user_settings WHERE user_id = ? AND key = 'domains'", [userId]);
+  return coveredDomains(primary?.value || "", stored?.value);
+}
+
+async function writeDomains(userId: string, domains: string[]) {
+  const db = await getDb();
+  const sql =
+    "INSERT INTO user_settings (user_id, key, value) VALUES (?, ?, ?) ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value";
+  await execute(db, sql, [userId, "domain", domains[0] || ""]);
+  await execute(db, sql, [userId, "domains", JSON.stringify(domains)]);
+}
+
 export async function saveTrackedDomain(formData: FormData) {
   const user = await getUser();
   if (!user) redirect("/login?next=/settings");
   const domain = trackedDomain(String(formData.get("domain") || ""));
   if (!domain) redirect(withError("/settings", "Enter the domain you want to track, like example.com."));
-  await execute(
-    await getDb(),
-    "INSERT INTO user_settings (user_id, key, value) VALUES (?, 'domain', ?) ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value",
-    [user.id, domain],
-  );
+  const access = await getAccess(user.id);
+  const domains = await accountDomains(user.id);
+  if (access.sites <= 1) {
+    await writeDomains(user.id, [domain]);
+    refresh();
+    redirect("/settings?saved=1");
+  }
+  if (domains.includes(domain)) redirect(withError("/settings", "That website is already on this account."));
+  if (domains.length >= access.sites) {
+    redirect(withError("/settings", `This account covers ${access.sites} websites. Remove one before adding another.`));
+  }
+  await writeDomains(user.id, [...domains, domain]);
+  refresh();
+  redirect("/settings?saved=1");
+}
+
+export async function removeTrackedDomain(formData: FormData) {
+  const user = await getUser();
+  if (!user) redirect("/login?next=/settings");
+  const domain = trackedDomain(String(formData.get("domain") || ""));
+  const domains = await accountDomains(user.id);
+  const next = domains.filter((item) => item !== domain);
+  if (!domain || next.length === domains.length) redirect("/settings");
+  if (next.length === 0) redirect(withError("/settings", "Keep at least one website on the account."));
+  await writeDomains(user.id, next);
   refresh();
   redirect("/settings?saved=1");
 }
@@ -323,7 +359,7 @@ export async function resetPassword(formData: FormData) {
 }
 
 export async function beginCheckout(formData: FormData) {
-  const choice = String(formData.get("plan")) === "year" ? "year" : "month";
+  const choice = checkoutChoice(String(formData.get("plan") || ""));
   const result = await createPayPalCheckout(choice);
   if ("url" in result && result.url) return { url: result.url };
   return { error: ("error" in result && result.error) || "PayPal could not start the payment." };

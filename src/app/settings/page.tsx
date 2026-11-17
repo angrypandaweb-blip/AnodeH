@@ -1,9 +1,11 @@
 import { headers } from "next/headers";
-import { deleteAllow, saveAdsAccount, saveAverageClickPrice, saveTrackedDomain, updateSettings } from "@/app/actions";
+import { deleteAllow, removeTrackedDomain, saveAdsAccount, saveAverageClickPrice, saveTrackedDomain, updateSettings } from "@/app/actions";
 import { AllowForm } from "@/components/AllowForm";
 import { getUser } from "@/lib/auth";
+import { getAccess } from "@/lib/billing";
+import { coveredDomains } from "@/lib/domain";
 import { getPolicy } from "@/lib/engine";
-import { allowlist, savedClickPrice } from "@/lib/queries";
+import { allowlist, savedClickPrice, savedDomainRecord } from "@/lib/queries";
 import { placeFor } from "@/lib/residence-currency";
 import { lastMailError } from "@/lib/email-reports";
 import { mailConfigured } from "@/lib/mail";
@@ -25,13 +27,17 @@ export default async function SettingsPage({
   searchParams: Promise<{ saved?: string; error?: string }>;
 }) {
   const params = await searchParams;
-  const [policy, allowed, headerList, user, averagePrice] = await Promise.all([
+  const [policy, allowed, headerList, user, averagePrice, domainRecord, access] = await Promise.all([
     getPolicy(),
     allowlist(),
     headers(),
     getUser(),
     savedClickPrice(),
+    savedDomainRecord(),
+    getAccess(),
   ]);
+  const domains = coveredDomains(policy.domain, domainRecord).filter((domain) => domain !== "anodeh.com");
+  const siteLabel = access.sites === 1 ? "1 website" : `${access.sites} websites`;
   const currency = placeFor(user?.country || "", user?.email || "").currency;
   const mailError = user ? await lastMailError(user.id) : "";
   const host = headerList.get("x-forwarded-host") || headerList.get("host") || "localhost:3000";
@@ -165,17 +171,50 @@ export default async function SettingsPage({
 
       <article className="card">
         <span className="card-label">Site tag</span>
-        <form action={saveTrackedDomain} className="form-grid">
-          <label>
-            Domain to track
-            <input type="text" name="domain" defaultValue={policy.domain.toLowerCase() === "anodeh.com" ? "" : policy.domain} placeholder="example.com" required />
-            <small>This is the site where the tag is pasted.</small>
-          </label>
-          <div>
-            <button type="submit">Save domain</button>
-          </div>
-        </form>
-        <p className="note">Paste this on {policy.domain.toLowerCase() === "anodeh.com" ? "the domain above" : policy.domain}. It sends the visit when the visitor leaves, or after eight seconds. A blocked visitor is then sent to anodeh.com/blocked. Allowed and flagged visitors stay on the page.</p>
+        <p className="note">This account covers {siteLabel}. {domains.length} of {access.sites} {domains.length === 1 ? "is" : "are"} saved.</p>
+        {access.sites > 1 ? (
+          <>
+            {domains.length ? (
+              <ul className="accounts">
+                {domains.map((domain) => (
+                  <li key={domain}>
+                    <span className="mono">{domain}</span>
+                    <form action={removeTrackedDomain}>
+                      <input type="hidden" name="domain" value={domain} />
+                      <button className="ghost" type="submit">Remove</button>
+                    </form>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {domains.length < access.sites ? (
+              <form action={saveTrackedDomain} className="form-grid">
+                <label>
+                  Add a website
+                  <input type="text" name="domain" placeholder="example.com" required />
+                  <small>The same tag goes on every website in this list.</small>
+                </label>
+                <div>
+                  <button type="submit">Add website</button>
+                </div>
+              </form>
+            ) : (
+              <p className="note">All {access.sites} websites are in use. Remove one to add a different site.</p>
+            )}
+          </>
+        ) : (
+          <form action={saveTrackedDomain} className="form-grid">
+            <label>
+              Domain to track
+              <input type="text" name="domain" defaultValue={policy.domain.toLowerCase() === "anodeh.com" ? "" : policy.domain} placeholder="example.com" required />
+              <small>This is the site where the tag is pasted.</small>
+            </label>
+            <div>
+              <button type="submit">Save domain</button>
+            </div>
+          </form>
+        )}
+        <p className="note">Paste this on {domains.length > 1 ? "each website above" : domains[0] || "the website you add"}. It sends the visit when the visitor leaves, or after eight seconds. A blocked visitor is then sent to anodeh.com/blocked. Allowed and flagged visitors stay on the page.</p>
         <pre className="snippet">{snippet}</pre>
       </article>
 

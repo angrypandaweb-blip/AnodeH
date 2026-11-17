@@ -1,5 +1,5 @@
 import { Mark } from "@/components/Mark";
-import { ANNUAL_CENTS, dollars, quotesFor, STANDARD_CENTS, TRIAL_DAYS } from "@/lib/billing";
+import { ANNUAL_CENTS, dollars, quotesFor, SITES_10_CENTS, SITES_20_CENTS, STANDARD_CENTS, TRIAL_DAYS } from "@/lib/billing";
 import { visitorCountry } from "@/lib/visitor-country";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +22,8 @@ export default async function BlockedPage() {
   const quote = await quotesFor("", await visitorCountry());
   const standard = quote.standard || dollars(STANDARD_CENTS);
   const annual = quote.annual || dollars(ANNUAL_CENTS);
+  const sites10 = quote.sites10 || dollars(SITES_10_CENTS);
+  const sites20 = quote.sites20 || dollars(SITES_20_CENTS);
   const local = quote.currency === "USD" ? "" : ` Prices are in ${quote.name}. PayPal collects US dollars.`;
 
   return (
@@ -91,14 +93,29 @@ export default async function BlockedPage() {
             <span className="offer-tag">{TRIAL_DAYS} days free</span>
             <h3>Monthly</h3>
             <p className="offer-price">Free</p>
-            <p>Then {standard} every 30 days. PayPal deducts that from the account automatically until you cancel.{local}</p>
+            <p>One website. Then {standard} every 30 days. PayPal deducts that from the account automatically until you cancel.{local}</p>
             <a className="btn" href="/register?plan=month">Start free trial</a>
           </article>
           <article className="offer">
             <h3>Annual</h3>
             <p className="offer-price">{annual}</p>
-            <p>One payment for 365 days. This plan does not renew on its own.</p>
+            <p>One website. One payment for 365 days. This plan does not renew on its own.</p>
             <a className="btn ghost" href="/register?plan=year">Pay for the year</a>
+          </article>
+        </div>
+        <h2 style={{ marginTop: 48 }}>Best for growing businesses managing multiple websites.</h2>
+        <div className="plans">
+          <article className="offer">
+            <h3>10 websites</h3>
+            <p className="offer-price">{sites10}</p>
+            <p>Every 30 days. One account, and the same tag on each website.</p>
+            <a className="btn" href="/register?plan=sites10">Create a 10-website account</a>
+          </article>
+          <article className="offer">
+            <h3>20 websites</h3>
+            <p className="offer-price">{sites20}</p>
+            <p>Every 30 days. One account, and the same tag on each website.</p>
+            <a className="btn" href="/register?plan=sites20">Create a 20-website account</a>
           </article>
         </div>
       </section>
