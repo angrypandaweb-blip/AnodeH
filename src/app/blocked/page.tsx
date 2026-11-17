@@ -1,5 +1,5 @@
 import { Mark } from "@/components/Mark";
-import { ANNUAL_CENTS, dollars, quotesFor, SITES_10_CENTS, SITES_20_CENTS, STANDARD_CENTS, TRIAL_DAYS } from "@/lib/billing";
+import { dollars, INTRO_CENTS, quotesFor, SITES_10_CENTS, SITES_10_INTRO_CENTS, SITES_20_CENTS, SITES_20_INTRO_CENTS, STANDARD_CENTS } from "@/lib/billing";
 import { visitorCountry } from "@/lib/visitor-country";
 
 export const dynamic = "force-dynamic";
@@ -20,9 +20,11 @@ const CAUGHT = [
 
 export default async function BlockedPage() {
   const quote = await quotesFor("", await visitorCountry());
+  const half = quote.half || dollars(INTRO_CENTS);
   const standard = quote.standard || dollars(STANDARD_CENTS);
-  const annual = quote.annual || dollars(ANNUAL_CENTS);
+  const half10 = quote.half10 || dollars(SITES_10_INTRO_CENTS);
   const sites10 = quote.sites10 || dollars(SITES_10_CENTS);
+  const half20 = quote.half20 || dollars(SITES_20_INTRO_CENTS);
   const sites20 = quote.sites20 || dollars(SITES_20_CENTS);
   const local = quote.currency === "USD" ? "" : ` Prices are in ${quote.name}. PayPal collects US dollars.`;
 
@@ -87,34 +89,27 @@ export default async function BlockedPage() {
 
       <section className="band">
         <h2>Simple pricing</h2>
-        <p className="lede">Start with {TRIAL_DAYS} days free. Move to the year if you want one payment and no renewal.</p>
+        <p className="lede">The first month is half price. After that PayPal deducts the regular price every 30 days until you cancel. Ten and twenty websites are for growing businesses managing multiple websites.{local}</p>
         <div className="plans">
           <article className="offer featured">
-            <span className="offer-tag">{TRIAL_DAYS} days free</span>
-            <h3>Monthly</h3>
-            <p className="offer-price">Free</p>
-            <p>One website. Then {standard} every 30 days. PayPal deducts that from the account automatically until you cancel.{local}</p>
-            <a className="btn" href="/register?plan=month">Start free trial</a>
+            <span className="offer-tag">50% off the first month</span>
+            <h3>1 website</h3>
+            <p className="offer-price">{half}</p>
+            <p>Then {standard} every 30 days.</p>
+            <a className="btn" href="/register?plan=month">Subscribe</a>
           </article>
           <article className="offer">
-            <h3>Annual</h3>
-            <p className="offer-price">{annual}</p>
-            <p>One website. One payment for 365 days. This plan does not renew on its own.</p>
-            <a className="btn ghost" href="/register?plan=year">Pay for the year</a>
-          </article>
-        </div>
-        <h2 style={{ marginTop: 48 }}>Best for growing businesses managing multiple websites.</h2>
-        <div className="plans">
-          <article className="offer">
+            <span className="offer-tag">50% off the first month</span>
             <h3>10 websites</h3>
-            <p className="offer-price">{sites10}</p>
-            <p>Every 30 days. One account, and the same tag on each website.</p>
+            <p className="offer-price">{half10}</p>
+            <p>Then {sites10} every 30 days. The same tag goes on each website.</p>
             <a className="btn" href="/register?plan=sites10">Create a 10-website account</a>
           </article>
           <article className="offer">
+            <span className="offer-tag">50% off the first month</span>
             <h3>20 websites</h3>
-            <p className="offer-price">{sites20}</p>
-            <p>Every 30 days. One account, and the same tag on each website.</p>
+            <p className="offer-price">{half20}</p>
+            <p>Then {sites20} every 30 days. The same tag goes on each website.</p>
             <a className="btn" href="/register?plan=sites20">Create a 20-website account</a>
           </article>
         </div>

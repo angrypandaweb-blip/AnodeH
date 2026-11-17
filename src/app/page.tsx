@@ -1,6 +1,6 @@
 import { Mark } from "@/components/Mark";
 import { getUser } from "@/lib/auth";
-import { dollars, getAccess, quotesFor, STANDARD_CENTS, ANNUAL_CENTS, SITES_10_CENTS, SITES_20_CENTS, TRIAL_DAYS } from "@/lib/billing";
+import { dollars, getAccess, INTRO_CENTS, quotesFor, STANDARD_CENTS, SITES_10_CENTS, SITES_10_INTRO_CENTS, SITES_20_CENTS, SITES_20_INTRO_CENTS } from "@/lib/billing";
 import { formatMoney, reportCurrency } from "@/lib/residence-currency";
 import { sampleCampaigns } from "@/lib/sample-campaigns";
 import { visitorPlace, visitPlaceLabel } from "@/lib/visitor-country";
@@ -27,13 +27,11 @@ export default async function LandingPage() {
   const [access, user] = await Promise.all([getAccess(), getUser()]);
   const subscribed = access.status === "active";
   const startHref = user ? (subscribed ? "/dashboard" : "/billing") : "/login";
-  const startLabel = subscribed ? "Open dashboard" : access.introUsed ? "Continue to payment" : "Start free trial";
+  const startLabel = subscribed ? "Open dashboard" : "Subscribe";
   const monthHref = user ? (subscribed ? "/dashboard" : "/billing") : "/register?plan=month";
-  const yearHref = user ? (subscribed ? "/dashboard" : "/billing") : "/register?plan=year";
   const sites10Href = user ? "/billing" : "/register?plan=sites10";
   const sites20Href = user ? "/billing" : "/register?plan=sites20";
-  const monthLabel = subscribed ? "Open dashboard" : access.introUsed ? "Subscribe with PayPal" : "Start free trial";
-  const yearLabel = user ? (subscribed ? "Open dashboard" : "Pay for the year") : "Pay for the year";
+  const monthLabel = subscribed ? "Open dashboard" : "Subscribe";
   const visit = await visitorPlace();
   const seen = user?.country || visit.country;
   const visitLabel = visitPlaceLabel(visit);
@@ -49,10 +47,13 @@ export default async function LandingPage() {
   const awaySource = visit.name ? `Outside ${visit.name}` : "Off-target country";
   const campaigns = sampleCampaigns(visit.country);
   const rooms = [214, 96, 41];
+  const half = quote?.half ?? dollars(INTRO_CENTS);
   const standard = quote?.standard ?? dollars(STANDARD_CENTS);
-  const annual = quote?.annual ?? dollars(ANNUAL_CENTS);
+  const half10 = quote?.half10 ?? dollars(SITES_10_INTRO_CENTS);
   const sites10 = quote?.sites10 ?? dollars(SITES_10_CENTS);
+  const half20 = quote?.half20 ?? dollars(SITES_20_INTRO_CENTS);
   const sites20 = quote?.sites20 ?? dollars(SITES_20_CENTS);
+  const currencyNote = quote && quote.currency !== "USD" ? ` Prices are in ${quote.name}. PayPal collects US dollars.` : "";
 
   return (
     <div className="site">
@@ -229,35 +230,27 @@ export default async function LandingPage() {
 
       <section id="pricing" className="band">
         <h2>Simple pricing</h2>
-        <p className="lede">Start with {TRIAL_DAYS} days free. Move to the year if you want one payment and no renewal.</p>
+        <p className="lede">The first month is half price. After that PayPal deducts the regular price every 30 days until you cancel. Ten and twenty websites are for growing businesses managing multiple websites.{currencyNote}</p>
         <div className="plans">
           <article className="offer featured">
-            <span className="offer-tag">{TRIAL_DAYS} days free</span>
-            <h3>Monthly</h3>
-            <p className="offer-price">Free</p>
-            <p>One website. Then {standard} every 30 days. PayPal deducts that from the account automatically until you cancel.{quote && quote.currency !== "USD" ? ` Prices are in ${quote.name}. PayPal collects US dollars.` : ""}</p>
+            <span className="offer-tag">50% off the first month</span>
+            <h3>1 website</h3>
+            <p className="offer-price">{half}</p>
+            <p>Then {standard} every 30 days.</p>
             <a className="btn" href={monthHref}>{monthLabel}</a>
           </article>
           <article className="offer">
-            <h3>Annual</h3>
-            <p className="offer-price">{annual}</p>
-            <p>One website. One payment for 365 days. This plan does not renew on its own.</p>
-            <a className="btn ghost" href={yearHref}>{yearLabel}</a>
-          </article>
-        </div>
-        <h2 style={{ marginTop: 48 }}>Best for growing businesses managing multiple websites.</h2>
-        <p className="lede">These accounts are in addition to the plans above. PayPal deducts the price every 30 days until you cancel.{quote && quote.currency !== "USD" ? ` Prices are in ${quote.name}. PayPal collects US dollars.` : ""}</p>
-        <div className="plans">
-          <article className="offer">
+            <span className="offer-tag">50% off the first month</span>
             <h3>10 websites</h3>
-            <p className="offer-price">{sites10}</p>
-            <p>Every 30 days. One account, and the same tag on each website.</p>
+            <p className="offer-price">{half10}</p>
+            <p>Then {sites10} every 30 days. The same tag goes on each website.</p>
             <a className="btn" href={sites10Href}>Create a 10-website account</a>
           </article>
           <article className="offer">
+            <span className="offer-tag">50% off the first month</span>
             <h3>20 websites</h3>
-            <p className="offer-price">{sites20}</p>
-            <p>Every 30 days. One account, and the same tag on each website.</p>
+            <p className="offer-price">{half20}</p>
+            <p>Then {sites20} every 30 days. The same tag goes on each website.</p>
             <a className="btn" href={sites20Href}>Create a 20-website account</a>
           </article>
         </div>
@@ -275,7 +268,7 @@ export default async function LandingPage() {
         </details>
         <details>
           <summary>When am I charged?</summary>
-          <p>The monthly plan is free for {TRIAL_DAYS} days. After that PayPal deducts {standard} every 30 days until you cancel. The annual plan is {annual} once. Ten websites are {sites10} every 30 days, and twenty websites are {sites20}.{quote && quote.currency !== "USD" ? ` Prices are in ${quote.name}. PayPal collects US dollars.` : ""}</p>
+          <p>The first 30 days are half price: {half} for one website, {half10} for ten, and {half20} for twenty. After that PayPal deducts {standard}, {sites10}, or {sites20} every 30 days until you cancel.{currencyNote}</p>
         </details>
       </section>
 
