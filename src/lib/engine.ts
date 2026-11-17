@@ -1,6 +1,7 @@
 import { randomBytes } from "crypto";
 import { getUser } from "./auth";
 import { CAMPAIGNS, findCampaign, visitCampaignName } from "./campaigns";
+import { trackedDomain } from "./domain";
 import { type Db, execute, getDb, queryAll, queryOne } from "./db";
 import { sendBlockedIp } from "./email-reports";
 import { actionForChannel, enforcementFor, evaluate, guessIsp, guessNetwork } from "./score";
@@ -307,8 +308,8 @@ export async function recordClick(db: Db, input: IncomingClick, explicitUserId?:
     `INSERT INTO clicks (
       id, ts, click_id, campaign, campaign_type, keyword, placement, ip, device_hash,
       country, city, isp, network, user_agent, time_on_page, engaged, converted, cost,
-      score, reasons, action, enforcement, user_id, channel
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      score, reasons, action, enforcement, user_id, channel, site
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id,
       ts,
@@ -334,6 +335,7 @@ export async function recordClick(db: Db, input: IncomingClick, explicitUserId?:
       verdict.enforcement,
       userId,
       channel,
+      trackedDomain(input.landing || ""),
     ],
   );
   await considerBlock(

@@ -19,6 +19,7 @@ import { execute, getDb, queryOne } from "@/lib/db";
 import { knownCountry } from "@/lib/residence-currency";
 import { passwordResetLink, sendPasswordReset, sendSignupNotice, sendSupportRequest, sendWelcome } from "@/lib/email-reports";
 import { clickPrice } from "@/lib/click-price";
+import { loadCompanies, persistCompanies } from "@/lib/companies";
 import { coveredDomains, trackedDomain } from "@/lib/domain";
 import { checkoutChoice } from "@/lib/site-plans";
 import { disconnectGoogleAds, pullGoogleAds } from "@/lib/google-ads";
@@ -128,6 +129,68 @@ export async function removeTrackedDomain(formData: FormData) {
   await writeDomains(user.id, next);
   refresh();
   redirect("/settings?saved=1");
+}
+
+export async function saveCompany(formData: FormData) {
+  const user = await getUser();
+  if (!user) redirect("/login?next=/settings");
+  const domain = trackedDomain(String(formData.get("domain") || ""));
+  const adsAccount = normalizeAdsAccount(String(formData.get("adsAccount") || ""));
+  if (!domain) redirect(withError("/settings", "Enter the domain you want to track, like example.com."));
+  if (!adsAccount) redirect(withError("/settings", "Enter a 10-digit Google Ads account number, like 123-456-7890."));
+  const access = await getAccess(user.id);
+  const { companies, active } = await loadCompanies(user.id);
+  if (companies.some((company) => company.domain === domain)) {
+    redirect(withError("/settings", "That website is already on this account."));
+  }
+  if (companies.length >= access.sites) {
+    redirect(withError("/settings", `This account covers ${access.sites} websites. Remove one before adding another.`));
+  }
+  await persistCompanies(user.id, [...companies, { domain, adsAccount }], active || domain);
+  refresh();
+  redirect("/settings?saved=1");
+}
+
+export async function updateCompanyAccount(formData: FormData) {
+  const user = await getUser();
+  if (!user) redirect("/login?next=/settings");
+  const domain = trackedDomain(String(formData.get("domain") || ""));
+  const adsAccount = normalizeAdsAccount(String(formData.get("adsAccount") || ""));
+  if (!domain || !adsAccount) {
+    redirect(withError("/settings", "Enter a 10-digit Google Ads account number, like 123-456-7890."));
+  }
+  const { companies, active } = await loadCompanies(user.id);
+  if (!companies.some((company) => company.domain === domain)) redirect("/settings");
+  await persistCompanies(
+    user.id,
+    companies.map((company) => (company.domain === domain ? { domain, adsAccount } : company)),
+    active,
+  );
+  refresh();
+  redirect("/settings?saved=1");
+}
+
+export async function removeCompany(formData: FormData) {
+  const user = await getUser();
+  if (!user) redirect("/login?next=/settings");
+  const domain = trackedDomain(String(formData.get("domain") || ""));
+  const { companies, active } = await loadCompanies(user.id);
+  const next = companies.filter((company) => company.domain !== domain);
+  if (!domain || next.length === companies.length) redirect("/settings");
+  await persistCompanies(user.id, next, active === domain ? "" : active);
+  refresh();
+  redirect("/settings?saved=1");
+}
+
+export async function switchCompany(formData: FormData) {
+  const user = await getUser();
+  if (!user) redirect("/login?next=/dashboard");
+  const domain = trackedDomain(String(formData.get("domain") || ""));
+  const { companies } = await loadCompanies(user.id);
+  if (!domain || !companies.some((company) => company.domain === domain)) redirect("/dashboard");
+  await persistCompanies(user.id, companies, domain);
+  refresh();
+  redirect(String(formData.get("return") || "") === "/settings" ? "/settings" : "/dashboard");
 }
 
 export async function saveAverageClickPrice(formData: FormData) {

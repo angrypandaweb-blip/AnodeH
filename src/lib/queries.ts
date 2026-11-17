@@ -1,4 +1,5 @@
 import { getUser } from "./auth";
+import { loadCompanies } from "./companies";
 import { getDb, queryAll, queryOne } from "./db";
 import { EXCLUSION_CAP } from "./engine";
 import { googleClickPriceExpr } from "./google-cost";
@@ -6,6 +7,19 @@ import { googleClickPriceExpr } from "./google-cost";
 async function mine() {
   const user = await getUser();
   return user?.id ?? "";
+}
+
+async function clickScope() {
+  const userId = await mine();
+  if (!userId) return { userId, site: "", includeUntagged: false };
+  const bundle = await loadCompanies(userId);
+  const site = bundle.multi ? bundle.active : "";
+  return { userId, site, includeUntagged: Boolean(site) && bundle.companies[0]?.domain === site };
+}
+
+function siteSql(column: string, site: string, includeUntagged: boolean) {
+  if (!site) return "";
+  return includeUntagged ? ` AND (${column} = ? OR ${column} = '')` : ` AND ${column} = ?`;
 }
 
 export type ClickRow = {
@@ -37,8 +51,9 @@ export type ClickRow = {
 
 export async function weekStats() {
   const db = await getDb();
-  const userId = await mine();
+  const { userId, site, includeUntagged } = await clickScope();
   const since = Math.floor(Date.now() / 1000) - 7 * 86400;
+  const siteFilter = siteSql("site", site, includeUntagged);
   const row = await queryOne<{
     clicks: number;
     invalid: number | null;
@@ -57,8 +72,8 @@ export async function weekStats() {
        SUM(CASE WHEN action = 'block' THEN 1 ELSE 0 END) AS blocked,
        SUM(CASE WHEN channel != 'organic' THEN 1 ELSE 0 END) AS paid,
        SUM(CASE WHEN channel != 'organic' AND action != 'allow' THEN 1 ELSE 0 END) AS invalidPaid
-     FROM clicks WHERE user_id = ? AND ts >= ?`,
-    [userId, since],
+     FROM clicks WHERE user_id = ? AND ts >= ?${siteFilter}`,
+    site ? [userId, since, site] : [userId, since],
   );
   return {
     clicks: row?.clicks ?? 0,
@@ -93,10 +108,11 @@ export async function dailySeries() {
   const now = new Date();
   now.setHours(0, 0, 0, 0);
   const start = Math.floor(now.getTime() / 1000) - 6 * 86400;
+  const { userId, site, includeUntagged } = await clickScope();
   const rows = await queryAll<{ ts: number; action: string; channel: string; reasons: string }>(
     await getDb(),
-    "SELECT ts, action, channel, reasons FROM clicks WHERE user_id = ? AND ts >= ?",
-    [await mine(), start],
+    `SELECT ts, action, channel, reasons FROM clicks WHERE user_id = ? AND ts >= ?${siteSql("site", site, includeUntagged)}`,
+    site ? [userId, start, site] : [userId, start],
   );
   const days: { ts: number; allow: number; organic: number; flagged: number; repeat: number }[] = [];
   for (let i = 0; i < 7; i++) {
@@ -128,17 +144,23 @@ function reasonCodes(raw: string): string[] {
 }
 
 export async function recentRisky(limit = 6): Promise<ClickRow[]> {
+  const { userId, site, includeUntagged } = await clickScope();
   return queryAll<ClickRow>(
     await getDb(),
     `SELECT c.*, NULL AS block_id FROM clicks c
-     WHERE user_id = ? AND action != 'allow' ORDER BY ts DESC LIMIT ?`,
-    [await mine(), limit],
+     WHERE user_id = ? AND action != 'allow'${siteSql("site", site, includeUntagged)} ORDER BY ts DESC LIMIT ?`,
+    site ? [userId, site, limit] : [userId, limit],
   );
 }
 
 export async function activityCounts(query: string, since: number | null = null, traffic = "all", action = "all") {
+  const { userId, site, includeUntagged } = await clickScope();
   const where = ["user_id = ?"];
-  const params: (string | number)[] = [await mine()];
+  const params: (string | number)[] = [userId];
+  if (site) {
+    where.push(includeUntagged ? "(site = ? OR site = '')" : "site = ?");
+    params.push(site);
+  }
   if (since != null) {
     where.push("ts >= ?");
     params.push(since);
@@ -172,9 +194,13 @@ export async function activityCounts(query: string, since: number | null = null,
 
 export async function listClicks(action: string, query: string, page: number, pageSize = 40, since: number | null = null, traffic = "all") {
   const db = await getDb();
-  const userId = await mine();
+  const { userId, site, includeUntagged } = await clickScope();
   const where = ["c.user_id = ?"];
   const params: (string | number)[] = [userId];
+  if (site) {
+    where.push(includeUntagged ? "(c.site = ? OR c.site = '')" : "c.site = ?");
+    params.push(site);
+  }
   if (since != null) {
     where.push("c.ts >= ?");
     params.push(since);
@@ -286,8 +312,13 @@ export async function unreadCount() {
 }
 
 export async function topIps(since: number | null = null) {
+  const { userId, site, includeUntagged } = await clickScope();
   const where = ["user_id = ?"];
-  const params: (string | number)[] = [await mine()];
+  const params: (string | number)[] = [userId];
+  if (site) {
+    where.push(includeUntagged ? "(c.site = ? OR c.site = '')" : "c.site = ?");
+    params.push(site);
+  }
   if (since != null) {
     where.push("ts >= ?");
     params.push(since);
@@ -307,8 +338,13 @@ export async function topIps(since: number | null = null) {
 }
 
 export async function topDevices(since: number | null = null) {
+  const { userId, site, includeUntagged } = await clickScope();
   const where = ["user_id = ?"];
-  const params: (string | number)[] = [await mine()];
+  const params: (string | number)[] = [userId];
+  if (site) {
+    where.push(includeUntagged ? "(site = ? OR site = '')" : "site = ?");
+    params.push(site);
+  }
   if (since != null) {
     where.push("ts >= ?");
     params.push(since);
@@ -328,8 +364,13 @@ export async function topDevices(since: number | null = null) {
 }
 
 export async function topPlacements(since: number | null = null) {
+  const { userId, site, includeUntagged } = await clickScope();
   const where = ["user_id = ?", "placement != ''"];
-  const params: (string | number)[] = [await mine()];
+  const params: (string | number)[] = [userId];
+  if (site) {
+    where.push(includeUntagged ? "(c.site = ? OR c.site = '')" : "c.site = ?");
+    params.push(site);
+  }
   if (since != null) {
     where.push("ts >= ?");
     params.push(since);

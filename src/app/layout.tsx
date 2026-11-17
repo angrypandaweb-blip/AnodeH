@@ -2,11 +2,13 @@ import { Fraunces, Outfit } from "next/font/google";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Assistant } from "@/components/Assistant";
+import { CompanySwitch } from "@/components/CompanySwitch";
 import { GoogleTag } from "@/components/GoogleTag";
 import { Mark } from "@/components/Mark";
 import { Nav } from "@/components/Nav";
 import { logoutAccount } from "@/app/actions";
 import { getUser } from "@/lib/auth";
+import { loadCompanies } from "@/lib/companies";
 import { getAccess, planSummary, quotesFor } from "@/lib/billing";
 import { getPolicy } from "@/lib/engine";
 import { sendDueDailyReport, sendWelcomeSampleOnce } from "@/lib/email-reports";
@@ -51,6 +53,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const plan = planSummary(access, await quotesFor(user.email, user.country));
   const policy = await getPolicy();
   const unread = await unreadCount();
+  const companies = access.sites > 1 ? await loadCompanies(user.id) : null;
+  const openCompany = companies?.companies.find((company) => company.domain === companies.active);
+  const watching = openCompany ? openCompany.adsAccount : user.adsAccount;
+  const brandDomain = openCompany?.domain || policy.domain;
   return (
     <html lang="en">
       <body className={`${display.variable} ${sans.variable}`}>
@@ -60,9 +66,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <Mark />
               <span>
                 <span className="brand-name">AnodeH</span>
-                <small>{policy.domain}</small>
+                <small>{brandDomain}</small>
               </span>
             </a>
+            {companies && companies.companies.length > 1 ? (
+              <CompanySwitch companies={companies.companies} active={companies.active} />
+            ) : null}
             <Nav unread={unread} />
           </aside>
           <main className="main">{children}</main>
@@ -77,9 +86,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </p>
             <p className="side-foot">
               <strong>Google Ads</strong>
-              {user.adsAccount ? (
+              {watching ? (
                 <>
-                  {user.adsAccount}
+                  {watching}
                   <br />
                   This is the account AnodeH is watching.
                 </>

@@ -1,6 +1,7 @@
 import { clearAlerts } from "@/app/actions";
 import { LiveRefresh } from "@/components/LiveRefresh";
 import { getUser } from "@/lib/auth";
+import { loadCompanies } from "@/lib/companies";
 import { reasonText } from "@/lib/score";
 import { compact, dayLabel, percent, scoreTone, when } from "@/lib/format";
 import { clickPrice, monitoredFromAverage } from "@/lib/click-price";
@@ -27,6 +28,8 @@ export default async function OverviewPage({
 }) {
   const params = await searchParams;
   const [policy, user] = await Promise.all([getPolicy(), getUser()]);
+  const companies = user ? await loadCompanies(user.id) : null;
+  const openCompany = companies?.multi ? companies.companies.find((company) => company.domain === companies.active) : undefined;
   if (user) await refreshGoogleAdsIfStale(user.id);
   const link = user ? await googleLink() : null;
   const googleDays = link ? await googleDaily() : [];
@@ -59,7 +62,7 @@ export default async function OverviewPage({
       <LiveRefresh />
       <header className="page-head">
         <div>
-          <p className="eyebrow">{user?.adsAccount ? `Google Ads ${user.adsAccount}` : policy.domain}</p>
+          <p className="eyebrow">{openCompany?.adsAccount ? `Google Ads ${openCompany.adsAccount}` : openCompany?.domain || (user?.adsAccount ? `Google Ads ${user.adsAccount}` : policy.domain)}</p>
           <h1>Spend watched this week</h1>
           <p className="sub">
             {hasGoogleTotals

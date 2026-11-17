@@ -102,6 +102,8 @@ h1, h2, .metric strong, .brand-name, .price {
 .account-foot { grid-column: 2; padding: 0 32px 32px; max-width: 1180px; }
 .account-foot .plan-link { max-width: 280px; }
 .account-foot form { margin-top: 12px; }
+.company-switch { padding: 0 8px 14px; }
+.company-switch select { width: 100%; }
 .side-foot { margin-top: 12px; padding: 0 8px; color: var(--muted); font-size: 12px; line-height: 1.4; }
 .side-foot strong { color: var(--ink); font-weight: 600; display: block; }
 .side-foot a, .banner a { color: inherit; font-weight: 600; }
@@ -346,6 +348,7 @@ textarea { font: inherit; width: 100%; box-sizing: border-box; min-height: 140px
 }
 .accounts { list-style: none; padding: 0; margin: 0; }
 .accounts li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.accounts li.company-row { display: grid; gap: 10px; }
 .note { font-size: 13px; color: var(--ink-soft); }
 .plans { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
 .price {
