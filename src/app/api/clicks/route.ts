@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     const access = await getAccess(owner.id);
     if (access.status === "unpaid") {
       return reply(
-        { error: "Plan unpaid. The first 30 days are $34.50, then $69 every 30 days or $759 for the year." },
+        { error: "Plan unpaid. The monthly plan is free for 7 days, then $69 every 30 days, or $759 for the year." },
         402,
       );
     }

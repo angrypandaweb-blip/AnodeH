@@ -1,5 +1,5 @@
 import { Mark } from "@/components/Mark";
-import { ANNUAL_CENTS, dollars, INTRO_CENTS, quotesFor, STANDARD_CENTS } from "@/lib/billing";
+import { ANNUAL_CENTS, dollars, quotesFor, STANDARD_CENTS, TRIAL_DAYS } from "@/lib/billing";
 import { visitorCountry } from "@/lib/visitor-country";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +20,6 @@ const CAUGHT = [
 
 export default async function BlockedPage() {
   const quote = await quotesFor("", await visitorCountry());
-  const intro = quote.intro || dollars(INTRO_CENTS);
   const standard = quote.standard || dollars(STANDARD_CENTS);
   const annual = quote.annual || dollars(ANNUAL_CENTS);
   const local = quote.currency === "USD" ? "" : ` Prices are in ${quote.name}. PayPal collects US dollars.`;
@@ -86,14 +85,14 @@ export default async function BlockedPage() {
 
       <section className="band">
         <h2>Simple pricing</h2>
-        <p className="lede">Start on the half-price month. Move to the year if you want one payment and no renewal.</p>
+        <p className="lede">Start with {TRIAL_DAYS} days free. Move to the year if you want one payment and no renewal.</p>
         <div className="plans">
           <article className="offer featured">
-            <span className="offer-tag">Most people start here</span>
+            <span className="offer-tag">{TRIAL_DAYS} days free</span>
             <h3>Monthly</h3>
-            <p className="offer-price">{intro} <s>{standard}</s></p>
-            <p>First 30 days at half price, then {standard} every 30 days. PayPal charges this automatically until you cancel.{local}</p>
-            <a className="btn" href="/register?plan=month">Subscribe</a>
+            <p className="offer-price">Free</p>
+            <p>Then {standard} every 30 days. PayPal deducts that from the account automatically until you cancel.{local}</p>
+            <a className="btn" href="/register?plan=month">Start free trial</a>
           </article>
           <article className="offer">
             <h3>Annual</h3>

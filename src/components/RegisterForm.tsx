@@ -24,7 +24,7 @@ export function RegisterForm({
   const price = quotes[country] || fallback;
   const paypal = price.currency === "USD" ? "" : " PayPal collects the US dollar price.";
   const copy = plan === "month"
-    ? `Monthly plan. ${price.intro} for the first 30 days, then ${price.standard} every 30 days.${paypal} The dashboard opens after the account is created.`
+    ? `Monthly plan. 7 days free, then ${price.standard} every 30 days. PayPal deducts that automatically.${paypal} The dashboard opens after the account is created.`
     : plan === "year"
       ? `Annual plan. ${price.annual} for 365 days, with no renewal.${paypal} The dashboard opens after the account is created.`
       : "Create an account and the scored clicks, exclusions, and settings are on the next page.";

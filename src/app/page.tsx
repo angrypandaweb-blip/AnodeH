@@ -1,6 +1,6 @@
 import { Mark } from "@/components/Mark";
 import { getUser } from "@/lib/auth";
-import { dollars, getAccess, INTRO_CENTS, quotesFor, STANDARD_CENTS, ANNUAL_CENTS } from "@/lib/billing";
+import { dollars, getAccess, quotesFor, STANDARD_CENTS, ANNUAL_CENTS, TRIAL_DAYS } from "@/lib/billing";
 import { formatMoney, reportCurrency } from "@/lib/residence-currency";
 import { visitorCountry } from "@/lib/visitor-country";
 
@@ -26,10 +26,10 @@ export default async function LandingPage() {
   const [access, user] = await Promise.all([getAccess(), getUser()]);
   const subscribed = access.status === "active";
   const startHref = user ? (subscribed ? "/dashboard" : "/billing") : "/login";
-  const startLabel = user ? (subscribed ? "Open dashboard" : "Continue to payment") : "Get started";
+  const startLabel = subscribed ? "Open dashboard" : access.introUsed ? "Continue to payment" : "Start free trial";
   const monthHref = user ? (subscribed ? "/dashboard" : "/billing") : "/register?plan=month";
   const yearHref = user ? (subscribed ? "/dashboard" : "/billing") : "/register?plan=year";
-  const monthLabel = user ? (subscribed ? "Open dashboard" : "Subscribe with PayPal") : "Subscribe";
+  const monthLabel = subscribed ? "Open dashboard" : access.introUsed ? "Subscribe with PayPal" : "Start free trial";
   const yearLabel = user ? (subscribed ? "Open dashboard" : "Pay for the year") : "Pay for the year";
   const seen = user?.country || (await visitorCountry());
   const [quote, local] = await Promise.all([
@@ -37,7 +37,6 @@ export default async function LandingPage() {
     reportCurrency(user?.email || "", seen),
   ]);
   const sample = (usd: number) => formatMoney(Math.round(usd * local.rate), local.currency, 0);
-  const intro = quote?.intro ?? dollars(INTRO_CENTS);
   const standard = quote?.standard ?? dollars(STANDARD_CENTS);
   const annual = quote?.annual ?? dollars(ANNUAL_CENTS);
 
@@ -209,13 +208,13 @@ export default async function LandingPage() {
 
       <section id="pricing" className="band">
         <h2>Simple pricing</h2>
-        <p className="lede">Start on the half-price month. Move to the year if you want one payment and no renewal.</p>
+        <p className="lede">Start with {TRIAL_DAYS} days free. Move to the year if you want one payment and no renewal.</p>
         <div className="plans">
           <article className="offer featured">
-            <span className="offer-tag">Most people start here</span>
+            <span className="offer-tag">{TRIAL_DAYS} days free</span>
             <h3>Monthly</h3>
-            <p className="offer-price">{intro} <s>{standard}</s></p>
-            <p>First 30 days at half price, then {standard} every 30 days. PayPal charges this automatically until you cancel.{quote && quote.currency !== "USD" ? ` Prices are in ${quote.name}. PayPal collects US dollars.` : ""}</p>
+            <p className="offer-price">Free</p>
+            <p>Then {standard} every 30 days. PayPal deducts that from the account automatically until you cancel.{quote && quote.currency !== "USD" ? ` Prices are in ${quote.name}. PayPal collects US dollars.` : ""}</p>
             <a className="btn" href={monthHref}>{monthLabel}</a>
           </article>
           <article className="offer">
@@ -239,7 +238,7 @@ export default async function LandingPage() {
         </details>
         <details>
           <summary>When am I charged?</summary>
-          <p>The monthly plan bills {intro} today, then {standard} every 30 days through PayPal until you cancel. The annual plan is {annual} once.{quote && quote.currency !== "USD" ? ` Prices are in ${quote.name}. PayPal collects US dollars.` : ""}</p>
+          <p>The monthly plan is free for {TRIAL_DAYS} days. After that PayPal deducts {standard} every 30 days until you cancel. The annual plan is {annual} once.{quote && quote.currency !== "USD" ? ` Prices are in ${quote.name}. PayPal collects US dollars.` : ""}</p>
         </details>
       </section>
 
