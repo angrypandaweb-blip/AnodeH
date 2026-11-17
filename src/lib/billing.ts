@@ -339,7 +339,7 @@ export async function capturePayPalOrder(orderId: string) {
     return { ok: false as const, error: "PayPal payment does not match the selected plan." };
   }
   await grantPaidPeriod(capture.id, checkout.plan, checkout.amount);
-  return { ok: true as const };
+  return { ok: true as const, transactionId: capture.id };
 }
 
 async function siteOrigin() {
@@ -476,7 +476,7 @@ function isoToSec(value?: string) {
 async function applySubscription(
   id: string,
   userId?: string,
-): Promise<{ ok: true; active: boolean } | { ok: false; error: string; active: boolean }> {
+): Promise<{ ok: true; active: boolean; transactionId: string } | { ok: false; error: string; active: boolean }> {
   const token = await paypalToken();
   if (!token) return { ok: false, error: "PayPal did not accept the client id and secret.", active: false };
 
@@ -509,7 +509,7 @@ async function applySubscription(
   await saveSetting("paid_until", String(Math.max(currentPaid, periodEnd)), owner);
   await saveSetting("paypal_subscription", id, owner);
   await saveSetting("intro_used", "1", owner);
-  if (!payment || paidCents <= 0) return { ok: true, active: true };
+  if (!payment || paidCents <= 0) return { ok: true, active: true, transactionId: id };
   const paymentId = `${id}:${payment.time || periodEnd}`;
   const existingPayment = await queryOne<{ id: string }>(await getDb(), "SELECT id FROM payments WHERE id = ?", [paymentId]);
   await execute(
@@ -527,7 +527,7 @@ async function applySubscription(
       planName: label,
     }).catch(() => undefined);
   }
-  return { ok: true, active: true };
+  return { ok: true, active: true, transactionId: paymentId };
 }
 
 export async function confirmPayPalSubscription(subscriptionId: string) {
@@ -536,7 +536,7 @@ export async function confirmPayPalSubscription(subscriptionId: string) {
   }
   const result = await applySubscription(subscriptionId);
   if (!result.ok) return { ok: false as const, error: result.error };
-  return { ok: true as const };
+  return { ok: true as const, transactionId: result.transactionId };
 }
 
 export async function syncPayPalSubscription(userId?: string) {
