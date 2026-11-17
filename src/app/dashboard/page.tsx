@@ -1,4 +1,4 @@
-import { clearAlerts, runScenario, syncGoogleAds } from "@/app/actions";
+import { clearAlerts, runScenario } from "@/app/actions";
 import { LiveRefresh } from "@/components/LiveRefresh";
 import { getUser } from "@/lib/auth";
 import { reasonText } from "@/lib/score";
@@ -6,8 +6,7 @@ import { compact, dayLabel, percent, scoreTone, when } from "@/lib/format";
 import { formatMoney, moneyInCurrency, placeFor, reportCurrency } from "@/lib/residence-currency";
 import { getPolicy } from "@/lib/engine";
 import { refreshGoogleAdsIfStale } from "@/lib/google-ads";
-import { dayTimestamp } from "@/lib/google-ads-parse";
-import { alerts, capacity, dailySeries, googleClickList, googleDaily, googleLink, recentRisky, weekStats } from "@/lib/queries";
+import { alerts, capacity, dailySeries, googleDaily, googleLink, recentRisky, weekStats } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -30,10 +29,9 @@ export default async function OverviewPage({
   if (user) await refreshGoogleAdsIfStale(user.id);
   const link = user ? await googleLink() : null;
   const googleDays = link ? await googleDaily() : [];
-  const googleClicks = link ? await googleClickList() : [];
   const googleClicksTotal = googleDays.reduce((sum, day) => sum + day.clicks, 0);
   const googleCost = googleDays.reduce((sum, day) => sum + day.cost_micros, 0) / 1_000_000;
-  const googleMax = Math.max(1, ...googleDays.map((day) => day.clicks));
+  const hasGoogleTotals = googleClicksTotal > 0 || googleCost > 0;
   const stats = await weekStats();
   const series = await dailySeries();
   const risky = await recentRisky();
@@ -58,17 +56,12 @@ export default async function OverviewPage({
           <p className="eyebrow">{user?.adsAccount ? `Google Ads ${user.adsAccount}` : policy.domain}</p>
           <h1>Spend watched this week</h1>
           <p className="sub">
-            {link
-              ? "These clicks and campaign totals were downloaded from Google Ads. Google does not send the visitor IP, so scoring and exclusions still use the site tag."
+            {hasGoogleTotals
+              ? "Paid click totals come from Google Ads. Each scored visit still comes from the site tag."
               : "Invalid clicks are scored as they arrive. Search and Display exclusions are written onto the ad account. Performance Max holds the conversion instead, because that campaign type has no IP list."}
           </p>
         </div>
-        {link ? (
-          <form action={syncGoogleAds}>
-            <input type="hidden" name="return" value="/dashboard" />
-            <button type="submit">Pull clicks now</button>
-          </form>
-        ) : (
+        {link ? null : (
           <form action={runScenario} className="scenarios">
             <button name="scenario" value="shoppers" className="ghost" type="submit">Shoppers</button>
             <button name="scenario" value="competitor" className="ghost" type="submit">Competitor</button>
@@ -78,8 +71,7 @@ export default async function OverviewPage({
         )}
       </header>
 
-      {notice ? <p className="banner">{notice(n)}</p> : null}
-      {link?.lastError ? <p className="banner warn">{link.lastError}</p> : null}
+      {notice && params.notice !== "google" ? <p className="banner">{notice(n)}</p> : null}
       {!link && !user?.adsAccount ? (
         <p className="banner warn">
           Add the Google Ads account you want to watch. <a href="/settings">Connect Google Ads</a>
@@ -87,22 +79,22 @@ export default async function OverviewPage({
       ) : null}
 
       <section className="metrics">
-        {link ? (
+        {hasGoogleTotals ? (
           <>
             <article className="metric">
-              <span>Clicks</span>
+              <span>Paid clicks</span>
               <strong>{compact(googleClicksTotal)}</strong>
-              <em>Reported by Google Ads</em>
+              <em>Total reported by Google Ads</em>
             </article>
             <article className="metric">
-              <span>Cost</span>
+              <span>Paid cost</span>
               <strong>{googlePrice ?? priced(googleCost)}</strong>
               <em>Last 7 days</em>
             </article>
             <article className="metric">
-              <span>Latest rows</span>
-              <strong>{compact(googleClicks.length)}</strong>
-              <em>Individual clicks Google returned with a gclid</em>
+              <span>Invalid rate</span>
+              <strong>{percent(stats.invalid, stats.clicks)}</strong>
+              <em>{compact(stats.invalid)} flagged or blocked · {compact(todayInvalid)} today</em>
             </article>
             <article className="metric">
               <span>Exclusions</span>
@@ -140,47 +132,29 @@ export default async function OverviewPage({
         <article className="card">
           <span className="card-label">Clicks by day</span>
           <div className="chart" aria-hidden>
-            {link
-              ? googleDays.map((day) => {
-                  const height = Math.max(4, Math.round((day.clicks / googleMax) * 150));
-                  const ts = dayTimestamp(day.day);
-                  return (
-                    <div className="bar-col" key={day.day}>
-                      <span className="bar-count">{day.clicks}</span>
-                      <div className="stack" style={{ height }}>
-                        <div className="ok" style={{ flex: Math.max(day.clicks, 1) }} />
-                      </div>
-                      <span>{dayLabel(ts, place.timeZone)}</span>
-                    </div>
-                  );
-                })
-              : series.map((day) => {
-                  const total = day.allow + day.organic + day.flagged + day.repeat;
-                  const height = Math.max(4, Math.round((total / max) * 150));
-                  const countClass = day.repeat > 0 ? "repeat" : day.organic > 0 && day.flagged === 0 ? "organic" : "";
-                  return (
-                    <div className="bar-col" key={day.ts}>
-                      <span className={`bar-count ${countClass}`}>{day.organic + day.flagged + day.repeat}</span>
-                      <div className="stack" style={{ height }}>
-                        <div className="ok" style={{ flex: day.allow }} />
-                        <div className="organic" style={{ flex: day.organic }} />
-                        <div className="bad" style={{ flex: day.flagged }} />
-                        <div className="repeat" style={{ flex: day.repeat }} />
-                      </div>
-                      <span>{dayLabel(day.ts, place.timeZone)}</span>
-                    </div>
-                  );
-                })}
+            {series.map((day) => {
+              const total = day.allow + day.organic + day.flagged + day.repeat;
+              const height = Math.max(4, Math.round((total / max) * 150));
+              const countClass = day.repeat > 0 ? "repeat" : day.organic > 0 && day.flagged === 0 ? "organic" : "";
+              return (
+                <div className="bar-col" key={day.ts}>
+                  <span className={`bar-count ${countClass}`}>{day.organic + day.flagged + day.repeat}</span>
+                  <div className="stack" style={{ height }}>
+                    <div className="ok" style={{ flex: day.allow }} />
+                    <div className="organic" style={{ flex: day.organic }} />
+                    <div className="bad" style={{ flex: day.flagged }} />
+                    <div className="repeat" style={{ flex: day.repeat }} />
+                  </div>
+                  <span>{dayLabel(day.ts, place.timeZone)}</span>
+                </div>
+              );
+            })}
           </div>
           <div className="legend">
-            {link ? <span><i className="swatch ok" /> Clicks from Google Ads</span> : (
-              <>
-                <span><i className="swatch ok" /> Allowed</span>
-                <span><i className="swatch organic" /> Organic · free click</span>
-                <span><i className="swatch bad" /> Flagged</span>
-                <span><i className="swatch repeat" /> Paid repeat IP</span>
-              </>
-            )}
+            <span><i className="swatch ok" /> Allowed</span>
+            <span><i className="swatch organic" /> Organic · free click</span>
+            <span><i className="swatch bad" /> Flagged</span>
+            <span><i className="swatch repeat" /> Paid repeat IP</span>
           </div>
         </article>
         <article className="card">
@@ -210,59 +184,33 @@ export default async function OverviewPage({
       </section>
 
       <article className="card">
-        <span className="card-label">{link ? "Clicks from Google Ads" : "Latest risky clicks"}</span>
-        {link && googleClicks.length === 0 ? <p className="note">Google Ads returned no individual clicks for these days. Campaign totals above still count every click.</p> : null}
+        <span className="card-label">Latest scored clicks</span>
         <table>
           <thead>
             <tr>
-              {link ? (
-                <>
-                  <th>When</th>
-                  <th>Campaign</th>
-                  <th>Keyword</th>
-                  <th>Device</th>
-                  <th>Gclid</th>
-                </>
-              ) : (
-                <>
-                  <th>When</th>
-                  <th>Campaign</th>
-                  <th>Source</th>
-                  <th>Score</th>
-                  <th>Why</th>
-                </>
-              )}
+              <th>When</th>
+              <th>Campaign</th>
+              <th>Source</th>
+              <th>Score</th>
+              <th>Why</th>
             </tr>
           </thead>
           <tbody>
-            {link
-              ? googleClicks.map((click) => (
-                  <tr key={click.id}>
-                    <td>{when(click.ts, place.timeZone)}</td>
-                    <td>
-                      {click.campaign}
-                      {click.ad_group ? <div className="muted">{click.ad_group}</div> : null}
-                    </td>
-                    <td>{click.keyword || "—"}</td>
-                    <td>{click.device ? click.device.toLowerCase().replace(/_/g, " ") : "—"}</td>
-                    <td className="mono">{click.gclid}</td>
-                  </tr>
-                ))
-              : risky.map((click) => (
-                  <tr key={click.id}>
-                    <td>{when(click.ts, place.timeZone)}</td>
-                    <td>
-                      {click.campaign}
-                      <div className="muted">{click.campaign_type === "pmax" ? "Conversion held when blocked" : click.keyword || click.placement || "—"}</div>
-                    </td>
-                    <td>
-                      <div className="mono">{click.ip}</div>
-                      <div className="muted">{[click.isp, click.country].filter(Boolean).join(" · ")}</div>
-                    </td>
-                    <td><span className="pill" style={scoreTone(click.score)}>{click.score}</span></td>
-                    <td>{reasonText(JSON.parse(click.reasons) as string[])}</td>
-                  </tr>
-                ))}
+            {risky.map((click) => (
+              <tr key={click.id}>
+                <td>{when(click.ts, place.timeZone)}</td>
+                <td>
+                  {click.campaign}
+                  <div className="muted">{click.campaign_type === "pmax" ? "Conversion held when blocked" : click.keyword || click.placement || "—"}</div>
+                </td>
+                <td>
+                  <div className="mono">{click.ip}</div>
+                  <div className="muted">{[click.isp, click.country].filter(Boolean).join(" · ")}</div>
+                </td>
+                <td><span className="pill" style={scoreTone(click.score)}>{click.score}</span></td>
+                <td>{reasonText(JSON.parse(click.reasons) as string[])}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </article>

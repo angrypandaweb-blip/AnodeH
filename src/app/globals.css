@@ -226,6 +226,9 @@ td { padding: 10px 10px 10px 0; border-top: 1px solid var(--line); vertical-alig
   gap: 16px;
   align-items: start;
 }
+.clicks-3 .click-head, .clicks-3 .click {
+  grid-template-columns: 56px minmax(0, 1.6fr) minmax(140px, 0.8fr);
+}
 .click-head {
   color: var(--muted);
   font-size: 11px;

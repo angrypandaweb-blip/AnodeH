@@ -1,8 +1,8 @@
 import { activitySince, type ActivityRange } from "@/lib/activity-range";
 import { getUser } from "@/lib/auth";
 import { compact } from "@/lib/format";
-import { googleLink, topDevices, topIps, topPlacements } from "@/lib/queries";
-import { formatMoney, placeFor, reportCurrency, usdRate } from "@/lib/residence-currency";
+import { topDevices, topIps, topPlacements } from "@/lib/queries";
+import { placeFor } from "@/lib/residence-currency";
 
 export const dynamic = "force-dynamic";
 
@@ -35,15 +35,6 @@ function shortHash(value: string) {
   return `${value.slice(0, 8)}…${value.slice(-4)}`;
 }
 
-function googleRowPrice(
-  row: { clicks: number; priced_clicks: number; google_cost: number | null },
-  currency: string,
-  scale: number,
-) {
-  if (row.priced_clicks !== row.clicks || typeof row.google_cost !== "number" || !currency || !scale) return "—";
-  return formatMoney(row.google_cost * scale, currency);
-}
-
 export default async function ThreatsPage({
   searchParams,
 }: {
@@ -53,15 +44,8 @@ export default async function ThreatsPage({
   const range: ActivityRange = RANGES.some((item) => item.id === params.range) ? (params.range as ActivityRange) : "day";
   const user = await getUser();
   const place = placeFor(user?.country || "", user?.email || "");
-  const local = await reportCurrency(user?.email || "", user?.country || "");
   const since = activitySince(range, Date.now(), place.timeZone);
-  const [ips, devices, placements, link] = await Promise.all([topIps(since), topDevices(since), topPlacements(since), googleLink()]);
-  const adsCurrency = /^[A-Z]{3}$/.test(link?.currency || "") ? link?.currency || "" : "";
-  const fromRate = adsCurrency && adsCurrency !== local.currency ? await usdRate(adsCurrency) : 1;
-  const toRate = adsCurrency && adsCurrency !== local.currency ? await usdRate(local.currency) : 1;
-  const adsScale = fromRate && toRate ? toRate / fromRate : 0;
-  const rowPrice = (row: { clicks: number; priced_clicks: number; google_cost: number | null }) =>
-    googleRowPrice(row, adsCurrency, adsScale);
+  const [ips, devices, placements] = await Promise.all([topIps(since), topDevices(since), topPlacements(since)]);
 
   return (
     <div>
@@ -70,7 +54,7 @@ export default async function ThreatsPage({
           <p className="eyebrow">Threats</p>
           <h1>Where the waste repeats</h1>
           <p className="sub">
-            Addresses, devices, and placements that keep producing invalid clicks. A device on many IPs is one visitor rotating exits. A placement with mostly invalid clicks is a site that should come off the campaign. A cost is shown only when Google Ads reported a price for every click in that row.
+            Addresses, devices, and placements that keep producing invalid clicks. A device on many IPs is one visitor rotating exits. A placement with mostly invalid clicks is a site that should come off the campaign. Paid click totals stay on the dashboard.
           </p>
         </div>
       </header>
@@ -89,12 +73,11 @@ export default async function ThreatsPage({
         <span className="card-label">Addresses</span>
         {ips.length === 0 ? <p className="note">{range === "all" ? "No clicks recorded yet." : "No clicks in this period."}</p> : null}
         {ips.length > 0 ? (
-          <div className="click-list">
+          <div className="click-list clicks-3">
             <div className="click-head" aria-hidden>
               <span>Invalid</span>
               <span>Address</span>
               <span>Clicks</span>
-              <span>Cost</span>
             </div>
             {ips.map((row) => (
               <article className="click" key={row.ip}>
@@ -113,9 +96,6 @@ export default async function ThreatsPage({
                 <div className="click-source">
                   <div>{compact(row.clicks)} clicks</div>
                   <div className="muted">{compact(row.invalid)} invalid</div>
-                </div>
-                <div className="click-side">
-                  <div className="cost">{rowPrice(row)}</div>
                 </div>
               </article>
             ))}
@@ -161,12 +141,11 @@ export default async function ThreatsPage({
         <span className="card-label">Placements</span>
         {placements.length === 0 ? <p className="note">{range === "all" ? "No placement clicks recorded yet." : "No placement clicks in this period."}</p> : null}
         {placements.length > 0 ? (
-          <div className="click-list">
+          <div className="click-list clicks-3">
             <div className="click-head" aria-hidden>
               <span>Invalid</span>
               <span>Placement</span>
               <span>Clicks</span>
-              <span>Cost</span>
             </div>
             {placements.map((row) => (
               <article className="click" key={row.placement}>
@@ -181,9 +160,6 @@ export default async function ThreatsPage({
                 <div className="click-source">
                   <div>{compact(row.clicks)} clicks</div>
                   <div className="muted">{compact(row.invalid)} invalid</div>
-                </div>
-                <div className="click-side">
-                  <div className="cost">{rowPrice(row)}</div>
                 </div>
               </article>
             ))}
