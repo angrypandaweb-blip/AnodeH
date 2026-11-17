@@ -1,6 +1,8 @@
 import { Mark } from "@/components/Mark";
+import { Recaptcha } from "@/components/Recaptcha";
 import { submitSupport } from "@/app/actions";
 import { getUser } from "@/lib/auth";
+import { recaptchaSiteKey } from "@/lib/recaptcha";
 import { pageMeta } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
@@ -52,6 +54,7 @@ export default async function SupportPage({
             How can we help?
             <textarea name="message" rows={6} required minLength={10} maxLength={4000} placeholder="I need help adding the site tag." />
           </label>
+          <Recaptcha siteKey={recaptchaSiteKey()} />
           <div>
             <button type="submit">Send request</button>
           </div>

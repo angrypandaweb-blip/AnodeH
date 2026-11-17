@@ -1,6 +1,8 @@
 import { loginAccount } from "@/app/actions";
 import { Mark } from "@/components/Mark";
+import { Recaptcha } from "@/components/Recaptcha";
 import { safeNext } from "@/lib/auth";
+import { recaptchaSiteKey } from "@/lib/recaptcha";
 import { pageMeta } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
@@ -45,6 +47,7 @@ export default async function LoginPage({
             <input type="password" name="password" autoComplete="current-password" required />
           </label>
           <p className="form-extra"><a href="/forgot-password">Forgot password</a></p>
+          <Recaptcha siteKey={recaptchaSiteKey()} />
           <button className="btn" type="submit">Log in</button>
         </form>
       </section>

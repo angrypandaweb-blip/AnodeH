@@ -21,6 +21,7 @@ import { passwordResetLink, sendPasswordReset, sendSignupNotice, sendSupportRequ
 import { clickPrice } from "@/lib/click-price";
 import { loadCompanies, persistCompanies } from "@/lib/companies";
 import { coveredDomains, trackedDomain } from "@/lib/domain";
+import { recaptchaError } from "@/lib/recaptcha";
 import { checkoutChoice } from "@/lib/site-plans";
 import { disconnectGoogleAds, pullGoogleAds } from "@/lib/google-ads";
 import { resetDemo, simulateScenario } from "@/lib/seed";
@@ -314,6 +315,8 @@ function withError(path: string, message: string) {
 
 export async function registerAccount(formData: FormData) {
   const back = authReturn(String(formData.get("return") || ""), "/register");
+  const robot = await recaptchaError(String(formData.get("g-recaptcha-response") || ""));
+  if (robot) redirect(withError(back, robot));
   const name = String(formData.get("name") || "").trim();
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
@@ -361,6 +364,8 @@ export async function registerAccount(formData: FormData) {
 
 export async function submitSupport(formData: FormData) {
   if (String(formData.get("company") || "").trim()) redirect("/support?sent=1");
+  const robot = await recaptchaError(String(formData.get("g-recaptcha-response") || ""));
+  if (robot) redirect(withError("/support", robot));
   const name = String(formData.get("name") || "").trim();
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const message = String(formData.get("message") || "").trim();
@@ -375,6 +380,8 @@ export async function submitSupport(formData: FormData) {
 
 export async function loginAccount(formData: FormData) {
   const back = authReturn(String(formData.get("return") || ""), "/login");
+  const robot = await recaptchaError(String(formData.get("g-recaptcha-response") || ""));
+  if (robot) redirect(withError(back, robot));
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
   const next = safeNext(String(formData.get("next") || "/dashboard"));
@@ -401,6 +408,8 @@ function tokenHash(token: string) {
 
 export async function requestPasswordReset(formData: FormData) {
   const back = authReturn(String(formData.get("return") || ""), "/forgot-password");
+  const robot = await recaptchaError(String(formData.get("g-recaptcha-response") || ""));
+  if (robot) redirect(withError(back, robot));
   const email = String(formData.get("email") || "").trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     redirect(withError(back, "Enter the email on the account."));

@@ -1,5 +1,7 @@
 import { requestPasswordReset } from "@/app/actions";
 import { Mark } from "@/components/Mark";
+import { Recaptcha } from "@/components/Recaptcha";
+import { recaptchaSiteKey } from "@/lib/recaptcha";
 import { noIndex } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +38,7 @@ export default async function ForgotPasswordPage({
             Email
             <input type="email" name="email" autoComplete="email" required />
           </label>
+          <Recaptcha siteKey={recaptchaSiteKey()} />
           <button className="btn" type="submit">Email me a link</button>
         </form>
       </section>

@@ -328,6 +328,7 @@ td { padding: 10px 10px 10px 0; border-top: 1px solid var(--line); vertical-alig
 .cap-row { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; padding: 7px 0; border-top: 1px solid var(--line); }
 
 .form-grid { display: grid; gap: 12px; max-width: 560px; }
+.recaptcha { min-height: 78px; }
 .company-price { margin-top: 16px; }
 .form-extra { margin: 0; font-size: 14px; }
 .form-extra a { color: var(--moss); }
