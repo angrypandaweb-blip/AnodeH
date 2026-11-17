@@ -7,6 +7,8 @@ import { clickPrice, monitoredFromAverage } from "@/lib/click-price";
 import { formatMoney, moneyInCurrency, placeFor, reportCurrency } from "@/lib/residence-currency";
 import { getPolicy } from "@/lib/engine";
 import { refreshGoogleAdsIfStale } from "@/lib/google-ads";
+import { PurchaseConversion } from "@/components/PurchaseConversion";
+import { purchaseTransactionId } from "@/lib/google-conversion";
 import { alerts, capacity, dailySeries, googleDaily, googleLink, recentRisky, savedClickPrice, weekStats } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -23,9 +25,10 @@ const NOTICES: Record<string, (n: number) => string> = {
 export default async function OverviewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ notice?: string; n?: string }>;
+  searchParams: Promise<{ notice?: string; n?: string; purchase?: string }>;
 }) {
   const params = await searchParams;
+  const purchase = purchaseTransactionId(params.purchase);
   const [policy, user] = await Promise.all([getPolicy(), getUser()]);
   if (user) await refreshGoogleAdsIfStale(user.id);
   const link = user ? await googleLink() : null;
@@ -57,6 +60,7 @@ export default async function OverviewPage({
   return (
     <div>
       <LiveRefresh />
+      {purchase ? <PurchaseConversion transactionId={purchase} /> : null}
       <header className="page-head">
         <div>
           <p className="eyebrow">{user?.adsAccount ? `Google Ads ${user.adsAccount}` : policy.domain}</p>
