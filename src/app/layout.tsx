@@ -45,7 +45,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   if (!user) redirect(`/login?next=${encodeURIComponent(path)}`);
   await sendDueDailyReport(user.id).catch(() => undefined);
   const access = await getAccess();
-  if (access.status === "unpaid" && path !== "/billing" && !path.startsWith("/billing/")) {
+  if (access.status === "unpaid" && path !== "/billing" && path !== "/thank-you" && !path.startsWith("/billing/")) {
     redirect("/billing");
   }
   const plan = planSummary(access, await quotesFor(user.email, user.country));
