@@ -118,7 +118,7 @@ export function siteTag(domainKey: string) {
   return `<script src="${APP}/cf.js" data-key="${domainKey}" async></script>`;
 }
 
-export function signupNotice(person: { name: string; email: string; country: string; createdAt: number }) {
+export function signupNotice(person: { name: string; email: string; country: string; createdAt: number; domain?: string }) {
   const country = countryName(person.country);
   const whenSigned = signedUpAt(person.createdAt);
   const subject = `New AnodeH signup: ${person.name}`;
@@ -128,6 +128,7 @@ export function signupNotice(person: { name: string; email: string; country: str
     `Name: ${person.name}`,
     `Email: ${person.email}`,
     `Country: ${country}`,
+    `Domain: ${person.domain || "Not given"}`,
     `Signed up: ${whenSigned}`,
     "",
     "The password is not included.",
@@ -139,6 +140,7 @@ export function signupNotice(person: { name: string; email: string; country: str
 <li>Name: ${escapeHtml(person.name)}</li>
 <li>Email: ${escapeHtml(person.email)}</li>
 <li>Country: ${escapeHtml(country)}</li>
+<li>Domain: ${escapeHtml(person.domain || "Not given")}</li>
 <li>Signed up: ${escapeHtml(whenSigned)}</li>
 </ul>
 <p>The password is not included.</p>
@@ -146,7 +148,7 @@ export function signupNotice(person: { name: string; email: string; country: str
   return { subject, text, html };
 }
 
-export function welcomeLetter(person: { name: string; domainKey: string }, sample = false) {
+export function welcomeLetter(person: { name: string; domainKey: string; domain?: string }, sample = false) {
   const tag = siteTag(person.domainKey);
   const subject = sample ? "Sample: Welcome to AnodeH" : "Welcome to AnodeH";
   const intro = sample
@@ -157,7 +159,7 @@ export function welcomeLetter(person: { name: string; domainKey: string }, sampl
     "",
     "Your AnodeH account is open. Two steps finish the setup.",
     "",
-    "1. Paste the site tag on your website",
+    `1. Paste the site tag on ${person.domain || "your website"}`,
     "Add this snippet on every page, just before the closing body tag:",
     tag,
     "The tag reports the visit when the visitor leaves, or after eight seconds. A blocked paid visitor is sent to the blocked page. Allowed and flagged visitors stay on the page.",
@@ -171,7 +173,7 @@ export function welcomeLetter(person: { name: string; domainKey: string }, sampl
   ].join("\n");
   const html = `<p>${escapeHtml(intro)}</p>
 <p>Your AnodeH account is open. Two steps finish the setup.</p>
-<p><strong>1. Paste the site tag on your website</strong><br>
+<p><strong>1. Paste the site tag on ${escapeHtml(person.domain || "your website")}</strong><br>
 Add this snippet on every page, just before the closing body tag:</p>
 <pre>${escapeHtml(tag)}</pre>
 <p>The tag reports the visit when the visitor leaves, or after eight seconds. A blocked paid visitor is sent to the blocked page. Allowed and flagged visitors stay on the page.</p>
@@ -199,7 +201,7 @@ export function supportRequestLetter(request: { name: string; email: string; mes
   return { subject, text, html };
 }
 
-export async function sendSignupNotice(person: { id: string; name: string; email: string; country: string; createdAt: number }) {
+export async function sendSignupNotice(person: { id: string; name: string; email: string; country: string; createdAt: number; domain?: string }) {
   if (!mailConfigured()) return { ok: false as const, error: "Email is not configured." };
   const letter = signupNotice(person);
   const sent = await sendMail(SUPPORT_EMAIL, letter.subject, letter.text, letter.html);
@@ -208,7 +210,7 @@ export async function sendSignupNotice(person: { id: string; name: string; email
   return { ok: true as const };
 }
 
-export async function sendWelcome(person: { id: string; name: string; email: string; domainKey: string }) {
+export async function sendWelcome(person: { id: string; name: string; email: string; domainKey: string; domain?: string }) {
   if (!mailConfigured()) return { ok: false as const, error: "Email is not configured." };
   const letter = welcomeLetter(person);
   const sent = await sendMail(person.email, letter.subject, letter.text, letter.html);
