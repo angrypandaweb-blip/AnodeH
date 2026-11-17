@@ -39,6 +39,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <GoogleTag />
           {children}
           <Assistant />
+          <script src="https://anodeh.com/cf.js" data-key="cf_502ff663e79ffa28" async />
         </body>
       </html>
     );
@@ -107,6 +108,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </div>
         <GoogleTag />
         <Assistant />
+        <script src="https://anodeh.com/cf.js" data-key="cf_502ff663e79ffa28" async />
       </body>
     </html>
   );
