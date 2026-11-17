@@ -91,7 +91,7 @@ export default async function ActivityPage({
           <p className="eyebrow">Activity</p>
           <h1>Every scored click</h1>
           <p className="sub">
-            Search, filter, and exclude an address from the campaign it clicked. Times and money follow the country on the account. Cost is the average price Google Ads reported for that campaign on that day. Organic visits have no ad cost. Performance Max holds the conversion instead of writing an IP exclusion.
+            Search, filter, and exclude an address from the campaign it clicked. Times and money follow the country on the account. Cost is the average price Google Ads reported for that campaign on that day. An organic visit is a free click. Google Ads does not charge for it. Performance Max holds the conversion instead of writing an IP exclusion.
           </p>
         </div>
       </header>
@@ -161,7 +161,8 @@ export default async function ActivityPage({
                       <strong>{click.campaign}</strong>
                       <span className="muted">{detail}</span>
                       <span className={`pill ${click.action}`}>{actionLabel}</span>
-                      <span className={`pill ${click.channel === "organic" ? "organic" : "paid"}`}>{click.channel === "organic" ? "Organic" : "Paid"}</span>
+                      <span className={`pill ${organic ? "organic" : "paid"}`}>{organic ? "Organic" : "Paid"}</span>
+                      {organic ? <span className="organic-note">Free click. Google Ads does not charge for it.</span> : null}
                     </div>
                     <div className="reasons">
                       {reasons.length === 0 ? <span className={`reason ${organic ? "organic" : ""}`}>No risk signals</span> : null}

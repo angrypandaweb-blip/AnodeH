@@ -9,7 +9,7 @@ const ANSWERS: { test: RegExp; answer: AssistantAnswer }[] = [
   {
     test: /organic|seo|not an ad|without (a )?gclid|google search(?! ads)/,
     answer: {
-      text: "Organic searches are not blocked. A risky organic visit can still be flagged, but it is not excluded and the visitor is not sent to the blocked page. Paid clicks are still scored.",
+      text: "Organic searches are free clicks. Google Ads does not charge for them, and they are not blocked. A risky organic visit can still be flagged, but it is not excluded and the visitor is not sent to the blocked page. Paid clicks are still scored.",
       links: [{ label: "Activity", href: "/activity" }],
     },
   },
