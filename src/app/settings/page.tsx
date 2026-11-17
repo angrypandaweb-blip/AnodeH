@@ -1,11 +1,13 @@
 import { headers } from "next/headers";
-import { createAllow, deleteAllow, saveAdsAccount, saveAverageClickPrice, saveTrackedDomain, updateSettings } from "@/app/actions";
+import { deleteAllow, saveAdsAccount, saveAverageClickPrice, saveTrackedDomain, updateSettings } from "@/app/actions";
+import { AllowForm } from "@/components/AllowForm";
 import { getUser } from "@/lib/auth";
 import { getPolicy } from "@/lib/engine";
 import { allowlist, savedClickPrice } from "@/lib/queries";
 import { placeFor } from "@/lib/residence-currency";
 import { lastMailError } from "@/lib/email-reports";
 import { mailConfigured } from "@/lib/mail";
+import { publicIpv4 } from "@/lib/ip-source";
 import { THRESHOLDS } from "@/lib/score";
 import type { Sensitivity } from "@/lib/types";
 
@@ -35,6 +37,7 @@ export default async function SettingsPage({
   const host = headerList.get("x-forwarded-host") || headerList.get("host") || "localhost:3000";
   const proto = headerList.get("x-forwarded-proto") || "http";
   const snippet = `<script src="${proto}://${host}/cf.js" data-key="${policy.domainKey}" async></script>`;
+  const visitorIp = publicIpv4(headerList.get("x-forwarded-for")) || publicIpv4(headerList.get("x-real-ip"));
 
   return (
     <div>
@@ -126,19 +129,7 @@ export default async function SettingsPage({
       <article className="card">
         <span className="card-label">Allow list</span>
         <p className="note">An IPv4 address or a /24 range. These visits score zero.</p>
-        <form action={createAllow} className="form-grid">
-          <label>
-            Address
-            <input type="text" name="value" placeholder="198.51.100.24 or 198.51.100.0/24" aria-label="Address or range" />
-          </label>
-          <label>
-            Note
-            <input type="text" name="note" placeholder="Office" aria-label="Note" />
-          </label>
-          <div>
-            <button type="submit">Add</button>
-          </div>
-        </form>
+        <AllowForm ip={visitorIp} />
         {allowed.length === 0 ? <p className="note">Nothing is allow-listed.</p> : null}
         {allowed.length > 0 ? (
           <ul className="accounts">
