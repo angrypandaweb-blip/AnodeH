@@ -64,14 +64,20 @@ export default async function ProtectionPage({
   if (user) await refreshGoogleAdsIfStale(user.id);
   const link = await googleLink();
   const liveCampaigns = link ? await googleCampaigns() : [];
-  const cards = link
-    ? liveCampaigns.map((campaign) => ({
-        slug: campaign.campaign_id,
-        name: campaign.name,
-        type: campaign.channel,
-        status: campaign.status === "ENABLED" ? "" : campaign.status.toLowerCase(),
-      }))
-    : CAMPAIGNS.map((campaign) => ({ slug: campaign.slug, name: campaign.name, type: campaign.type, status: "" }));
+  const fromGoogle = liveCampaigns.map((campaign) => ({
+    slug: campaign.campaign_id,
+    name: campaign.name,
+    type: campaign.channel,
+    status: campaign.status === "ENABLED" ? "" : campaign.status.toLowerCase(),
+  }));
+  const fromExclusions = caps.rows.map((row) => ({ slug: row.campaign, name: row.campaign, type: "other", status: "" }));
+  const cards = fromGoogle.length
+    ? fromGoogle
+    : fromExclusions.length
+      ? fromExclusions
+      : link
+        ? []
+        : CAMPAIGNS.map((campaign) => ({ slug: campaign.slug, name: campaign.name, type: campaign.type, status: "" }));
 
   return (
     <div>
@@ -89,17 +95,14 @@ export default async function ProtectionPage({
         <p className="banner">Added {compact(added)} addresses to Brand — Exact so the list can be seen near its ceiling.</p>
       ) : null}
 
-      {link ? (
-        <p className="note">
-          These campaign names were downloaded from Google Ads{link.customerId ? ` ${link.customerId.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3")}` : ""}.
-          {link.lastError ? ` ${link.lastError}` : ""}
-        </p>
-      ) : (
+      {liveCampaigns.length > 0 ? (
+        <p className="note">Campaigns on the account AnodeH is watching.</p>
+      ) : link ? null : (
         <p className="note">These are the sample campaigns. Connect Google Ads in Settings to replace them with the account you watch.</p>
       )}
 
       <section className="campaign-grid">
-        {cards.length === 0 ? <article className="card"><p className="note">Google Ads returned no campaigns.</p></article> : null}
+        {cards.length === 0 ? <article className="card"><p className="note">No campaigns to show yet.</p></article> : null}
         {cards.map((campaign) => {
           const count = used.get(campaign.name) ?? 0;
           const share = count / caps.cap;

@@ -58,7 +58,7 @@ const ANSWERS: { test: RegExp; answer: AssistantAnswer }[] = [
   {
     test: /threat|placement|click price|cpc|cost of/,
     answer: {
-      text: "A threat row shows a price only when Google Ads reported a price for every click in that row. Otherwise the price is a dash.",
+      text: "Threats lists the addresses, devices, and placements behind invalid clicks. Paid click totals are on the dashboard.",
       links: [{ label: "Threats", href: "/threats" }],
     },
   },

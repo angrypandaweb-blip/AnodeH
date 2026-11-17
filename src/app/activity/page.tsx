@@ -2,8 +2,8 @@ import { manualBlock } from "@/app/actions";
 import { activitySince, type ActivityRange } from "@/lib/activity-range";
 import { getUser } from "@/lib/auth";
 import { compact, scoreTone, when } from "@/lib/format";
-import { activityCounts, googleLink, listClicks } from "@/lib/queries";
-import { formatMoney, placeFor, reportCurrency, usdRate } from "@/lib/residence-currency";
+import { activityCounts, listClicks } from "@/lib/queries";
+import { placeFor } from "@/lib/residence-currency";
 import { REASON_LABELS } from "@/lib/score";
 
 export const dynamic = "force-dynamic";
@@ -69,16 +69,10 @@ export default async function ActivityPage({
   const since = activitySince(range, Date.now(), place.timeZone);
   const query = (params.q || "").trim().slice(0, 80);
   const page = Math.max(0, Math.min(500, Number(params.page) || 0));
-  const [{ rows, total, pageSize }, counts, link] = await Promise.all([
+  const [{ rows, total, pageSize }, counts] = await Promise.all([
     listClicks(action, query, page, 40, since, traffic),
     activityCounts(query, since, traffic, action),
-    googleLink(),
   ]);
-  const local = await reportCurrency(user?.email || "", user?.country || "");
-  const adsCurrency = /^[A-Z]{3}$/.test(link?.currency || "") ? link?.currency || "" : "";
-  const fromRate = adsCurrency && adsCurrency !== local.currency ? await usdRate(adsCurrency) : 1;
-  const toRate = adsCurrency && adsCurrency !== local.currency ? await usdRate(local.currency) : 1;
-  const adsScale = fromRate && toRate ? toRate / fromRate : 0;
   const pages = Math.max(1, Math.ceil(total / pageSize));
   const from = total === 0 ? 0 : page * pageSize + 1;
   const to = Math.min(total, (page + 1) * pageSize);
@@ -91,7 +85,7 @@ export default async function ActivityPage({
           <p className="eyebrow">Activity</p>
           <h1>Every scored click</h1>
           <p className="sub">
-            Search, filter, and exclude an address from the campaign it clicked. Times and money follow the country on the account. Cost is the average price Google Ads reported for that campaign on that day. An organic visit is a free click. Google Ads does not charge for it. Performance Max holds the conversion instead of writing an IP exclusion.
+            Search, filter, and exclude an address from the campaign it clicked. Times follow the country on the account. An organic visit is a free click. Google Ads does not charge for it. Performance Max holds the conversion instead of writing an IP exclusion. Paid click totals stay on the dashboard.
           </p>
         </div>
       </header>
@@ -139,7 +133,7 @@ export default async function ActivityPage({
               <span>Score</span>
               <span>Click</span>
               <span>Source</span>
-              <span>Cost</span>
+              <span>Exclude</span>
             </div>
             {rows.map((click) => {
               const reasons = reasonList(click.reasons);
@@ -148,9 +142,6 @@ export default async function ActivityPage({
               const kind = TYPE_LABEL[click.campaign_type as keyof typeof TYPE_LABEL] ?? click.campaign_type;
               const actionLabel = ACTION_LABEL[click.action as keyof typeof ACTION_LABEL] ?? click.action;
               const detail = click.keyword || click.placement || kind;
-              const adsCost = typeof click.google_cost === "number" && adsCurrency && adsScale
-                ? formatMoney(click.google_cost * adsScale, local.currency)
-                : null;
               return (
                 <article className="click" key={click.id}>
                   <div className="click-score" style={scoreTone(click.score)} aria-label={`Score ${click.score}`}>
@@ -182,7 +173,6 @@ export default async function ActivityPage({
                     <div className="muted">{when(click.ts, place.timeZone)}</div>
                   </div>
                   <div className="click-side">
-                    <div className="cost">{adsCost ?? "—"}</div>
                     {click.block_id ? <span className="pill block">Excluded</span> : null}
                     {!click.block_id && held ? <span className="muted">Conversion held</span> : null}
                     {!click.block_id && !held ? (
