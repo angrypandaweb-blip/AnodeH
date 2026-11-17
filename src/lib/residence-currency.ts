@@ -142,7 +142,8 @@ export function currencyName(currency: string): string {
 }
 
 export function formatMoney(value: number, currency: string, fractionDigits?: number): string {
-  const locale = currency === "ZAR" ? "en-ZA" : currency === "GBP" ? "en-GB" : currency === "EUR" ? "de-DE" : "en-US";
+  // Keep English locales so AdsBot / language detection stay on English copy.
+  const locale = currency === "ZAR" ? "en-ZA" : currency === "GBP" ? "en-GB" : currency === "EUR" ? "en-IE" : "en-US";
   const digits = fractionDigits === undefined ? {} : { minimumFractionDigits: fractionDigits, maximumFractionDigits: fractionDigits };
   return value.toLocaleString(locale, { style: "currency", currency, ...digits });
 }

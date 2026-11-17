@@ -27,8 +27,12 @@ export const metadata = {
   title: { default: "AnodeH", template: "%s · AnodeH" },
   description: home.description,
   applicationName: "AnodeH",
+  alternates: {
+    languages: { en: "https://anodeh.com" },
+  },
   openGraph: {
     type: "website",
+    locale: "en_US",
     siteName: "AnodeH",
     url: "https://anodeh.com",
     title: home.title,
@@ -40,6 +44,9 @@ export const metadata = {
     description: home.description,
   },
   robots: { index: true, follow: true },
+  other: {
+    "content-language": "en",
+  },
   verification: {
     google: "jDX_WTdutPb1ZMxbs55K_XFQtc0xrytxYSfb4gW9bj0",
   },
