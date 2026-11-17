@@ -64,7 +64,7 @@ h1, h2, .metric strong, .brand-name, .price {
 }
 .brand-name { display: block; font-size: 20px; line-height: 1; }
 .sidebar .brand-name { color: var(--moss); }
-.brand small { color: var(--muted); font-size: 12px; }
+.brand small { display: block; color: var(--muted); font-size: 12px; }
 .nav { display: flex; flex-direction: column; gap: 4px; }
 .nav a {
   text-decoration: none;
