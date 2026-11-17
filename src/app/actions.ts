@@ -12,7 +12,7 @@ import {
   removeBlock,
   savePolicy,
 } from "@/lib/engine";
-import { authReturn, clearSession, getUser, hashPassword, safeNext, setSession, verifyPassword } from "@/lib/auth";
+import { authReturn, clearSession, getUser, hashPassword, safeNext, safePlan, setSession, verifyPassword } from "@/lib/auth";
 import { normalizeAdsAccount } from "@/lib/format";
 import { createPayPalCheckout } from "@/lib/billing";
 import { execute, getDb, queryOne } from "@/lib/db";
@@ -226,7 +226,8 @@ export async function registerAccount(formData: FormData) {
     sendWelcome({ id, name, email, domainKey, domain }).catch(() => undefined),
   ]);
   await setSession(id);
-  redirect("/dashboard");
+  const plan = safePlan(String(formData.get("plan") || ""));
+  redirect(plan ? `/billing?plan=${plan}` : "/billing");
 }
 
 export async function submitSupport(formData: FormData) {
