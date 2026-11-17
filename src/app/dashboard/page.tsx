@@ -10,8 +10,11 @@ import { formatMoney, moneyInCurrency, placeFor, reportCurrency } from "@/lib/re
 import { getPolicy } from "@/lib/engine";
 import { refreshGoogleAdsIfStale } from "@/lib/google-ads";
 import { alerts, capacity, dailySeries, googleDaily, googleLink, recentRisky, savedClickPrice, weekStats } from "@/lib/queries";
+import { noIndex } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+export const metadata = noIndex;
 
 const NOTICES: Record<string, (n: number) => string> = {
   shoppers: (n) => `Added ${n} engaged residential visits. They stay billable.`,

@@ -5,8 +5,11 @@ import { compact, scoreTone, when } from "@/lib/format";
 import { activityCounts, listClicks } from "@/lib/queries";
 import { placeFor } from "@/lib/residence-currency";
 import { REASON_LABELS } from "@/lib/score";
+import { noIndex } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+export const metadata = noIndex;
 
 const FILTERS = [
   { id: "all", label: "All" },

@@ -1,10 +1,8 @@
 import { Mark } from "@/components/Mark";
+import { pageMeta } from "@/lib/seo";
 import { dollars, INTRO_CENTS, SITES_10_CENTS, SITES_10_INTRO_CENTS, SITES_20_CENTS, SITES_20_INTRO_CENTS, STANDARD_CENTS } from "@/lib/billing";
 
-export const metadata = {
-  title: "Terms · AnodeH",
-  description: "The terms for an AnodeH subscription.",
-};
+export const metadata = pageMeta("/terms");
 
 export default function TermsPage() {
   return (

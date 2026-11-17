@@ -1,7 +1,10 @@
 import { requestPasswordReset } from "@/app/actions";
 import { Mark } from "@/components/Mark";
+import { noIndex } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+export const metadata = noIndex;
 
 export default async function ForgotPasswordPage({
   searchParams,

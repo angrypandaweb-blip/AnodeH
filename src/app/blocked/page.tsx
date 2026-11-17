@@ -1,13 +1,11 @@
 import { Mark } from "@/components/Mark";
 import { dollars, INTRO_CENTS, quotesFor, SITES_10_CENTS, SITES_10_INTRO_CENTS, SITES_20_CENTS, SITES_20_INTRO_CENTS, STANDARD_CENTS } from "@/lib/billing";
+import { pageMeta } from "@/lib/seo";
 import { visitorCountry } from "@/lib/visitor-country";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = {
-  title: "This visit was blocked · AnodeH",
-  description: "This click was blocked as invalid traffic. AnodeH protects Google Ads budgets from clicks that were never going to buy.",
-};
+export const metadata = pageMeta("/blocked");
 
 const CAUGHT = [
   { title: "Datacenter clicks", body: "Hosting ranges that click ads and never shop." },

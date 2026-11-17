@@ -2,8 +2,11 @@ import { ContinueToSettings } from "@/components/ContinueToSettings";
 import { PurchaseConversion } from "@/components/PurchaseConversion";
 import { getUser } from "@/lib/auth";
 import { purchaseTransactionId } from "@/lib/google-conversion";
+import { noIndex } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+export const metadata = noIndex;
 
 export default async function ThankYouPage({
   searchParams,

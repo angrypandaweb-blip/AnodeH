@@ -3,9 +3,12 @@ import { getUser } from "@/lib/auth";
 import { dollars, getAccess, INTRO_CENTS, quotesFor, STANDARD_CENTS, SITES_10_CENTS, SITES_10_INTRO_CENTS, SITES_20_CENTS, SITES_20_INTRO_CENTS } from "@/lib/billing";
 import { formatMoney, reportCurrency } from "@/lib/residence-currency";
 import { sampleCampaigns } from "@/lib/sample-campaigns";
+import { homeJsonLd, pageMeta } from "@/lib/seo";
 import { visitorPlace, visitPlaceLabel } from "@/lib/visitor-country";
 
 export const dynamic = "force-dynamic";
+
+export const metadata = pageMeta("/");
 
 const THREATS = [
   { title: "Datacenter clicks", body: "Hosting ranges that click ads and never shop." },
@@ -57,6 +60,7 @@ export default async function LandingPage() {
 
   return (
     <div className="site">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(homeJsonLd()) }} />
       <header className="site-bar">
         <a className="brand" href="/">
           <Mark />

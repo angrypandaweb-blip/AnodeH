@@ -11,8 +11,11 @@ import {
 } from "@/lib/billing";
 import { getUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { noIndex } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+export const metadata = noIndex;
 
 export default async function BillingPage({
   searchParams,

@@ -1,9 +1,7 @@
 import { Mark } from "@/components/Mark";
+import { pageMeta } from "@/lib/seo";
 
-export const metadata = {
-  title: "Privacy · AnodeH",
-  description: "How AnodeH uses an AnodeH account and a connected Google Ads account.",
-};
+export const metadata = pageMeta("/privacy");
 
 export default function PrivacyPage() {
   return (

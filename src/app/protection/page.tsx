@@ -5,8 +5,11 @@ import { placeFor } from "@/lib/residence-currency";
 import { refreshGoogleAdsIfStale } from "@/lib/google-ads";
 import { blockCounts, capacity, googleCampaigns, googleLink, listBlocks } from "@/lib/queries";
 import { REASON_LABELS } from "@/lib/score";
+import { noIndex } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+export const metadata = noIndex;
 
 const FILTERS = [
   { id: "active", label: "Active" },

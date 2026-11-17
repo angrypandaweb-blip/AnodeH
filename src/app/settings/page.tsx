@@ -11,10 +11,13 @@ import { placeFor } from "@/lib/residence-currency";
 import { lastMailError } from "@/lib/email-reports";
 import { mailConfigured } from "@/lib/mail";
 import { publicIpv4 } from "@/lib/ip-source";
+import { noIndex } from "@/lib/seo";
 import { THRESHOLDS } from "@/lib/score";
 import type { Sensitivity } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+
+export const metadata = noIndex;
 
 const CHOICES: { id: Sensitivity; label: string }[] = [
   { id: "conservative", label: "Conservative" },

@@ -3,9 +3,12 @@ import { Mark } from "@/components/Mark";
 import { safePlan } from "@/lib/auth";
 import { dollars, INTRO_CENTS, SITES_10_CENTS, SITES_10_INTRO_CENTS, SITES_20_CENTS, SITES_20_INTRO_CENTS, STANDARD_CENTS } from "@/lib/billing";
 import { allUsdRates, convertUsdCents, countryChoices, currencyForCountry, formatMoney } from "@/lib/residence-currency";
+import { pageMeta } from "@/lib/seo";
 import { visitorIp, visitorPlace } from "@/lib/visitor-country";
 
 export const dynamic = "force-dynamic";
+
+export const metadata = pageMeta("/register");
 
 function quote(cents: number, currency: string, rates: Record<string, number>) {
   const rate = currency === "USD" ? 1 : rates[currency];
