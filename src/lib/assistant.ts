@@ -77,9 +77,9 @@ const ANSWERS: { test: RegExp; answer: AssistantAnswer }[] = [
     },
   },
   {
-    test: /wordpress|shopify|wix|squarespace|webflow|godaddy|framer|tag manager|gtm|paste|footer|theme\.liquid|custom code/,
+    test: /wordpress|shopify|wix|squarespace|webflow|godaddy|framer|afrihost|sitepad|tag manager|gtm|paste|footer|theme\.liquid|custom code/,
     answer: {
-      text: "Copy the script in Settings and paste that same script on every page, just before </body>. It must be the script itself. Google Tag Manager and other tools that add it after the page loads cannot read the key.\nWordPress: a header and footer plugin, or the theme footer, before </body>.\nShopify: Online Store, Themes, Edit code, theme.liquid, before </body>.\nWix: Settings, Custom code, Body - end.\nSquarespace: Settings, Advanced, Code Injection, Footer.\nWebflow: Project settings, Custom code, Footer code.\nGoDaddy and other builders: custom code or the footer, then paste it there.",
+      text: "Copy the script in Settings and paste that same script on every page, just before </body>. It must be the script itself. Google Tag Manager and other tools that add it after the page loads cannot read the key.\nWordPress: a header and footer plugin, or the theme footer, before </body>.\nShopify: Online Store, Themes, Edit code, theme.liquid, before </body>.\nWix: Settings, Custom code, Body - end.\nSquarespace: Settings, Advanced, Code Injection, Footer.\nWebflow: Project settings, Custom code, Footer code.\nAfrihost SiteBuilder: Pages, All pages, edit the Footer, then Advanced, paste it in the HTML box, Save, and Update. An Afrihost WordPress site uses the WordPress steps.\nGoDaddy and other builders: custom code or the footer, then paste it there.",
       links: [{ label: "Settings", href: "/settings" }],
     },
   },

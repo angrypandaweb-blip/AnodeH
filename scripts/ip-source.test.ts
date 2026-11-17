@@ -39,6 +39,8 @@ assert.match(shopify.text, /WordPress/);
 assert.match(shopify.text, /Google Tag Manager/);
 assert.equal(shopify.links[0]?.href, "/settings");
 assert.match(assistantReply("Where does this go on Wix?").text, /Custom code/);
+assert.match(assistantReply("How do I add this on Afrihost?").text, /SiteBuilder/);
+assert.match(assistantReply("How do I add this on Afrihost?").text, /WordPress/);
 assert.match(assistantReply("I need support with the tag").text, /support@anodeh.com/);
 assert.equal(assistantReply("I need support with the tag").links[0]?.href, "/support");
 assert.equal(assistantReply("   ").links.length, 0);
