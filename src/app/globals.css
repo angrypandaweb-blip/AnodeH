@@ -547,7 +547,7 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 }
 .assistant-log { flex: 1; min-height: 0; overflow: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
 .assistant-msg { max-width: 92%; }
-.assistant-msg p { margin: 0; }
+.assistant-msg p { margin: 0; white-space: pre-wrap; }
 .assistant-msg.from-assistant {
   align-self: flex-start;
   background: var(--paper);
