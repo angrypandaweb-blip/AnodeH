@@ -1,6 +1,7 @@
 import { randomBytes } from "crypto";
 import { getUser } from "./auth";
 import { CAMPAIGNS, findCampaign, visitCampaignName } from "./campaigns";
+import { loadCompanies } from "./companies";
 import { trackedDomain } from "./domain";
 import { type Db, execute, getDb, queryAll, queryOne } from "./db";
 import { sendBlockedIp } from "./email-reports";
@@ -99,13 +100,13 @@ async function historyFor(db: Db, input: IncomingClick, ts: number, userId: stri
   return { ipClicks24h: (ipCount?.c ?? 0) + 1, deviceIpCount: known.size };
 }
 
-async function checkCapacity(db: Db, ts: number, userId: string) {
+async function checkCapacity(db: Db, ts: number, userId: string, site: string) {
   const rows = await queryAll<{ campaign: string; c: number }>(
     db,
     `SELECT campaign, COUNT(*) AS c FROM blocks
-     WHERE user_id = ? AND status = 'active' AND kind IN ('ip', 'subnet')
+     WHERE user_id = ? AND site = ? AND status = 'active' AND kind IN ('ip', 'subnet')
      GROUP BY campaign`,
-    [userId],
+    [userId, site],
   );
   for (const row of rows) {
     if (row.c < ALERT_AT) continue;
@@ -124,20 +125,20 @@ async function checkCapacity(db: Db, ts: number, userId: string) {
   }
 }
 
-async function makeRoom(db: Db, campaign: string, userId: string) {
+async function makeRoom(db: Db, campaign: string, userId: string, site: string) {
   const count = await queryOne<CountRow>(
     db,
     `SELECT COUNT(*) AS c FROM blocks
-     WHERE user_id = ? AND campaign = ? AND status = 'active' AND kind IN ('ip', 'subnet')`,
-    [userId, campaign],
+     WHERE user_id = ? AND site = ? AND campaign = ? AND status = 'active' AND kind IN ('ip', 'subnet')`,
+    [userId, site, campaign],
   );
   if ((count?.c ?? 0) < EXCLUSION_CAP) return;
   const victim = await queryOne<{ id: string }>(
     db,
     `SELECT id FROM blocks
-     WHERE user_id = ? AND campaign = ? AND status = 'active' AND kind IN ('ip', 'subnet')
+     WHERE user_id = ? AND site = ? AND campaign = ? AND status = 'active' AND kind IN ('ip', 'subnet')
      ORDER BY score ASC, created_at ASC LIMIT 1`,
-    [userId, campaign],
+    [userId, site, campaign],
   );
   if (victim) {
     await execute(db, "UPDATE blocks SET status = 'evicted' WHERE id = ?", [victim.id]);
@@ -155,14 +156,15 @@ async function upsertBlock(
     ts: number;
     expires: number;
     source: string;
+    site: string;
   },
   userId: string,
   notify = false,
 ) {
   const existing = await queryOne<{ id: string }>(
     db,
-    `SELECT id FROM blocks WHERE user_id = ? AND target = ? AND campaign = ? AND status = 'active' AND kind = ?`,
-    [userId, block.target, block.campaign, block.kind],
+    `SELECT id FROM blocks WHERE user_id = ? AND site = ? AND target = ? AND campaign = ? AND status = 'active' AND kind = ?`,
+    [userId, block.site, block.target, block.campaign, block.kind],
   );
   if (existing) {
     await execute(db, "UPDATE blocks SET expires_at = ?, score = MAX(score, ?), reason = ? WHERE id = ? AND user_id = ?", [
@@ -174,12 +176,12 @@ async function upsertBlock(
     ]);
     return;
   }
-  await makeRoom(db, block.campaign, userId);
+  await makeRoom(db, block.campaign, userId, block.site);
   const id = nid("b");
   await execute(
     db,
-    `INSERT INTO blocks (id, target, kind, campaign, reason, score, created_at, expires_at, status, source, user_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`,
+    `INSERT INTO blocks (id, target, kind, campaign, reason, score, created_at, expires_at, status, source, user_id, site)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)`,
     [
       id,
       block.target,
@@ -191,9 +193,10 @@ async function upsertBlock(
       block.expires,
       block.source,
       userId,
+      block.site,
     ],
   );
-  await checkCapacity(db, block.ts, userId);
+  await checkCapacity(db, block.ts, userId, block.site);
   if (!notify) return;
   await sendBlockedIp({
     userId,
@@ -218,6 +221,7 @@ async function considerBlock(
     reasons: string[];
     score: number;
     ts: number;
+    site: string;
   },
   policy: Policy,
   userId: string,
@@ -246,12 +250,13 @@ async function considerBlock(
           ts: row.ts,
           expires,
           source: "auto",
+          site: row.site,
         }, userId, notify);
         await execute(
           db,
           `UPDATE blocks SET status = 'covered'
-           WHERE user_id = ? AND campaign = ? AND status = 'active' AND kind = 'ip' AND target LIKE ?`,
-          [userId, row.campaign, prefix + "%"],
+           WHERE user_id = ? AND site = ? AND campaign = ? AND status = 'active' AND kind = 'ip' AND target LIKE ?`,
+          [userId, row.site, row.campaign, prefix + "%"],
         );
         return;
       }
@@ -266,6 +271,7 @@ async function considerBlock(
     ts: row.ts,
     expires,
     source: "auto",
+    site: row.site,
   }, userId, notify);
 }
 
@@ -302,6 +308,7 @@ export async function recordClick(db: Db, input: IncomingClick, explicitUserId?:
   const verdict = { ...scored, action, enforcement };
   const estimated = campaign ? campaign.cpc * (0.9 + ((ts % 20) / 100)) : 1.5;
   const cost = channel === "organic" ? 0 : (input.cost ?? estimated);
+  const site = trackedDomain(input.landing || "");
   const id = nid("c");
   await execute(
     db,
@@ -335,7 +342,7 @@ export async function recordClick(db: Db, input: IncomingClick, explicitUserId?:
       verdict.enforcement,
       userId,
       channel,
-      trackedDomain(input.landing || ""),
+      site,
     ],
   );
   await considerBlock(
@@ -349,6 +356,7 @@ export async function recordClick(db: Db, input: IncomingClick, explicitUserId?:
       reasons: verdict.reasons,
       score: verdict.score,
       ts,
+      site,
     },
     policy,
     userId,
@@ -371,6 +379,8 @@ export async function blockManually(ip: string, campaign: string, score: number)
   const db = await getDb();
   const userId = await ownerId();
   const policy = await getPolicy(db, userId);
+  const open = await loadCompanies(userId);
+  const site = open.multi ? open.active : "";
   const ts = Math.floor(Date.now() / 1000);
   const known = findCampaign(campaign);
   if (known?.type === "pmax") return { ok: false as const, error: "Performance Max cannot take an IP exclusion." };
@@ -383,6 +393,7 @@ export async function blockManually(ip: string, campaign: string, score: number)
     ts,
     expires: ts + policy.blockDays * 86400,
     source: "manual",
+    site,
   }, userId, true);
   return { ok: true as const };
 }
@@ -422,6 +433,8 @@ export async function previewCeiling() {
   const db = await getDb();
   const userId = await ownerId();
   const policy = await getPolicy(db, userId);
+  const open = await loadCompanies(userId);
+  const site = open.multi ? open.active : "";
   const campaign = "Brand — Exact";
   const ts = Math.floor(Date.now() / 1000);
   let active =
@@ -429,8 +442,8 @@ export async function previewCeiling() {
       await queryOne<CountRow>(
         db,
         `SELECT COUNT(*) AS c FROM blocks
-         WHERE user_id = ? AND campaign = ? AND status = 'active' AND kind IN ('ip', 'subnet')`,
-        [userId, campaign],
+         WHERE user_id = ? AND site = ? AND campaign = ? AND status = 'active' AND kind IN ('ip', 'subnet')`,
+        [userId, site, campaign],
       )
     )?.c ?? 0;
   let cursor = 0;
@@ -441,8 +454,8 @@ export async function previewCeiling() {
     if (!to24(ip)) continue;
     const existing = await queryOne<{ id: string }>(
       db,
-      "SELECT id FROM blocks WHERE user_id = ? AND target = ? AND campaign = ? AND status = 'active'",
-      [userId, ip, campaign],
+      "SELECT id FROM blocks WHERE user_id = ? AND site = ? AND target = ? AND campaign = ? AND status = 'active'",
+      [userId, site, ip, campaign],
     );
     if (existing) continue;
     await upsertBlock(db, {
@@ -454,6 +467,7 @@ export async function previewCeiling() {
       ts,
       expires: ts + policy.blockDays * 86400,
       source: "manual",
+      site,
     }, userId);
     active += 1;
     added += 1;

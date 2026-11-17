@@ -225,7 +225,7 @@ export async function listClicks(action: string, query: string, page: number, pa
     db,
     `SELECT c.*, (
        SELECT b.id FROM blocks b
-       WHERE b.user_id = ? AND b.status = 'active' AND b.campaign = c.campaign
+       WHERE b.user_id = ? AND b.site = c.site AND b.status = 'active' AND b.campaign = c.campaign
          AND (b.target = c.ip OR (b.kind = 'subnet' AND c.ip LIKE substr(b.target, 1, length(b.target) - 4) || '%'))
        LIMIT 1
      ) AS block_id,
@@ -239,10 +239,11 @@ export async function listClicks(action: string, query: string, page: number, pa
 }
 
 export async function blockCounts() {
+  const { userId, site, includeUntagged } = await clickScope();
   const rows = await queryAll<{ status: string; c: number }>(
     await getDb(),
-    "SELECT status, COUNT(*) AS c FROM blocks WHERE user_id = ? GROUP BY status",
-    [await mine()],
+    `SELECT status, COUNT(*) AS c FROM blocks WHERE user_id = ?${siteSql("site", site, includeUntagged)} GROUP BY status`,
+    site ? [userId, site] : [userId],
   );
   const counts = { active: 0, covered: 0, expired: 0, evicted: 0, removed: 0 };
   for (const row of rows) {
@@ -256,12 +257,14 @@ export async function blockCounts() {
 export async function listBlocks(status: string, page: number, pageSize = 20) {
   const db = await getDb();
   const safe = ["active", "expired", "evicted", "removed", "covered"].includes(status) ? status : "active";
-  const userId = await mine();
-  const total = await queryOne<{ c: number }>(db, "SELECT COUNT(*) AS c FROM blocks WHERE user_id = ? AND status = ?", [userId, safe]);
+  const { userId, site, includeUntagged } = await clickScope();
+  const siteFilter = siteSql("site", site, includeUntagged);
+  const params: (string | number)[] = site ? [userId, site, safe] : [userId, safe];
+  const total = await queryOne<{ c: number }>(db, `SELECT COUNT(*) AS c FROM blocks WHERE user_id = ?${siteFilter} AND status = ?`, params);
   const rows = await queryAll<BlockRow>(
     db,
-    `SELECT * FROM blocks WHERE user_id = ? AND status = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`,
-    [userId, safe, pageSize, Math.max(0, page) * pageSize],
+    `SELECT * FROM blocks WHERE user_id = ?${siteFilter} AND status = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+    [...params, pageSize, Math.max(0, page) * pageSize],
   );
   return { rows, total: total?.c ?? 0, status: safe, pageSize };
 }
@@ -280,12 +283,13 @@ export type BlockRow = {
 };
 
 export async function capacity() {
+  const { userId, site, includeUntagged } = await clickScope();
   const rows = await queryAll<{ campaign: string; c: number }>(
     await getDb(),
     `SELECT campaign, COUNT(*) AS c FROM blocks
-     WHERE user_id = ? AND status = 'active' AND kind IN ('ip', 'subnet')
+     WHERE user_id = ?${siteSql("site", site, includeUntagged)} AND status = 'active' AND kind IN ('ip', 'subnet')
      GROUP BY campaign ORDER BY c DESC`,
-    [await mine()],
+    site ? [userId, site] : [userId],
   );
   const fullest = rows[0]?.c ?? 0;
   return { rows, fullest, cap: EXCLUSION_CAP };

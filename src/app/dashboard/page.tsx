@@ -165,7 +165,7 @@ export default async function OverviewPage({
               <span style={{ width: `${Math.min(100, hottest * 100)}%` }} />
             </div>
             <p className="note">
-              Google Ads keeps about 500 IP exclusions per campaign. AnodeH spends that list on addresses likely to return, and lets them expire.
+              Google Ads keeps about 500 IP exclusions per campaign on the company that is open. AnodeH spends that list on addresses likely to return, and lets them expire.
             </p>
           </div>
           {caps.rows.length === 0 ? <p className="note">No active exclusions yet.</p> : null}
