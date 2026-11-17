@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { assistantReply } from "../src/lib/assistant";
 import { provinceName, visitCampaignName } from "../src/lib/campaigns";
 import { actionForChannel } from "../src/lib/score";
 import { countryHeader, firstForwardedIp, isPublicIp, isPublicIpv4, readIpSource } from "../src/lib/ip-source";
@@ -22,6 +23,9 @@ assert.equal(visitCampaignName("  ", ""), "Unassigned");
 assert.equal(actionForChannel("block", "organic"), "flag");
 assert.equal(actionForChannel("block", "paid"), "block");
 assert.equal(actionForChannel("flag", "organic"), "flag");
+assert.match(assistantReply("Do you block organic searches?").text, /not blocked/);
+assert.match(assistantReply("How much is the plan?").text, /\$34\.50/);
+assert.equal(assistantReply("   ").links.length, 0);
 assert.equal(readIpSource({ success: false, message: "reserved range" }), null);
 assert.equal(readIpSource({ success: true, connection: { org: "Fallback Org" } }), null);
 
