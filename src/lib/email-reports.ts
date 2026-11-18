@@ -564,6 +564,51 @@ export async function resendDailyReport(email: string, now = Date.now()) {
   return { ok: true as const, sent: result.skipped ? 0 : 1 };
 }
 
+export async function sendSpamAlertSample(email: string, now = Date.now()) {
+  if (!mailConfigured()) return { ok: false as const, error: "Email is not configured.", sent: 0 };
+  const to = email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return { ok: false as const, error: "Enter a valid email.", sent: 0 };
+  const user = await queryOne<Person>(await getDb(), "SELECT id, email, name, country FROM users WHERE lower(email) = ?", [to]);
+  const name = user?.name || "there";
+  const zone = user ? zoneFor(user) : "Africa/Johannesburg";
+  const { reasonText: spamReasonText } = await import("./spam-score");
+  const reasons = ["brand_spoof", "urgent_pressure", "shortener_link", "credential_harvest"];
+  const why = spamReasonText(reasons);
+  const fromAddr = "PayPal Support <help@totally-random-domain.xyz>";
+  const mailSubject = "URGENT!!! Your account will be suspended";
+  const score = 88;
+  const clock = when(Math.floor(now / 1000), zone);
+  const subject = `[Sample] AnodeH blocked email from ${fromAddr}`;
+  const text = [
+    `Hello ${name},`,
+    "",
+    "This is a sample of the spam alert AnodeH sends.",
+    "",
+    "AnodeH blocked an email.",
+    `From: ${fromAddr}`,
+    `Subject: ${mailSubject}`,
+    `Score ${score}. ${why}.`,
+    "It was moved to Junk in the connected mailbox.",
+    `Seen at ${clock}.`,
+    "",
+    `Open spam email: ${APP}/spam`,
+    "",
+    "AnodeH",
+  ].join("\n");
+  const html = `<p>Hello ${escapeHtml(name)},</p>
+<p><em>This is a sample of the spam alert AnodeH sends.</em></p>
+<p>AnodeH <strong>blocked</strong> an email.</p>
+<p>From: ${escapeHtml(fromAddr)}<br/>Subject: ${escapeHtml(mailSubject)}</p>
+<p>Score ${score}. ${escapeHtml(why)}.</p>
+<p>It was moved to Junk in the connected mailbox.</p>
+<p>Seen at ${escapeHtml(clock)}.</p>
+<p><a href="${APP}/spam">Open spam email</a></p>
+<p>AnodeH</p>`;
+  const sent = await sendMail(to, subject, text, html);
+  if (!sent.ok) return { ok: false as const, error: sent.error, sent: 0 };
+  return { ok: true as const, sent: 1 };
+}
+
 export async function sendDueDailyReport(userId: string, now = Date.now()) {
   const user = await queryOne<Person>(await getDb(), "SELECT id, email, name, country FROM users WHERE id = ?", [userId]);
   if (!user || !user.email.includes("@") || user.email.toLowerCase().endsWith("@example.com")) {
