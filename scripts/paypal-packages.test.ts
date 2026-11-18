@@ -24,13 +24,13 @@ assert.equal(checkoutChoice("month"), "month");
 assert.equal(checkoutChoice("sites10"), "sites10");
 assert.equal(checkoutChoice("sites20"), "sites20");
 
-// 1 website — 7-day free trial then $69
-assert.equal(intro.month.keyName, "trial7_v2");
+// 1 website — 7-day free trial then $69 (free trial omits pricing_scheme)
+assert.equal(intro.month.keyName, "trial7_v3");
 assert.equal(intro.month.sites, 1);
 assert.equal(intro.month.cycles.length, 2);
 assert.equal(intro.month.cycles[0].tenure_type, "TRIAL");
 assert.equal(intro.month.cycles[0].frequency.interval_count, TRIAL_DAYS);
-assert.equal(intro.month.cycles[0].pricing_scheme.fixed_price.value, "0.00");
+assert.equal("pricing_scheme" in intro.month.cycles[0], false);
 assert.equal(intro.month.cycles[1].tenure_type, "REGULAR");
 assert.equal(intro.month.cycles[1].pricing_scheme.fixed_price.value, "69.00");
 assert.equal(intro.month.fullCents, STANDARD_CENTS);
