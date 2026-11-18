@@ -4,6 +4,7 @@ Follow this in order. Do not skip conversion checks before spend.
 
 Related docs:
 
+- Purchase conversion UI → [`google-ads-purchase-conversion.md`](./google-ads-purchase-conversion.md)
 - Countries & excludes → [`google-ads-countries.md`](./google-ads-countries.md)
 - Tier strategy → [`google-ads-global.md`](./google-ads-global.md)
 - Paste-ready ads → [`google-ads-COPY.md`](./google-ads-COPY.md)
@@ -14,14 +15,19 @@ Conversion (already on site): `AW-18572224940` / `eQn1CPunubcdEKzT9pdF`
 
 ---
 
-## Phase 0 — Before you open Google Ads (15 min)
+## Phase 0 — Purchase conversion (do this first)
+
+Full UI walkthrough: [`google-ads-purchase-conversion.md`](./google-ads-purchase-conversion.md)
 
 1. Open `https://anodeh.com` and confirm the homepage shows **7-day free trial** and **spam email monitoring**.
 2. Open `https://anodeh.com/register?plan=month` and confirm signup works.
-3. In Google Ads → **Goals** → **Conversions**, find the purchase / subscribe action tied to `AW-18572224940/eQn1CPunubcdEKzT9pdF`.
-4. If it is missing, create a conversion from the existing Google tag on the site (do not invent a second purchase tag).
-5. Run a test purchase (or use Tag Assistant / thank-you page) and confirm a conversion can record.
-6. Billing: payment method active on the Google Ads account you will use.
+3. In Google Ads → **Goals** → **Conversions** → **+ Create conversion action** (or open the existing purchase action).
+4. On **Choose data sources**, select **Conversions on a website** — not phone calls, not app, not offline.
+5. Domain: `anodeh.com`. Use the **existing** Google tag `AW-18572224940` already on the site.
+6. Confirm the purchase action matches label `eQn1CPunubcdEKzT9pdF` (thank-you page fires it after PayPal). Mark it **Primary**.
+7. Do not create a second purchase conversion.
+8. Test a checkout that reaches `/thank-you?purchase=…` and confirm the conversion can record.
+9. Billing: payment method active on the Google Ads account you will use.
 
 **Stop here if conversion is not recording.** Fix tracking first.
 
