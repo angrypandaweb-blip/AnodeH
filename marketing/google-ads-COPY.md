@@ -9,6 +9,8 @@ Headlines ≤30 characters. Descriptions ≤90 characters.
 Campaign structure: [`google-ads-global.md`](./google-ads-global.md)  
 Countries: [`google-ads-countries.md`](./google-ads-countries.md)
 
+**Policy note:** Avoid `fraud` / `fake` / `bot` / `invalid clicks` in keywords and ads — Google often flags Inappropriate content.
+
 ---
 
 ## Tier 1A — South Africa (`AnodeH | Search | ZA`)
@@ -16,14 +18,14 @@ Countries: [`google-ads-countries.md`](./google-ads-countries.md)
 ### Headlines
 
 ```
-Block Fake Google Ads Clicks
-Stop Click Fraud Waste
 Protect Your Ads Budget
+Stop Wasted Ad Clicks
+Google Ads Click Protection
 Spam Email Monitoring Too
 Ads + Inbox Protection
 7-Day Free Trial
 AnodeH for Google Ads
-Score Invalid Traffic
+Score Risky Ad Clicks
 Junk Mail Alerts Included
 Made for SA Businesses
 ```
@@ -31,9 +33,9 @@ Made for SA Businesses
 ### Descriptions
 
 ```
-AnodeH scores bad Google Ads clicks and writes exclusions. Spam email monitoring included. Try 7 days free.
-One account: block click fraud on Google Ads and watch your mailbox for phishing. South Africa ready.
-Invalid traffic off your budget. Flagged spam moved to Junk with owner alerts. Start free for 7 days.
+AnodeH scores risky Google Ads clicks and writes exclusions. Spam email monitoring included. Try 7 days free.
+One account: protect Google Ads spend and watch your mailbox for phishing. South Africa ready.
+Keep budget on real buyers. Flagged spam moved to Junk with owner alerts. Start free for 7 days.
 ```
 
 ### Paths
@@ -48,24 +50,24 @@ Invalid traffic off your budget. Flagged spam moved to Junk with owner alerts. S
 ### Headlines
 
 ```
-Block Fake Google Ads Clicks
-Stop Click Fraud Waste
 Protect Your Ads Budget
+Stop Wasted Ad Clicks
+Google Ads Click Protection
 Spam Email Monitoring Too
 Ads + Inbox Protection
 7-Day Free Trial
 AnodeH for Google Ads
-Score Invalid Traffic
-Cut Invalid Ad Spend
+Score Risky Ad Clicks
+Cut Wasted Ad Spend
 Built for US Advertisers
 ```
 
 ### Descriptions
 
 ```
-AnodeH scores bad Google Ads clicks and writes exclusions. Spam email monitoring included. Try 7 days free.
-Stop paying for bots and junk clicks. One account protects Search spend and your business inbox.
-Invalid traffic off your budget. Flagged spam moved to Junk with owner alerts. Start free for 7 days.
+AnodeH scores risky Google Ads clicks and writes exclusions. Spam email monitoring included. Try 7 days free.
+Stop paying for junk clicks. One account protects Search spend and your business inbox.
+Keep budget on real buyers. Flagged spam moved to Junk with owner alerts. Start free for 7 days.
 ```
 
 ---
@@ -75,14 +77,14 @@ Invalid traffic off your budget. Flagged spam moved to Junk with owner alerts. S
 ### Headlines
 
 ```
-Block Fake Google Ads Clicks
-Stop Click Fraud Waste
 Protect Your Ads Budget
+Stop Wasted Ad Clicks
+Google Ads Click Protection
 Spam Email Monitoring Too
 Ads + Inbox Protection
 7-Day Free Trial
 AnodeH for Google Ads
-Score Invalid Traffic
+Score Risky Ad Clicks
 Cut Wasted Ad Spend
 Built for UK Advertisers
 ```
@@ -90,9 +92,9 @@ Built for UK Advertisers
 ### Descriptions
 
 ```
-AnodeH scores bad Google Ads clicks and writes exclusions. Spam email monitoring included. Try 7 days free.
-One account: block click fraud on Google Ads and watch your mailbox for phishing. UK businesses ready.
-Invalid traffic off your budget. Flagged spam moved to Junk with owner alerts. Start free for 7 days.
+AnodeH scores risky Google Ads clicks and writes exclusions. Spam email monitoring included. Try 7 days free.
+One account: protect Google Ads spend and watch your mailbox for phishing. UK businesses ready.
+Keep budget on real buyers. Flagged spam moved to Junk with owner alerts. Start free for 7 days.
 ```
 
 ---
@@ -102,14 +104,14 @@ Invalid traffic off your budget. Flagged spam moved to Junk with owner alerts. S
 ### Headlines
 
 ```
-Block Fake Google Ads Clicks
-Stop Click Fraud Waste
 Protect Your Ads Budget
+Stop Wasted Ad Clicks
+Google Ads Click Protection
 Spam Email Monitoring Too
 Ads + Inbox Protection
 7-Day Free Trial
 AnodeH for Google Ads
-Score Invalid Traffic
+Score Risky Ad Clicks
 Junk Mail Alerts Included
 Keep Budget on Real Buyers
 ```
@@ -117,28 +119,26 @@ Keep Budget on Real Buyers
 ### Descriptions
 
 ```
-AnodeH scores bad Google Ads clicks and writes exclusions. Spam email monitoring included. Try 7 days free.
-One account: block click fraud on Google Ads and watch your mailbox for phishing. Start in minutes.
-Invalid traffic off your budget. Flagged spam moved to Junk with owner alerts. Start free for 7 days.
+AnodeH scores risky Google Ads clicks and writes exclusions. Spam email monitoring included. Try 7 days free.
+One account: protect Google Ads spend and watch your mailbox for phishing. Start in minutes.
+Keep budget on real buyers. Flagged spam moved to Junk with owner alerts. Start free for 7 days.
 ```
 
 ---
 
 ## Tier 2 — EU English (`AnodeH | Search | EU-EN`)
 
-No country-name claims (works across DE, NL, FR, ES, etc.).
-
 ### Headlines
 
 ```
-Block Fake Google Ads Clicks
-Stop Click Fraud Waste
 Protect Your Ads Budget
+Stop Wasted Ad Clicks
+Google Ads Click Protection
 Spam Email Monitoring Too
 Ads + Inbox Protection
 7-Day Free Trial
 AnodeH for Google Ads
-Score Invalid Traffic
+Score Risky Ad Clicks
 IP Exclusions Written
 Keep Budget on Real Buyers
 ```
@@ -146,25 +146,23 @@ Keep Budget on Real Buyers
 ### Descriptions
 
 ```
-AnodeH scores bad Google Ads clicks and writes exclusions. Spam email monitoring included. Try 7 days free.
-One account protects Google Ads from invalid traffic and watches your inbox for phishing.
-Invalid traffic off your budget. Flagged spam moved to Junk with owner alerts. Start free for 7 days.
+AnodeH scores risky Google Ads clicks and writes exclusions. Spam email monitoring included. Try 7 days free.
+One account protects Google Ads spend and watches your inbox for phishing.
+Keep budget on real buyers. Flagged spam moved to Junk with owner alerts. Start free for 7 days.
 ```
 
 ---
 
 ## Tier 3 — Selective tests (AE, HK, IN, BR, MX, Africa-near, JP/KR)
 
-Shorter, benefit-led. Avoid “Made for [country]” unless you run a dedicated campaign.
-
 ### Headlines
 
 ```
-Block Fake Google Ads Clicks
-Stop Click Fraud Waste
 Protect Your Ads Budget
+Stop Wasted Ad Clicks
+Google Ads Click Protection
 7-Day Free Trial
-Score Invalid Traffic
+Score Risky Ad Clicks
 Ads + Inbox Protection
 AnodeH Click Protection
 Spam Email Monitoring
@@ -173,8 +171,8 @@ Spam Email Monitoring
 ### Descriptions
 
 ```
-AnodeH scores bad Google Ads clicks and writes exclusions. Spam email monitoring included. Try 7 days free.
-Invalid traffic off your budget. Flagged spam moved to Junk with owner alerts. Start free for 7 days.
+AnodeH scores risky Google Ads clicks and writes exclusions. Spam email monitoring included. Try 7 days free.
+Keep budget on real buyers. Flagged spam moved to Junk with owner alerts. Start free for 7 days.
 ```
 
 **India / high-volume markets:** keep phrase + exact only; add negatives for free, course, tutorial, job, internship, PDF, download.
