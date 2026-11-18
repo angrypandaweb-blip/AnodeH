@@ -1,5 +1,13 @@
 import assert from "node:assert/strict";
-import { convertUsdCents, countryFromEmail, currencyForCountry, formatMoney, placeFor } from "../src/lib/residence-currency";
+import {
+  convertUsdCents,
+  countryFromEmail,
+  currencyForCountry,
+  formatMoney,
+  placeFor,
+  rateOrFallback,
+  reportCurrency,
+} from "../src/lib/residence-currency";
 
 assert.equal(placeFor("ZA", "owner@gmail.com").currency, "ZAR");
 assert.equal(placeFor("ZA", "owner@gmail.com").timeZone, "Africa/Johannesburg");
@@ -15,4 +23,14 @@ assert.match(formatMoney(21, "ZAR"), /R/);
 assert.match(formatMoney(21, "USD"), /\$/);
 assert.equal(formatMoney(4180, "USD", 0), "$4,180");
 assert.equal(formatMoney(Math.round(642 * 18), "ZAR", 0).replace(/\u00a0|\u202f/g, " "), "R 11 556");
-console.log("residence currency tests passed");
+assert.equal(rateOrFallback("ZAR", null), 18);
+assert.equal(rateOrFallback("USD", null), 1);
+
+async function main() {
+  const za = await reportCurrency("info@haggies.co.za", "");
+  assert.equal(za.currency, "ZAR");
+  assert.ok(za.rate > 1);
+  console.log("residence currency tests passed");
+}
+
+main();

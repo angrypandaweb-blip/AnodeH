@@ -13,8 +13,9 @@ import { getAccess, planSummary, quotesFor } from "@/lib/billing";
 import { getPolicy } from "@/lib/engine";
 import { sendDueDailyReport, sendWelcomeSampleOnce } from "@/lib/email-reports";
 import { unreadCount } from "@/lib/queries";
+import { placeFor } from "@/lib/residence-currency";
 import { home } from "@/lib/seo";
-import { visitorIp } from "@/lib/visitor-country";
+import { visitorIp, visitorPlace } from "@/lib/visitor-country";
 import "./globals.css";
 
 const display = Fraunces({ subsets: ["latin"], variable: "--font-display" });
@@ -58,12 +59,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const path = (await headers()).get("x-pathname") || "/";
   const bare = path === "/" || path === "/blocked" || path === "/login" || path === "/register" || path === "/forgot-password" || path === "/reset-password" || path === "/privacy" || path === "/terms" || path === "/support";
   if (bare) {
+    const [visit, guest] = await Promise.all([visitorPlace(), getUser()]);
+    const country = guest ? placeFor(guest.country || "", guest.email).country : visit.country;
+    const prices = await quotesFor(guest?.email || "", country);
     return (
       <html lang="en">
         <body className={`${display.variable} ${sans.variable}`}>
           <GoogleTag />
           {children}
-          <Assistant />
+          <Assistant prices={prices} />
           <script src="https://anodeh.com/cf.js" data-key="cf_502ff663e79ffa28" async />
         </body>
       </html>
@@ -76,7 +80,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   if (access.status === "unpaid" && path !== "/billing" && path !== "/thank-you" && !path.startsWith("/billing/")) {
     redirect("/billing");
   }
-  const plan = planSummary(access, await quotesFor(user.email, user.country));
+  const accountCountry = placeFor(user.country || "", user.email).country;
+  const prices = await quotesFor(user.email, accountCountry);
+  const plan = planSummary(access, prices);
   const policy = await getPolicy();
   const unread = await unreadCount();
   const companies = access.sites > 1 ? await loadCompanies(user.id) : null;
@@ -134,7 +140,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </footer>
         </div>
         <GoogleTag />
-        <Assistant />
+        <Assistant prices={prices} />
         <script src="https://anodeh.com/cf.js" data-key="cf_502ff663e79ffa28" async />
       </body>
     </html>

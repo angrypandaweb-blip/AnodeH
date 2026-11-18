@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { Mark } from "@/components/Mark";
-import { assistantReply, type AssistantLink } from "@/lib/assistant";
+import { assistantReply, type AssistantLink, type AssistantPrices } from "@/lib/assistant";
 
 type Message = { id: number; from: "assistant" | "you"; text: string; links: AssistantLink[] };
 
@@ -13,7 +13,7 @@ const GREETING: Message = {
   links: [],
 };
 
-export function Assistant() {
+export function Assistant({ prices }: { prices?: AssistantPrices }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState<Message[]>([GREETING]);
@@ -40,7 +40,7 @@ export function Assistant() {
   function ask(text: string) {
     const question = text.trim();
     if (!question) return;
-    const answer = assistantReply(question);
+    const answer = assistantReply(question, prices);
     setMessages((current) => [
       ...current,
       { id: current.length, from: "you", text: question, links: [] },

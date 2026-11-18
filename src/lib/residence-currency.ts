@@ -150,8 +150,45 @@ export function formatMoney(value: number, currency: string, fractionDigits?: nu
 const rates = new Map<string, number>();
 let rateTable: Promise<Record<string, number>> | null = null;
 
+/** Used when Frankfurter is down so ZA and other locales do not silently flip to USD. */
+export const FALLBACK_USD_RATES: Record<string, number> = {
+  USD: 1,
+  AED: 3.67,
+  AUD: 1.55,
+  BRL: 5.7,
+  BWP: 13.5,
+  CAD: 1.39,
+  CHF: 0.88,
+  CNY: 7.2,
+  DKK: 6.9,
+  EUR: 0.92,
+  GBP: 0.79,
+  HKD: 7.8,
+  INR: 84,
+  JPY: 150,
+  KES: 129,
+  KRW: 1380,
+  MXN: 20,
+  NAD: 18,
+  NGN: 1600,
+  NOK: 11,
+  NZD: 1.7,
+  PLN: 4,
+  SEK: 10.5,
+  SGD: 1.34,
+  ZAR: 18,
+};
+
 export function convertUsdCents(cents: number, rate: number): number {
   return (cents / 100) * rate;
+}
+
+export function rateOrFallback(currency: string, rate: number | null | undefined): number | null {
+  if (rate && Number.isFinite(rate) && rate > 0) return rate;
+  const cached = rates.get(currency);
+  if (cached) return cached;
+  const fallback = FALLBACK_USD_RATES[currency];
+  return fallback && fallback > 0 ? fallback : null;
 }
 
 export async function allUsdRates(): Promise<Record<string, number>> {
@@ -163,13 +200,13 @@ export async function allUsdRates(): Promise<Record<string, number>> {
 }
 
 async function loadUsdRates(): Promise<Record<string, number>> {
+  const table: Record<string, number> = { ...FALLBACK_USD_RATES };
   try {
     const response = await fetch("https://api.frankfurter.dev/v1/latest?from=USD", {
       signal: AbortSignal.timeout(4000),
     });
     const payload = (await response.json().catch(() => null)) as { rates?: Record<string, number> } | null;
-    if (!response.ok || !payload?.rates) return { USD: 1 };
-    const table: Record<string, number> = { USD: 1 };
+    if (!response.ok || !payload?.rates) return table;
     for (const [code, rate] of Object.entries(payload.rates)) {
       if (!Number.isFinite(rate) || rate <= 0) continue;
       table[code] = rate;
@@ -177,7 +214,7 @@ async function loadUsdRates(): Promise<Record<string, number>> {
     }
     return table;
   } catch {
-    return { USD: 1 };
+    return table;
   }
 }
 
@@ -210,7 +247,8 @@ export async function moneyInCurrency(amount: number, from: string, to: string):
 
 export async function reportCurrency(email: string, country = ""): Promise<{ currency: string; name: string; rate: number }> {
   const currency = placeFor(country, email).currency;
-  const rate = await usdRate(currency);
+  const live = await usdRate(currency);
+  const rate = rateOrFallback(currency, live);
   if (!rate) return { currency: "USD", name: "US dollars", rate: 1 };
   return { currency, name: currencyName(currency), rate };
 }

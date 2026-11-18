@@ -1,7 +1,7 @@
 import { Mark } from "@/components/Mark";
 import { getUser } from "@/lib/auth";
-import { dollars, getAccess, quotesFor, STANDARD_CENTS, SITES_10_CENTS, SITES_10_INTRO_CENTS, SITES_20_CENTS, SITES_20_INTRO_CENTS } from "@/lib/billing";
-import { formatMoney, reportCurrency } from "@/lib/residence-currency";
+import { getAccess, quotesFor } from "@/lib/billing";
+import { formatMoney, placeFor, reportCurrency } from "@/lib/residence-currency";
 import { sampleCampaigns } from "@/lib/sample-campaigns";
 import { homeJsonLd, pageMeta } from "@/lib/seo";
 import { visitorPlace, visitPlaceLabel } from "@/lib/visitor-country";
@@ -42,11 +42,12 @@ export default async function LandingPage() {
   const sites20Href = user ? "/billing" : "/register?plan=sites20";
   const monthLabel = subscribed ? "Open dashboard" : "Subscribe";
   const visit = await visitorPlace();
-  const seen = user?.country || visit.country;
+  // Logged-in SA accounts with empty country still resolve ZAR from email; do not let visitor IP override.
+  const seen = user ? placeFor(user.country || "", user.email).country : visit.country;
   const visitLabel = visitPlaceLabel(visit);
   const [quote, sampleLocal] = await Promise.all([
     quotesFor(user?.email || "", seen),
-    reportCurrency("", visit.country || seen),
+    reportCurrency(user?.email || "", user ? seen : visit.country || seen),
   ]);
   const sample = (usd: number) => formatMoney(Math.round(usd * sampleLocal.rate), sampleLocal.currency, 0);
   const sampleLead = visitLabel
@@ -56,12 +57,12 @@ export default async function LandingPage() {
   const awaySource = visit.name ? `Outside ${visit.name}` : "Off-target country";
   const campaigns = sampleCampaigns(visit.country);
   const rooms = [214, 96, 41];
-  const standard = quote?.standard ?? dollars(STANDARD_CENTS);
-  const half10 = quote?.half10 ?? dollars(SITES_10_INTRO_CENTS);
-  const sites10 = quote?.sites10 ?? dollars(SITES_10_CENTS);
-  const half20 = quote?.half20 ?? dollars(SITES_20_INTRO_CENTS);
-  const sites20 = quote?.sites20 ?? dollars(SITES_20_CENTS);
-  const currencyNote = quote && quote.currency !== "USD" ? ` Prices are in ${quote.name}. PayPal collects US dollars.` : "";
+  const standard = quote.standard;
+  const half10 = quote.half10;
+  const sites10 = quote.sites10;
+  const half20 = quote.half20;
+  const sites20 = quote.sites20;
+  const currencyNote = quote.currency !== "USD" ? ` Prices are in ${quote.name}. PayPal collects US dollars.` : "";
 
   return (
     <div className="site">

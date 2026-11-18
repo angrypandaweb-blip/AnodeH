@@ -51,7 +51,7 @@ export default async function OverviewPage({
   const hottest = caps.fullest / caps.cap;
   const todayInvalid = series.at(-1) ? series.at(-1)!.organic + series.at(-1)!.flagged + series.at(-1)!.repeat : 0;
   const place = placeFor(user?.country || "", user?.email || "");
-  const local = await reportCurrency(user?.email || "", user?.country || "");
+  const local = await reportCurrency(user?.email || "", place.country);
   const priced = (usd: number) => formatMoney(usd * local.rate, local.currency);
   const average = clickPrice(openCompany?.clickPrice || (await savedClickPrice()));
   const monitored = average == null ? null : monitoredFromAverage(stats.paid, stats.invalidPaid, average);

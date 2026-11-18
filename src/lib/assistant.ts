@@ -1,3 +1,13 @@
+import {
+  dollars,
+  SITES_10_CENTS,
+  SITES_10_INTRO_CENTS,
+  SITES_20_CENTS,
+  SITES_20_INTRO_CENTS,
+  STANDARD_CENTS,
+  type PlanQuote,
+} from "@/lib/billing";
+
 export type AssistantLink = { label: string; href: string };
 
 export type AssistantAnswer = {
@@ -5,7 +15,29 @@ export type AssistantAnswer = {
   links: AssistantLink[];
 };
 
-const ANSWERS: { test: RegExp; answer: AssistantAnswer }[] = [
+export type AssistantPrices = Pick<PlanQuote, "standard" | "half10" | "sites10" | "half20" | "sites20" | "currency" | "name">;
+
+export function defaultAssistantPrices(): AssistantPrices {
+  return {
+    currency: "USD",
+    name: "US dollars",
+    standard: dollars(STANDARD_CENTS),
+    half10: dollars(SITES_10_INTRO_CENTS),
+    sites10: dollars(SITES_10_CENTS),
+    half20: dollars(SITES_20_INTRO_CENTS),
+    sites20: dollars(SITES_20_CENTS),
+  };
+}
+
+function pricingAnswer(quote: AssistantPrices): AssistantAnswer {
+  const local = quote.currency === "USD" ? "" : ` Amounts are shown in ${quote.name}.`;
+  return {
+    text: `One website is free for 7 days, then ${quote.standard} every 30 days. Ten websites are ${quote.half10} for the first 30 days, then ${quote.sites10}. Twenty websites are ${quote.half20} for the first 30 days, then ${quote.sites20}. PayPal starts the subscription and charges after the intro until you cancel.${local} PayPal collects the US dollar amount.`,
+    links: [{ label: "Plans", href: "/billing" }],
+  };
+}
+
+const ANSWERS: { test: RegExp; answer: AssistantAnswer | ((quote: AssistantPrices) => AssistantAnswer) }[] = [
   {
     test: /organic|seo|not an ad|without (a )?gclid|google search(?! ads)/,
     answer: {
@@ -15,10 +47,7 @@ const ANSWERS: { test: RegExp; answer: AssistantAnswer }[] = [
   },
   {
     test: /price|pricing|plan|cost|how much|\$|paypal|month|annual|year/,
-    answer: {
-      text: "One website is free for 7 days, then $69 every 30 days. Ten websites are $94.50 for the first 30 days, then $189. Twenty websites are $144.50 for the first 30 days, then $289. PayPal starts the subscription and charges after the intro until you cancel. The page shows those prices in the visitor’s currency. PayPal collects the US dollar amount.",
-      links: [{ label: "Plans", href: "/billing" }],
-    },
+    answer: pricingAnswer,
   },
   {
     test: /password|forgot|reset/,
@@ -106,7 +135,7 @@ const ANSWERS: { test: RegExp; answer: AssistantAnswer }[] = [
   },
 ];
 
-export function assistantReply(question: string): AssistantAnswer {
+export function assistantReply(question: string, quote: AssistantPrices = defaultAssistantPrices()): AssistantAnswer {
   const asked = question.trim().toLowerCase();
   if (!asked) {
     return {
@@ -114,13 +143,15 @@ export function assistantReply(question: string): AssistantAnswer {
       links: [],
     };
   }
-  return (
-    ANSWERS.find((item) => item.test.test(asked))?.answer ?? {
+  const matched = ANSWERS.find((item) => item.test.test(asked));
+  if (!matched) {
+    return {
       text: "I can help with how AnodeH scores clicks, what gets blocked, the plans, and where to connect Google Ads.",
       links: [
         { label: "Dashboard", href: "/dashboard" },
         { label: "Plans", href: "/billing" },
       ],
-    }
-  );
+    };
+  }
+  return typeof matched.answer === "function" ? matched.answer(quote) : matched.answer;
 }
