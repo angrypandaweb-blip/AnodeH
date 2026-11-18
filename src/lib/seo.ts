@@ -62,8 +62,12 @@ export function pageMeta(path: string): Metadata {
   return {
     title: path === "/" ? { absolute: page.title } : page.title,
     description: page.description,
-    alternates: { canonical: path },
+    alternates: {
+      canonical: path,
+      languages: { en: path === "/" ? SITE : `${SITE}${path}` },
+    },
     openGraph: {
+      locale: "en_US",
       title: titled,
       description: page.description,
       url: path,
@@ -71,6 +75,9 @@ export function pageMeta(path: string): Metadata {
     twitter: {
       title: titled,
       description: page.description,
+    },
+    other: {
+      "content-language": "en",
     },
   };
 }
