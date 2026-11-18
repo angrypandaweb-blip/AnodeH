@@ -340,6 +340,30 @@ input[type="text"], input[type="email"], input[type="password"], input[type="num
   border-radius: 10px;
   padding: 8px 10px;
 }
+.password-field-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: stretch;
+}
+.password-field-row input {
+  width: 100%;
+  box-sizing: border-box;
+}
+.password-toggle {
+  border: 1px solid var(--line);
+  background: white;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--moss);
+  cursor: pointer;
+}
+.password-toggle[aria-pressed="true"] {
+  background: var(--moss-soft);
+  border-color: var(--moss);
+}
 textarea { font: inherit; width: 100%; box-sizing: border-box; min-height: 140px; resize: vertical; }
 .radios { display: flex; gap: 8px; flex-wrap: wrap; }
 .radios label {

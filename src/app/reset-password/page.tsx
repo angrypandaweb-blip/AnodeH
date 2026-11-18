@@ -1,5 +1,6 @@
 import { resetPassword } from "@/app/actions";
 import { Mark } from "@/components/Mark";
+import { PasswordField } from "@/components/PasswordField";
 import { noIndex } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
@@ -33,10 +34,7 @@ export default async function ResetPasswordPage({
         {token ? (
           <form action={resetPassword} className="form-grid">
             <input type="hidden" name="token" value={token} />
-            <label>
-              New password
-              <input type="password" name="password" autoComplete="new-password" minLength={8} required />
-            </label>
+            <PasswordField label="New password" autoComplete="new-password" minLength={8} required />
             <button className="btn" type="submit">Save password</button>
           </form>
         ) : (
