@@ -120,12 +120,16 @@ async function main() {
     }
 
     const remoteCycles = describeCycles(created.payload.billing_cycles);
-    const expectedIntro = pack.cycles[0].pricing_scheme.fixed_price.value;
-    const expectedRegular = pack.cycles[1].pricing_scheme.fixed_price.value;
+    const expectedIntro = pack.cycles[0]?.pricing_scheme?.fixed_price.value;
+    const expectedRegular = pack.cycles[1]?.pricing_scheme?.fixed_price.value;
     const gotIntro = created.payload.billing_cycles?.[0]?.pricing_scheme?.fixed_price?.value;
     const gotRegular = created.payload.billing_cycles?.[1]?.pricing_scheme?.fixed_price?.value;
-    if (gotIntro !== expectedIntro || gotRegular !== expectedRegular) {
+    // Free trials omit pricing_scheme; paid intros must still match.
+    if (expectedIntro !== undefined && (gotIntro !== expectedIntro || gotRegular !== expectedRegular)) {
       fail(`${id} cycle mismatch. expected ${expectedIntro}/${expectedRegular}, got ${gotIntro}/${gotRegular}`);
+    }
+    if (expectedIntro === undefined && gotRegular !== expectedRegular) {
+      fail(`${id} regular cycle mismatch. expected ${expectedRegular}, got ${gotRegular}`);
     }
     if (created.payload.billing_cycles?.[0]?.frequency?.interval_count !== pack.introDays) {
       fail(`${id} intro days mismatch.`);

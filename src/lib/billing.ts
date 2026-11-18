@@ -421,30 +421,40 @@ async function paypalProductId(token: string) {
   return created.payload.id;
 }
 
+export type PaypalBillingCycle = {
+  frequency: { interval_unit: "DAY"; interval_count: number };
+  tenure_type: "TRIAL" | "REGULAR";
+  sequence: number;
+  total_cycles: number;
+  pricing_scheme?: { fixed_price: { value: string; currency_code: string } };
+};
+
 export function subscriptionCycles(options: {
   fullCents: number;
   introCents: number;
   introDays: number;
   discounted: boolean;
-}) {
-  const regular = {
-    frequency: { interval_unit: "DAY" as const, interval_count: PERIOD_DAYS },
-    tenure_type: "REGULAR" as const,
+}): PaypalBillingCycle[] {
+  const regular: PaypalBillingCycle = {
+    frequency: { interval_unit: "DAY", interval_count: PERIOD_DAYS },
+    tenure_type: "REGULAR",
     sequence: options.discounted ? 2 : 1,
     total_cycles: 0,
     pricing_scheme: { fixed_price: { value: usd(options.fullCents), currency_code: "USD" } },
   };
   if (!options.discounted) return [regular];
-  return [
-    {
-      frequency: { interval_unit: "DAY" as const, interval_count: options.introDays },
-      tenure_type: "TRIAL" as const,
-      sequence: 1,
-      total_cycles: 1,
-      pricing_scheme: { fixed_price: { value: usd(options.introCents), currency_code: "USD" } },
-    },
-    regular,
-  ];
+  // PayPal: a free trial cycle does not require pricing_scheme. Sending value "0.00"
+  // can leave the approve page spinning on genericError/RETRY.
+  const trial: PaypalBillingCycle = {
+    frequency: { interval_unit: "DAY", interval_count: options.introDays },
+    tenure_type: "TRIAL",
+    sequence: 1,
+    total_cycles: 1,
+    ...(options.introCents > 0
+      ? { pricing_scheme: { fixed_price: { value: usd(options.introCents), currency_code: "USD" } } }
+      : {}),
+  };
+  return [trial, regular];
 }
 
 export type PaypalPackageId = "month" | "sites10" | "sites20";
@@ -458,8 +468,8 @@ export function paypalPayeePreferred(introCents: number, discounted: boolean) {
 export function paypalPackagePlans(discounted: boolean) {
   return {
     month: {
-      // v2 forces a fresh PayPal plan if an older cached plan had the wrong trial length.
-      keyName: discounted ? "trial7_v2" : "month",
+      // v3 recreates the free-trial plan without a $0 pricing_scheme (PayPal approve UI).
+      keyName: discounted ? "trial7_v3" : "month",
       name: discounted ? "AnodeH 1 website - 7 day free trial" : "AnodeH monthly",
       sites: 1 as const,
       fullCents: STANDARD_CENTS,
@@ -565,9 +575,20 @@ async function createMonthlySubscription(
   );
   if (!prepared.ok) return { error: prepared.error };
 
+  const buyer = await getUser();
+  const given = (buyer?.name || "Customer").trim().split(/\s+/)[0] || "Customer";
+  const surname = (buyer?.name || "").trim().split(/\s+/).slice(1).join(" ") || "Account";
   const created = await paypalJson(token, "/v1/billing/subscriptions", {
     plan_id: prepared.id,
     custom_id: plan,
+    ...(buyer?.email
+      ? {
+          subscriber: {
+            email_address: buyer.email,
+            name: { given_name: given.slice(0, 140), surname: surname.slice(0, 140) },
+          },
+        }
+      : {}),
     application_context: {
       brand_name: "AnodeH",
       locale: "en-US",
