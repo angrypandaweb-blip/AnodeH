@@ -42,7 +42,7 @@ export function RegisterForm({
   const price = quotes[country] || fallback;
   const paypal = price.currency === "USD" ? "" : " PayPal collects the US dollar price.";
   const copy = plan === "month"
-    ? `1 website. ${price.half} for the first 30 days, then ${price.standard} every 30 days. PayPal deducts that automatically.${paypal} The plan page opens after the account is created.`
+    ? `1 website. Free for 7 days, then ${price.standard} every 30 days. PayPal starts the trial and charges automatically after it ends.${paypal} The plan page opens after the account is created.`
     : plan === "sites10"
       ? `10 websites. ${price.half10} for the first 30 days, then ${price.sites10} every 30 days. PayPal deducts that automatically.${paypal} After payment, the other websites are added in Settings.`
       : plan === "sites20"

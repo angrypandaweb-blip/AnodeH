@@ -1,5 +1,5 @@
 import { Mark } from "@/components/Mark";
-import { dollars, INTRO_CENTS, quotesFor, SITES_10_CENTS, SITES_10_INTRO_CENTS, SITES_20_CENTS, SITES_20_INTRO_CENTS, STANDARD_CENTS } from "@/lib/billing";
+import { dollars, quotesFor, SITES_10_CENTS, SITES_10_INTRO_CENTS, SITES_20_CENTS, SITES_20_INTRO_CENTS, STANDARD_CENTS } from "@/lib/billing";
 import { pageMeta } from "@/lib/seo";
 import { visitorCountry } from "@/lib/visitor-country";
 
@@ -18,7 +18,6 @@ const CAUGHT = [
 
 export default async function BlockedPage() {
   const quote = await quotesFor("", await visitorCountry());
-  const half = quote.half || dollars(INTRO_CENTS);
   const standard = quote.standard || dollars(STANDARD_CENTS);
   const half10 = quote.half10 || dollars(SITES_10_INTRO_CENTS);
   const sites10 = quote.sites10 || dollars(SITES_10_CENTS);
@@ -87,14 +86,14 @@ export default async function BlockedPage() {
 
       <section className="band">
         <h2>Simple pricing</h2>
-        <p className="lede">The first month is half price. After that PayPal deducts the regular price every 30 days until you cancel. Ten and twenty websites are for growing businesses managing multiple websites.{local}</p>
+        <p className="lede">One website starts with a 7-day free trial, then PayPal charges the regular price every 30 days until you cancel. Ten and twenty websites are half price for the first month.{local}</p>
         <div className="plans">
           <article className="offer featured">
-            <span className="offer-tag">50% off the first month</span>
+            <span className="offer-tag">7-day free trial</span>
             <h3>1 website</h3>
-            <p className="offer-price">{half}</p>
+            <p className="offer-price">Free</p>
             <p>Then {standard} every 30 days.</p>
-            <a className="btn" href="/register?plan=month">Subscribe</a>
+            <a className="btn" href="/register?plan=month">Start free trial</a>
           </article>
           <article className="offer">
             <span className="offer-tag">50% off the first month</span>

@@ -16,9 +16,11 @@ import {
 export { SITES_10_CENTS, SITES_10_INTRO_CENTS, SITES_20_CENTS, SITES_20_INTRO_CENTS } from "@/lib/site-plans";
 
 export const PERIOD_DAYS = 30;
+export const TRIAL_DAYS = 7;
 export const YEAR_DAYS = 365;
 export const STANDARD_CENTS = 6900;
 export const INTRO_CENTS = 3450;
+export const TRIAL_CENTS = 0;
 export const ANNUAL_CENTS = 75900;
 
 const DAY = 24 * 60 * 60;
@@ -151,8 +153,8 @@ export function planSummary(access: Access, quote?: PlanQuote) {
     return { title: "Plan unpaid", detail: `${standard} every 30 days` };
   }
   return {
-    title: "Half price first month",
-    detail: `${half} for 30 days, then ${standard}`,
+    title: "7-day free trial",
+    detail: `Free for ${TRIAL_DAYS} days, then ${standard} every 30 days`,
   };
 }
 
@@ -419,31 +421,47 @@ async function paypalProductId(token: string) {
   return created.payload.id;
 }
 
-async function pricedPlanId(token: string, keyName: string, name: string, fullCents: number, introCents: number, discounted: boolean) {
+export function subscriptionCycles(options: {
+  fullCents: number;
+  introCents: number;
+  introDays: number;
+  discounted: boolean;
+}) {
+  const regular = {
+    frequency: { interval_unit: "DAY" as const, interval_count: PERIOD_DAYS },
+    tenure_type: "REGULAR" as const,
+    sequence: options.discounted ? 2 : 1,
+    total_cycles: 0,
+    pricing_scheme: { fixed_price: { value: usd(options.fullCents), currency_code: "USD" } },
+  };
+  if (!options.discounted) return [regular];
+  return [
+    {
+      frequency: { interval_unit: "DAY" as const, interval_count: options.introDays },
+      tenure_type: "TRIAL" as const,
+      sequence: 1,
+      total_cycles: 1,
+      pricing_scheme: { fixed_price: { value: usd(options.introCents), currency_code: "USD" } },
+    },
+    regular,
+  ];
+}
+
+async function pricedPlanId(
+  token: string,
+  keyName: string,
+  name: string,
+  fullCents: number,
+  introCents: number,
+  discounted: boolean,
+  introDays = PERIOD_DAYS,
+) {
   const key = `paypal_plan_${keyName}_${paypalMode()}`;
   const existing = await setting(key);
   if (existing) return existing;
   const productId = await paypalProductId(token);
   if (!productId) return null;
-  const regular = {
-    frequency: { interval_unit: "DAY", interval_count: PERIOD_DAYS },
-    tenure_type: "REGULAR" as const,
-    sequence: discounted ? 2 : 1,
-    total_cycles: 0,
-    pricing_scheme: { fixed_price: { value: usd(fullCents), currency_code: "USD" } },
-  };
-  const cycles = discounted
-    ? [
-        {
-          frequency: { interval_unit: "DAY", interval_count: PERIOD_DAYS },
-          tenure_type: "TRIAL",
-          sequence: 1,
-          total_cycles: 1,
-          pricing_scheme: { fixed_price: { value: usd(introCents), currency_code: "USD" } },
-        },
-        regular,
-      ]
-    : [regular];
+  const cycles = subscriptionCycles({ fullCents, introCents, introDays, discounted });
   const created = await paypalJson(token, "/v1/billing/plans", {
     product_id: productId,
     name,
@@ -478,11 +496,12 @@ async function createMonthlySubscription(
         ? await pricedPlanId(token, discounted ? "sites10_half30" : "sites10_full", "AnodeH 10 websites", SITES_10_CENTS, SITES_10_INTRO_CENTS, discounted)
         : await pricedPlanId(
             token,
-            discounted ? "half30" : "month",
-            discounted ? "AnodeH 1 website - first month half" : "AnodeH monthly",
+            discounted ? "trial7_free" : "month",
+            discounted ? "AnodeH 1 website - 7 day free trial" : "AnodeH monthly",
             STANDARD_CENTS,
-            INTRO_CENTS,
+            TRIAL_CENTS,
             discounted,
+            TRIAL_DAYS,
           );
   if (!planId) return { error: "PayPal could not prepare the monthly plan." };
 
