@@ -277,6 +277,57 @@ export async function sendPasswordReset(to: string, name: string, link: string) 
   return sendMail(to, subject, text, html);
 }
 
+export async function sendSpamAlert(notice: {
+  userId: string;
+  messageId: string;
+  fromAddr: string;
+  subject: string;
+  score: number;
+  action: "flag" | "block";
+  reasons: string[];
+  movedToJunk: boolean;
+  ts: number;
+}) {
+  if (!mailConfigured()) return { ok: false as const, error: "Email is not configured." };
+  if (await alreadySent("spam", notice.messageId)) return { ok: true as const, skipped: true };
+  const user = await queryOne<Person>(await getDb(), "SELECT id, email, name, country FROM users WHERE id = ?", [notice.userId]);
+  if (!user || !user.email.includes("@") || user.email.toLowerCase().endsWith("@example.com")) {
+    return { ok: false as const, error: "This account has no deliverable email." };
+  }
+  const { reasonText: spamReasonText } = await import("./spam-score");
+  const why = spamReasonText(notice.reasons);
+  const clock = when(notice.ts, zoneFor(user));
+  const label = notice.action === "block" ? "blocked" : "flagged";
+  const junkLine = notice.movedToJunk ? "It was moved to Junk in the connected mailbox." : "Review it on the Spam email page.";
+  const subject = `AnodeH ${label} email from ${notice.fromAddr}`;
+  const text = [
+    `Hello ${user.name},`,
+    "",
+    `AnodeH ${label} an email.`,
+    `From: ${notice.fromAddr}`,
+    `Subject: ${notice.subject}`,
+    `Score ${notice.score}. ${why}.`,
+    junkLine,
+    `Seen at ${clock}.`,
+    "",
+    `Open spam email: ${APP}/spam`,
+    "",
+    "AnodeH",
+  ].join("\n");
+  const html = `<p>Hello ${escapeHtml(user.name)},</p>
+<p>AnodeH <strong>${label}</strong> an email.</p>
+<p>From: ${escapeHtml(notice.fromAddr)}<br/>Subject: ${escapeHtml(notice.subject)}</p>
+<p>Score ${notice.score}. ${escapeHtml(why)}.</p>
+<p>${escapeHtml(junkLine)}</p>
+<p>Seen at ${escapeHtml(clock)}.</p>
+<p><a href="${APP}/spam">Open spam email</a></p>
+<p>AnodeH</p>`;
+  const sent = await sendMail(user.email, subject, text, html);
+  if (!sent.ok) return sent;
+  await markSent(user.id, "spam", notice.messageId);
+  return { ok: true as const };
+}
+
 export async function sendBlockedIp(notice: {
   userId: string;
   blockId: string;

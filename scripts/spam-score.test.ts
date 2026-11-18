@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { decryptSecret, encryptSecret } from "../src/lib/spam-mail";
+import { decryptSecret, encryptSecret, pickJunkFolder } from "../src/lib/spam-mail";
 import { evaluateSpam, extractLinks, reasonText } from "../src/lib/spam-score";
 
 const clean = evaluateSpam({
@@ -29,5 +29,9 @@ process.env.SPAM_MAILBOX_SECRET = "test-secret-for-spam";
 const secret = encryptSecret("app-password-value");
 assert.notEqual(secret, "app-password-value");
 assert.equal(decryptSecret(secret), "app-password-value");
+
+assert.equal(pickJunkFolder([{ path: "INBOX" }, { path: "Junk", specialUse: "\\Junk" }]), "Junk");
+assert.equal(pickJunkFolder([{ path: "INBOX" }, { path: "Spam", name: "Spam" }]), "Spam");
+assert.equal(pickJunkFolder([{ path: "INBOX" }]), "Junk");
 
 console.log("spam-score tests passed");

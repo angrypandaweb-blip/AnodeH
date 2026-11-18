@@ -44,8 +44,9 @@ export default function PrivacyPage() {
 
         <h2>Spam email monitoring</h2>
         <p>
-          If you use Spam email, AnodeH stores messages you paste for scoring, and, when you connect a mailbox, the IMAP host, username, and an encrypted app password.
-          Synced message From lines, subjects, snippets, and scores are kept so you can review them in the account. Disconnect removes the mailbox credentials. You can stop pasting messages at any time.
+          If you use Spam email, AnodeH stores messages you paste for scoring, and, when you connect a mailbox, the IMAP host, username, and an encrypted mailbox password.
+          Synced message From lines, subjects, snippets, and scores are kept so you can review them in the account. Flagged or blocked mailbox messages can be moved to Junk, and an alert can be emailed to your AnodeH account address.
+          Disconnect removes the mailbox credentials. You can stop pasting messages at any time.
         </p>
 
         <h2>Contact</h2>
