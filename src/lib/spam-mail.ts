@@ -1,6 +1,7 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "crypto";
 import { ImapFlow } from "imapflow";
 import { execute, getDb, queryAll, queryOne } from "./db";
+import { sendSpamAlert } from "./email-reports";
 import { evaluateSpam, extractEmailAddress, extractLinks, reasonText, type SpamAction } from "./spam-score";
 
 export type SpamMessage = {
@@ -14,6 +15,8 @@ export type SpamMessage = {
   reasons: string[];
   receivedAt: number;
   scoredAt: number;
+  alertedAt: number;
+  junkedAt: number;
 };
 
 export type SpamMailbox = {
@@ -46,6 +49,8 @@ type MessageRow = {
   reasons: string;
   received_at: number;
   scored_at: number;
+  alerted_at: number;
+  junked_at: number;
 };
 
 function secretKey() {
@@ -81,14 +86,28 @@ function mapMessage(row: MessageRow): SpamMessage {
     reasons: row.reasons ? row.reasons.split("|").filter(Boolean) : [],
     receivedAt: row.received_at,
     scoredAt: row.scored_at,
+    alertedAt: row.alerted_at || 0,
+    junkedAt: row.junked_at || 0,
   };
+}
+
+export function pickJunkFolder(folders: { path: string; name?: string; specialUse?: string }[]): string {
+  const bySpecial = folders.find((folder) => folder.specialUse === "\\Junk");
+  if (bySpecial?.path) return bySpecial.path;
+  const names = ["Junk", "Spam", "Junk E-mail", "Junk Email", "Bulk Mail"];
+  for (const name of names) {
+    const match = folders.find((folder) => (folder.name || folder.path).toLowerCase() === name.toLowerCase());
+    if (match?.path) return match.path;
+  }
+  const fuzzy = folders.find((folder) => /junk|spam/i.test(folder.path));
+  return fuzzy?.path || "Junk";
 }
 
 export async function listSpamMessages(userId: string, limit = 40): Promise<SpamMessage[]> {
   const db = await getDb();
   const rows = await queryAll<MessageRow>(
     db,
-    "SELECT id, source, from_addr, subject, snippet, score, action, reasons, received_at, scored_at FROM spam_messages WHERE user_id = ? ORDER BY received_at DESC LIMIT ?",
+    "SELECT id, source, from_addr, subject, snippet, score, action, reasons, received_at, scored_at, alerted_at, junked_at FROM spam_messages WHERE user_id = ? ORDER BY received_at DESC LIMIT ?",
     [userId, limit],
   );
   return rows.map(mapMessage);
@@ -151,6 +170,12 @@ async function upsertMessage(
     receivedAt: number;
   },
 ) {
+  const db = await getDb();
+  const existing = await queryOne<{ action: string; alerted_at: number; junked_at: number }>(
+    db,
+    "SELECT action, alerted_at, junked_at FROM spam_messages WHERE id = ?",
+    [input.id],
+  );
   const verdict = evaluateSpam({
     from: input.from,
     subject: input.subject,
@@ -160,11 +185,12 @@ async function upsertMessage(
   });
   const snippet = input.body.replace(/\s+/g, " ").trim().slice(0, 220);
   const scoredAt = Math.floor(Date.now() / 1000);
-  const db = await getDb();
+  const fromAddr = extractEmailAddress(input.from) || input.from;
+  const risky = verdict.action === "flag" || verdict.action === "block";
   await execute(
     db,
-    `INSERT INTO spam_messages (id, user_id, source, from_addr, subject, snippet, body, score, action, reasons, received_at, scored_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO spam_messages (id, user_id, source, from_addr, subject, snippet, body, score, action, reasons, received_at, scored_at, alerted_at, junked_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        score = excluded.score,
        action = excluded.action,
@@ -176,7 +202,7 @@ async function upsertMessage(
       input.id,
       userId,
       input.source,
-      extractEmailAddress(input.from) || input.from,
+      fromAddr,
       input.subject.slice(0, 240),
       snippet,
       input.body.slice(0, 20000),
@@ -185,9 +211,55 @@ async function upsertMessage(
       verdict.reasons.join("|"),
       input.receivedAt,
       scoredAt,
+      existing?.alerted_at || 0,
+      existing?.junked_at || 0,
     ],
   );
-  return { ...verdict, reasonLabel: reasonText(verdict.reasons) };
+  return {
+    ...verdict,
+    fromAddr,
+    subject: input.subject.slice(0, 240),
+    reasonLabel: reasonText(verdict.reasons),
+    needsAlert: risky && !(existing?.alerted_at),
+    needsJunk: risky && input.source === "imap" && !(existing?.junked_at),
+  };
+}
+
+async function markAlerted(messageId: string) {
+  await execute(await getDb(), "UPDATE spam_messages SET alerted_at = ? WHERE id = ?", [Math.floor(Date.now() / 1000), messageId]);
+}
+
+async function markJunked(messageId: string) {
+  await execute(await getDb(), "UPDATE spam_messages SET junked_at = ? WHERE id = ?", [Math.floor(Date.now() / 1000), messageId]);
+}
+
+async function alertOwner(
+  userId: string,
+  notice: {
+    messageId: string;
+    fromAddr: string;
+    subject: string;
+    score: number;
+    action: SpamAction;
+    reasons: string[];
+    movedToJunk: boolean;
+    ts: number;
+  },
+) {
+  if (notice.action !== "flag" && notice.action !== "block") return false;
+  const sent = await sendSpamAlert({
+    userId,
+    messageId: notice.messageId,
+    fromAddr: notice.fromAddr,
+    subject: notice.subject,
+    score: notice.score,
+    action: notice.action,
+    reasons: notice.reasons,
+    movedToJunk: notice.movedToJunk,
+    ts: notice.ts,
+  });
+  if (sent.ok) await markAlerted(notice.messageId);
+  return sent.ok;
 }
 
 export async function scorePastedEmail(
@@ -195,7 +267,7 @@ export async function scorePastedEmail(
   input: { from: string; subject: string; body: string; replyTo?: string },
 ) {
   const id = `paste_${createHash("sha256").update(`${userId}|${input.from}|${input.subject}|${input.body}`).digest("hex").slice(0, 24)}`;
-  return upsertMessage(userId, {
+  const verdict = await upsertMessage(userId, {
     id,
     source: "paste",
     from: input.from,
@@ -204,6 +276,19 @@ export async function scorePastedEmail(
     replyTo: input.replyTo,
     receivedAt: Math.floor(Date.now() / 1000),
   });
+  if (verdict.needsAlert) {
+    await alertOwner(userId, {
+      messageId: id,
+      fromAddr: verdict.fromAddr,
+      subject: verdict.subject,
+      score: verdict.score,
+      action: verdict.action,
+      reasons: verdict.reasons,
+      movedToJunk: false,
+      ts: Math.floor(Date.now() / 1000),
+    });
+  }
+  return verdict;
 }
 
 function headerValue(raw: string, name: string) {
@@ -211,7 +296,23 @@ function headerValue(raw: string, name: string) {
   return match?.[1]?.trim() || "";
 }
 
-export async function syncSpamMailbox(userId: string): Promise<{ ok: true; checked: number; saved: number } | { ok: false; error: string }> {
+async function ensureJunkFolder(client: ImapFlow) {
+  const folders = await client.list();
+  const path = pickJunkFolder(folders);
+  const exists = folders.some((folder) => folder.path === path);
+  if (!exists) {
+    try {
+      await client.mailboxCreate(path);
+    } catch {
+      /* folder may already exist under another delimiter */
+    }
+  }
+  return path;
+}
+
+export async function syncSpamMailbox(
+  userId: string,
+): Promise<{ ok: true; checked: number; saved: number; moved: number; alerted: number } | { ok: false; error: string }> {
   const db = await getDb();
   const row = await queryOne<MailboxRow>(
     db,
@@ -237,8 +338,11 @@ export async function syncSpamMailbox(userId: string): Promise<{ ok: true; check
 
   let checked = 0;
   let saved = 0;
+  let moved = 0;
+  let alerted = 0;
   try {
     await client.connect();
+    const junkPath = await ensureJunkFolder(client);
     const lock = await client.getMailboxLock("INBOX");
     try {
       const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
@@ -264,7 +368,7 @@ export async function syncSpamMailbox(userId: string): Promise<{ ok: true; check
             .join(", ");
         const receivedAt = envelope?.date ? Math.floor(new Date(envelope.date).getTime() / 1000) : Math.floor(Date.now() / 1000);
         const id = `imap_${createHash("sha256").update(`${userId}|${row.username}|${uid}|${subject}`).digest("hex").slice(0, 24)}`;
-        await upsertMessage(userId, {
+        const verdict = await upsertMessage(userId, {
           id,
           source: "imap",
           from,
@@ -274,6 +378,33 @@ export async function syncSpamMailbox(userId: string): Promise<{ ok: true; check
           receivedAt,
         });
         saved += 1;
+
+        let movedToJunk = false;
+        if (verdict.needsJunk) {
+          try {
+            await client.messageMove(uid, junkPath, { uid: true });
+            await markJunked(id);
+            movedToJunk = true;
+            moved += 1;
+          } catch (error) {
+            const detail = error instanceof Error ? error.message : "Could not move to Junk.";
+            await execute(db, "UPDATE spam_mailboxes SET last_error = ? WHERE user_id = ?", [detail.slice(0, 300), userId]);
+          }
+        }
+
+        if (verdict.needsAlert) {
+          const ok = await alertOwner(userId, {
+            messageId: id,
+            fromAddr: verdict.fromAddr,
+            subject: verdict.subject,
+            score: verdict.score,
+            action: verdict.action,
+            reasons: verdict.reasons,
+            movedToJunk,
+            ts: receivedAt,
+          });
+          if (ok) alerted += 1;
+        }
       }
     } finally {
       lock.release();
@@ -283,7 +414,7 @@ export async function syncSpamMailbox(userId: string): Promise<{ ok: true; check
       Math.floor(Date.now() / 1000),
       userId,
     ]);
-    return { ok: true, checked, saved };
+    return { ok: true, checked, saved, moved, alerted };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Mailbox sync failed.";
     await execute(db, "UPDATE spam_mailboxes SET last_error = ? WHERE user_id = ?", [message.slice(0, 300), userId]);
@@ -301,10 +432,15 @@ export async function syncAllSpamMailboxes() {
   const people = await queryAll<{ user_id: string }>(db, "SELECT user_id FROM spam_mailboxes");
   let ok = 0;
   let failed = 0;
+  let moved = 0;
+  let alerted = 0;
   for (const person of people) {
     const result = await syncSpamMailbox(person.user_id);
-    if (result.ok) ok += 1;
-    else failed += 1;
+    if (result.ok) {
+      ok += 1;
+      moved += result.moved;
+      alerted += result.alerted;
+    } else failed += 1;
   }
-  return { ok, failed, total: people.length };
+  return { ok, failed, total: people.length, moved, alerted };
 }

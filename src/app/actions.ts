@@ -511,7 +511,7 @@ export async function syncSpamMailboxAction() {
   const result = await syncSpamMailbox(user.id);
   refresh();
   if (!result.ok) redirect(withSpamError(result.error));
-  redirect(`/spam?synced=1&n=${result.saved}`);
+  redirect(`/spam?synced=1&n=${result.saved}&moved=${result.moved}&alerted=${result.alerted}`);
 }
 
 export async function disconnectSpamMailboxAction() {
