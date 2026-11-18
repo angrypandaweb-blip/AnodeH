@@ -23,7 +23,7 @@ assert.equal(trial[0].frequency.interval_count, TRIAL_DAYS);
 assert.equal("pricing_scheme" in trial[0], false);
 assert.equal(trial[1].tenure_type, "REGULAR");
 assert.equal(trial[1].frequency.interval_count, PERIOD_DAYS);
-assert.equal(trial[1].pricing_scheme.fixed_price.value, "69.00");
+assert.equal(trial[1].pricing_scheme?.fixed_price.value, "69.00");
 
 const paidIntro = subscriptionCycles({
   fullCents: STANDARD_CENTS,
@@ -31,7 +31,7 @@ const paidIntro = subscriptionCycles({
   introDays: PERIOD_DAYS,
   discounted: true,
 });
-assert.equal(paidIntro[0].pricing_scheme?.fixed_price.value, "34.50");
+assert.equal(paidIntro[0]?.pricing_scheme?.fixed_price.value, "34.50");
 
 const full = subscriptionCycles({
   fullCents: STANDARD_CENTS,

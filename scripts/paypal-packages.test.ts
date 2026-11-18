@@ -81,9 +81,9 @@ assert.equal(full.sites20.cycles[0].pricing_scheme?.fixed_price.value, "289.00")
 for (const pack of [intro.month, intro.sites10, intro.sites20, full.month, full.sites10, full.sites20]) {
   const regular = pack.cycles.find((cycle) => cycle.tenure_type === "REGULAR");
   assert.ok(regular, pack.keyName);
-  assert.equal(regular.total_cycles, 0);
-  assert.equal(regular.frequency.interval_count, PERIOD_DAYS);
-  assert.equal(regular.pricing_scheme.fixed_price.currency_code, "USD");
+  assert.equal(regular?.total_cycles, 0);
+  assert.equal(regular?.frequency.interval_count, PERIOD_DAYS);
+  assert.equal(regular?.pricing_scheme?.fixed_price.currency_code, "USD");
 }
 
 console.log("paypal package tests passed");
