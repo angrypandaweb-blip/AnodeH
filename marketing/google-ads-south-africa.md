@@ -2,6 +2,8 @@
 
 Advertise AnodeH as **Google Ads click protection + spam email monitoring** to South African buyers.
 
+This is **Tier 1A** in the global plan. For other country tiers, excludes, and rollout order see [`google-ads-global.md`](./google-ads-global.md) and [`google-ads-countries.md`](./google-ads-countries.md).
+
 ## Campaign goal
 
 Prefer **Conversions** (Sales / Subscribe), not Traffic alone.
