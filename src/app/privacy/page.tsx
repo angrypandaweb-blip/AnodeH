@@ -42,6 +42,12 @@ export default function PrivacyPage() {
         <p>AnodeH uses this Google data to show you your campaigns and clicks and to score invalid traffic on the account you connected. It is not sold, used for advertising, or used to train a model for anyone else. It is not read for a different AnodeH customer.</p>
         <p>Settings has Disconnect. That deletes the stored refresh token, customer IDs, campaigns, daily totals, and Google click rows for your account.</p>
 
+        <h2>Spam email monitoring</h2>
+        <p>
+          If you use Spam email, AnodeH stores messages you paste for scoring, and, when you connect a mailbox, the IMAP host, username, and an encrypted app password.
+          Synced message From lines, subjects, snippets, and scores are kept so you can review them in the account. Disconnect removes the mailbox credentials. You can stop pasting messages at any time.
+        </p>
+
         <h2>Contact</h2>
         <p>Questions about this data go to <a href="mailto:anodeh2026@gmail.com">anodeh2026@gmail.com</a>.</p>
       </article>

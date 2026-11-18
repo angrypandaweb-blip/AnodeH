@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/activity", label: "Activity" },
   { href: "/protection", label: "Protection" },
   { href: "/threats", label: "Threats" },
+  { href: "/spam", label: "Spam email" },
   { href: "/settings", label: "Settings" },
   { href: "/billing", label: "Plan" },
   { href: "/support", label: "Support" },

@@ -70,6 +70,13 @@ const ANSWERS: { test: RegExp; answer: AssistantAnswer }[] = [
     },
   },
   {
+    test: /spam|phishing|inbox|email threat|junk mail/,
+    answer: {
+      text: "Spam email monitoring lives in the same AnodeH account. Paste a suspicious message for a score, or connect IMAP with an app password so recent inbox mail is scored for phishing and spam patterns.",
+      links: [{ label: "Spam email", href: "/spam" }],
+    },
+  },
+  {
     test: /block|exclud|invalid|flag|score|pmax|performance max/,
     answer: {
       text: "Each paid click is allowed, flagged, or blocked, with a plain reason. Search and Display can write an IP exclusion. Performance Max has no IP list, so a blocked click holds the conversion instead. Organic searches are not blocked.",

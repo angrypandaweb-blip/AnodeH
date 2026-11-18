@@ -467,4 +467,60 @@ export async function beginCheckout(formData: FormData) {
   return { error: ("error" in result && result.error) || "PayPal could not start the payment." };
 }
 
+function withSpamError(message: string) {
+  return `/spam?error=${encodeURIComponent(message)}`;
+}
+
+export async function scoreSpamPaste(formData: FormData) {
+  const user = await getUser();
+  if (!user) redirect("/login?next=/spam");
+  const from = String(formData.get("from") || "").trim();
+  const subject = String(formData.get("subject") || "").trim();
+  const body = String(formData.get("body") || "").trim();
+  const replyTo = String(formData.get("replyTo") || "").trim();
+  if (from.length < 3 || subject.length < 1 || body.length < 10) {
+    redirect(withSpamError("Enter the From address, subject, and at least a short body."));
+  }
+  const { scorePastedEmail } = await import("@/lib/spam-mail");
+  const verdict = await scorePastedEmail(user.id, { from, subject, body, replyTo: replyTo || undefined });
+  refresh();
+  redirect(`/spam?scored=1&score=${verdict.score}&action=${verdict.action}`);
+}
+
+export async function saveSpamMailboxAction(formData: FormData) {
+  const user = await getUser();
+  if (!user) redirect("/login?next=/spam");
+  const host = String(formData.get("host") || "").trim().toLowerCase();
+  const port = Number(formData.get("port") || 993);
+  const mailboxUser = String(formData.get("user") || "").trim();
+  const password = String(formData.get("password") || "");
+  const secure = String(formData.get("secure") || "1") !== "0";
+  if (!host || !mailboxUser || password.length < 4 || !Number.isFinite(port) || port < 1) {
+    redirect(withSpamError("Enter the IMAP host, username, app password, and port."));
+  }
+  const { saveSpamMailbox } = await import("@/lib/spam-mail");
+  await saveSpamMailbox(user.id, { host, port, user: mailboxUser, password, secure });
+  refresh();
+  redirect("/spam?saved=1");
+}
+
+export async function syncSpamMailboxAction() {
+  const user = await getUser();
+  if (!user) redirect("/login?next=/spam");
+  const { syncSpamMailbox } = await import("@/lib/spam-mail");
+  const result = await syncSpamMailbox(user.id);
+  refresh();
+  if (!result.ok) redirect(withSpamError(result.error));
+  redirect(`/spam?synced=1&n=${result.saved}`);
+}
+
+export async function disconnectSpamMailboxAction() {
+  const user = await getUser();
+  if (!user) redirect("/login?next=/spam");
+  const { disconnectSpamMailbox } = await import("@/lib/spam-mail");
+  await disconnectSpamMailbox(user.id);
+  refresh();
+  redirect("/spam?disconnected=1");
+}
+
 

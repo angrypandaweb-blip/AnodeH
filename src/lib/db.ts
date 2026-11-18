@@ -239,6 +239,32 @@ async function migrate(db: Client) {
       sent_at INTEGER NOT NULL
     );
     CREATE UNIQUE INDEX IF NOT EXISTS email_log_kind_ref ON email_log (kind, ref);
+    CREATE TABLE IF NOT EXISTS spam_mailboxes (
+      user_id TEXT PRIMARY KEY,
+      host TEXT NOT NULL,
+      port INTEGER NOT NULL,
+      username TEXT NOT NULL,
+      secret TEXT NOT NULL,
+      secure INTEGER NOT NULL DEFAULT 1,
+      synced_at INTEGER NOT NULL DEFAULT 0,
+      last_error TEXT NOT NULL DEFAULT '',
+      created_at INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS spam_messages (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      source TEXT NOT NULL,
+      from_addr TEXT NOT NULL,
+      subject TEXT NOT NULL,
+      snippet TEXT NOT NULL,
+      body TEXT NOT NULL DEFAULT '',
+      score INTEGER NOT NULL,
+      action TEXT NOT NULL,
+      reasons TEXT NOT NULL DEFAULT '',
+      received_at INTEGER NOT NULL,
+      scored_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS spam_messages_user_received ON spam_messages (user_id, received_at DESC);
   `);
   await addColumn(db, "google_ads", "currency", "TEXT NOT NULL DEFAULT ''");
 
