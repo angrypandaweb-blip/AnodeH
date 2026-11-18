@@ -140,22 +140,25 @@ Create campaigns one at a time. Same recipe each time; only locations and copy c
 
 Create **three** ad groups in each campaign:
 
-#### Ad group 1 — `Click fraud`
+#### Ad group 1 — `Click protection`
 
 Final URL: `https://anodeh.com`
 
-Keywords (phrase + exact):
+Keywords (phrase + exact). **Avoid** `fraud` / `fake` / `bot` / `invalid clicks` — Google often flags those as Inappropriate content.
 
 ```
-"google ads click fraud"
-"invalid clicks google ads"
-"block fake clicks google ads"
-"google ads bot traffic"
-"click fraud protection"
-"google ads invalid traffic"
-[click fraud software]
+"google ads click protection"
+"protect google ads budget"
+"wasted google ads spend"
+"google ads click quality"
+"reduce wasted ad spend"
+"google ads ip exclusion"
+"stop wasted ad clicks"
 [google ads click protection]
+[protect google ads spend]
 ```
+
+If Google still blocks a term, remove it and keep the rest. Do **not** tick “Request an exception” unless support asks — safer keywords usually approve faster.
 
 #### Ad group 2 — `Spam email`
 
@@ -274,7 +277,7 @@ When a campaign is converting:
 1. Confirm purchase conversion  
 2. Shared negatives + sitelinks/callouts  
 3. Create `AnodeH | Search | ZA` → locations ZA → presence → excludes → Search only → Max conversions  
-4. Ad groups: Click fraud / Spam email / Brand + keywords  
+4. Ad groups: Click protection / Spam email / Brand + keywords  
 5. Paste RSA for that tier  
 6. Attach negatives + assets → Enable  
 7. Repeat for US → GB → EN-Rest  

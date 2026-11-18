@@ -37,11 +37,15 @@ If conversion volume is still low, start with **Maximize clicks** or **Maximize 
 
 ### Click protection
 
-- `"google ads click fraud"`
-- `"invalid clicks google ads"`
-- `"block fake clicks google ads"`
-- `"google ads bot traffic"`
-- `"click fraud protection"`
+Avoid `fraud` / `fake` / `bot` / `invalid clicks` (Google often flags Inappropriate content).
+
+- `"google ads click protection"`
+- `"protect google ads budget"`
+- `"wasted google ads spend"`
+- `"google ads click quality"`
+- `"reduce wasted ad spend"`
+- `"google ads ip exclusion"`
+- `[google ads click protection]`
 
 ### Spam email (same campaign or a second ad group)
 
@@ -59,22 +63,22 @@ Pin or rotate these. Stay within Google limits (headlines ≤30 chars, descripti
 
 ### Headlines
 
-1. Block Fake Google Ads Clicks
-2. Stop Click Fraud Waste
-3. Protect Your Ads Budget
+1. Protect Your Ads Budget
+2. Stop Wasted Ad Clicks
+3. Google Ads Click Protection
 4. Spam Email Monitoring Too
 5. Ads + Inbox Protection
 6. 7-Day Free Trial
 7. AnodeH for Google Ads
-8. Score Invalid Traffic
+8. Score Risky Ad Clicks
 9. Junk Mail Alerts Included
 10. Made for SA Businesses
 
 ### Descriptions
 
-1. AnodeH scores bad Google Ads clicks and writes exclusions. Spam email monitoring included. Try 7 days free.
-2. One account: block click fraud on Google Ads and watch your mailbox for phishing. South Africa ready.
-3. Invalid traffic off your budget. Flagged spam moved to Junk with owner alerts. Start free for 7 days.
+1. AnodeH scores risky Google Ads clicks and writes exclusions. Spam email monitoring included. Try 7 days free.
+2. One account: protect Google Ads spend and watch your mailbox for phishing. South Africa ready.
+3. Keep budget on real buyers. Flagged spam moved to Junk with owner alerts. Start free for 7 days.
 
 ### Paths (display URL)
 
@@ -87,7 +91,7 @@ Pin or rotate these. Stay within Google limits (headlines ≤30 chars, descripti
 
 ## Ad group split (recommended)
 
-1. **Click fraud** — keywords above under click protection; RSA headlines 1–3, 6–8
+1. **Click protection** — keywords above; RSA headlines 1–3, 6–8
 2. **Spam email** — spam keywords; RSA headlines 4–6, 9; final URL `https://anodeh.com/#spam` or `/`
 
 Shared sitelinks:
