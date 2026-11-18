@@ -111,11 +111,11 @@ export default async function BillingPage({
       <section className="plans">
         <article className="card">
           <span className="card-label">1 website</span>
-          <p className="price">{access.introUsed ? quote.standard : "Free"}</p>
+          <p className="price">{access.introUsed ? quote.standard : `Free for ${TRIAL_DAYS} days`}</p>
           <p className="note">
             {access.introUsed
               ? `${quote.standard} every 30 days until you cancel.`
-              : `Free for ${TRIAL_DAYS} days, then ${quote.standard} every 30 days until you cancel.`}
+              : `Then ${quote.standard} every 30 days until you cancel.`}
           </p>
           <PayPalCheckout plan="month" label={access.introUsed ? "Subscribe with PayPal" : "Start free trial"} />
         </article>

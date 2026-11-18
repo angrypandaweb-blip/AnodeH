@@ -1,5 +1,5 @@
 import { Mark } from "@/components/Mark";
-import { quotesFor } from "@/lib/billing";
+import { quotesFor, TRIAL_DAYS } from "@/lib/billing";
 import { pageMeta } from "@/lib/seo";
 import { visitorCountry } from "@/lib/visitor-country";
 
@@ -91,7 +91,7 @@ export default async function BlockedPage() {
           <article className="offer featured">
             <span className="offer-tag">7-day free trial</span>
             <h3>1 website</h3>
-            <p className="offer-price">Free</p>
+            <p className="offer-price">Free for {TRIAL_DAYS} days</p>
             <p>Then {standard} every 30 days.</p>
             <a className="btn" href="/register?plan=month">Start free trial</a>
           </article>

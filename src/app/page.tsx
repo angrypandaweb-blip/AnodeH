@@ -1,6 +1,6 @@
 import { Mark } from "@/components/Mark";
 import { getUser } from "@/lib/auth";
-import { getAccess, quotesFor } from "@/lib/billing";
+import { getAccess, quotesFor, TRIAL_DAYS } from "@/lib/billing";
 import { formatMoney, placeFor, reportCurrency } from "@/lib/residence-currency";
 import { sampleCampaigns } from "@/lib/sample-campaigns";
 import { homeJsonLd, pageMeta } from "@/lib/seo";
@@ -266,7 +266,7 @@ export default async function LandingPage() {
           <article className="offer featured">
             <span className="offer-tag">7-day free trial</span>
             <h3>1 website</h3>
-            <p className="offer-price">Free</p>
+            <p className="offer-price">Free for {TRIAL_DAYS} days</p>
             <p>Then {standard} every 30 days.</p>
             <a className="btn" href={monthHref}>{monthLabel}</a>
           </article>
