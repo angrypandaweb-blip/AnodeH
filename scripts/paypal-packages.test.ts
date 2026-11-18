@@ -9,11 +9,16 @@ import {
   TRIAL_CENTS,
   TRIAL_DAYS,
   paypalPackagePlans,
+  paypalPayeePreferred,
 } from "../src/lib/billing";
 import { checkoutChoice, sitesCovered } from "../src/lib/site-plans";
 
 const intro = paypalPackagePlans(true);
 const full = paypalPackagePlans(false);
+
+assert.equal(paypalPayeePreferred(TRIAL_CENTS, true), "UNRESTRICTED");
+assert.equal(paypalPayeePreferred(SITES_10_INTRO_CENTS, true), "IMMEDIATE_PAYMENT_REQUIRED");
+assert.equal(paypalPayeePreferred(STANDARD_CENTS, false), "IMMEDIATE_PAYMENT_REQUIRED");
 
 assert.equal(checkoutChoice("month"), "month");
 assert.equal(checkoutChoice("sites10"), "sites10");
