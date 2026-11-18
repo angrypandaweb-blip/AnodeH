@@ -506,12 +506,14 @@ async function pricedPlanId(
   introCents: number,
   discounted: boolean,
   introDays = PERIOD_DAYS,
-) {
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   const key = `paypal_plan_${keyName}_${paypalMode()}`;
   const existing = await setting(key);
-  if (existing) return existing;
+  if (existing) return { ok: true, id: existing };
   const productId = await paypalProductId(token);
-  if (!productId) return null;
+  if (!productId) {
+    return { ok: false, error: "PayPal could not prepare the product catalog entry for this plan." };
+  }
   const cycles = subscriptionCycles({ fullCents, introCents, introDays, discounted });
   const created = await paypalJson(token, "/v1/billing/plans", {
     product_id: productId,
@@ -523,9 +525,14 @@ async function pricedPlanId(
       payment_failure_threshold: 2,
     },
   });
-  if (!created.ok || !created.payload?.id) return null;
+  if (!created.ok || !created.payload?.id) {
+    return {
+      ok: false,
+      error: paypalError(created.payload, "PayPal could not prepare the monthly plan."),
+    };
+  }
   await saveSetting(key, created.payload.id);
-  return created.payload.id;
+  return { ok: true, id: created.payload.id };
 }
 
 async function createMonthlySubscription(
@@ -542,7 +549,7 @@ async function createMonthlySubscription(
 
   const packageKey: PaypalPackageId = plan === "sites20" || plan === "sites10" ? plan : "month";
   const pack = paypalPackagePlans(discounted)[packageKey];
-  const planId = await pricedPlanId(
+  const prepared = await pricedPlanId(
     token,
     pack.keyName,
     pack.name,
@@ -551,10 +558,10 @@ async function createMonthlySubscription(
     discounted,
     pack.introDays,
   );
-  if (!planId) return { error: "PayPal could not prepare the monthly plan." };
+  if (!prepared.ok) return { error: prepared.error };
 
   const created = await paypalJson(token, "/v1/billing/subscriptions", {
-    plan_id: planId,
+    plan_id: prepared.id,
     custom_id: plan,
     application_context: {
       brand_name: "AnodeH",
