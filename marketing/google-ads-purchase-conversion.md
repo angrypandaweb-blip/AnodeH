@@ -45,13 +45,16 @@ Do **not** install a second Google tag snippet that replaces the existing one.
 
 ## Create / confirm the Purchase action
 
-1. Category: **Purchase** (or Subscribe if Purchase is unavailable — keep one primary sales goal).
-2. Conversion name: `AnodeH purchase` (or keep Google’s name if it already matches the existing label).
-3. Value: **Use different values for each conversion** if you pass value later; otherwise **Don’t use a value** / fixed value is fine for learning. PayPal plans are in USD on the backend.
-4. Count: **One** (one conversion per checkout).
-5. Click-through window: 30 days (default is fine).
-6. Attribution: Data-driven if offered.
-7. Goal: mark as **Primary** for “Sales” / campaign optimization.
+1. Category / name: **Purchase** (keep that name).
+2. Setup: **Manually with code** (site already has the event).
+3. Action optimization: **Primary** for bidding.
+4. Value: **Use different values for each conversion** → **Event snippet**.  
+   The thank-you page sends `value` + `currency: USD` from the PayPal payment (trial / missing payment → `0`).  
+   Set the **default** fallback to something like one month (not `1`); it only applies when value is missing.
+5. Count: **Every**.
+6. Click-through window: 30 days (default is fine).
+7. Attribution: Data-driven if offered.
+8. Goal: mark as **Primary** for “Sales” / campaign optimization.
 
 ### If the conversion already exists
 
