@@ -1,5 +1,6 @@
 import { loginAccount } from "@/app/actions";
 import { Mark } from "@/components/Mark";
+import { PasswordField } from "@/components/PasswordField";
 import { Recaptcha } from "@/components/Recaptcha";
 import { safeNext } from "@/lib/auth";
 import { recaptchaSiteKey } from "@/lib/recaptcha";
@@ -42,10 +43,7 @@ export default async function LoginPage({
             Email
             <input type="email" name="email" autoComplete="email" required />
           </label>
-          <label>
-            Password
-            <input type="password" name="password" autoComplete="current-password" required />
-          </label>
+          <PasswordField label="Password" autoComplete="current-password" required />
           <p className="form-extra"><a href="/forgot-password">Forgot password</a></p>
           <Recaptcha siteKey={recaptchaSiteKey()} />
           <button className="btn" type="submit">Log in</button>

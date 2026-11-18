@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { registerAccount } from "@/app/actions";
+import { PasswordField } from "@/components/PasswordField";
 import { Recaptcha } from "@/components/Recaptcha";
 
 type Quote = {
@@ -70,10 +71,7 @@ export function RegisterForm({
           Email
           <input type="email" name="email" autoComplete="email" required />
         </label>
-        <label>
-          Password
-          <input type="password" name="password" autoComplete="new-password" minLength={8} required />
-        </label>
+        <PasswordField label="Password" autoComplete="new-password" minLength={8} required />
         <label>
           Country
           <select name="country" autoComplete="country" required value={country} onChange={(event) => setCountry(event.target.value)}>

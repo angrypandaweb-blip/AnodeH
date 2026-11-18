@@ -1,4 +1,5 @@
 import { disconnectSpamMailboxAction, saveSpamMailboxAction, scoreSpamPaste, syncSpamMailboxAction } from "@/app/actions";
+import { PasswordField } from "@/components/PasswordField";
 import { SpamAutoSync } from "@/components/SpamAutoSync";
 import { getUser } from "@/lib/auth";
 import { when } from "@/lib/format";
@@ -164,10 +165,7 @@ export default async function SpamPage({
               Username
               <input type="email" name="user" placeholder="you@gmail.com" required />
             </label>
-            <label>
-              App password
-              <input type="password" name="password" autoComplete="new-password" required />
-            </label>
+            <PasswordField label="App password" autoComplete="new-password" required />
             <input type="hidden" name="secure" value="1" />
             <div>
               <button type="submit">Connect mailbox</button>
