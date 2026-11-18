@@ -28,7 +28,7 @@ const CHOICES: { id: Sensitivity; label: string }[] = [
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ saved?: string; error?: string }>;
+  searchParams: Promise<{ saved?: string; error?: string; google?: string }>;
 }) {
   const params = await searchParams;
   const [policy, allowed, headerList, user, averagePrice, domainRecord, access] = await Promise.all([
@@ -62,6 +62,9 @@ export default async function SettingsPage({
         </div>
       </header>
 
+      {params.google ? (
+        <p className="banner">Google is connected. Enter your Google Ads customer ID below so AnodeH knows which account to watch.</p>
+      ) : null}
       {params.saved ? <p className="banner">Saved.</p> : null}
       {params.error ? <p className="banner warn">{params.error}</p> : null}
 

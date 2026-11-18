@@ -447,6 +447,57 @@ export function subscriptionCycles(options: {
   ];
 }
 
+export type PaypalPackageId = "month" | "sites10" | "sites20";
+
+/** PayPal billing plan shapes for each AnodeH package (intro and full). */
+export function paypalPackagePlans(discounted: boolean) {
+  return {
+    month: {
+      // v2 forces a fresh PayPal plan if an older cached plan had the wrong trial length.
+      keyName: discounted ? "trial7_v2" : "month",
+      name: discounted ? "AnodeH 1 website - 7 day free trial" : "AnodeH monthly",
+      sites: 1 as const,
+      fullCents: STANDARD_CENTS,
+      introCents: TRIAL_CENTS,
+      introDays: TRIAL_DAYS,
+      cycles: subscriptionCycles({
+        fullCents: STANDARD_CENTS,
+        introCents: TRIAL_CENTS,
+        introDays: TRIAL_DAYS,
+        discounted,
+      }),
+    },
+    sites10: {
+      keyName: discounted ? "sites10_half30" : "sites10_full",
+      name: "AnodeH 10 websites",
+      sites: 10 as const,
+      fullCents: SITES_10_CENTS,
+      introCents: SITES_10_INTRO_CENTS,
+      introDays: PERIOD_DAYS,
+      cycles: subscriptionCycles({
+        fullCents: SITES_10_CENTS,
+        introCents: SITES_10_INTRO_CENTS,
+        introDays: PERIOD_DAYS,
+        discounted,
+      }),
+    },
+    sites20: {
+      keyName: discounted ? "sites20_half30" : "sites20_full",
+      name: "AnodeH 20 websites",
+      sites: 20 as const,
+      fullCents: SITES_20_CENTS,
+      introCents: SITES_20_INTRO_CENTS,
+      introDays: PERIOD_DAYS,
+      cycles: subscriptionCycles({
+        fullCents: SITES_20_CENTS,
+        introCents: SITES_20_INTRO_CENTS,
+        introDays: PERIOD_DAYS,
+        discounted,
+      }),
+    },
+  } satisfies Record<PaypalPackageId, unknown>;
+}
+
 async function pricedPlanId(
   token: string,
   keyName: string,
@@ -489,21 +540,17 @@ async function createMonthlySubscription(
     if (state.active) return { error: "This account already renews automatically on PayPal." };
   }
 
-  const planId =
-    plan === "sites20"
-      ? await pricedPlanId(token, discounted ? "sites20_half30" : "sites20_full", "AnodeH 20 websites", SITES_20_CENTS, SITES_20_INTRO_CENTS, discounted)
-      : plan === "sites10"
-        ? await pricedPlanId(token, discounted ? "sites10_half30" : "sites10_full", "AnodeH 10 websites", SITES_10_CENTS, SITES_10_INTRO_CENTS, discounted)
-        : await pricedPlanId(
-            token,
-            // v2 forces a fresh PayPal plan if an older cached plan had the wrong trial length.
-            discounted ? "trial7_v2" : "month",
-            discounted ? "AnodeH 1 website - 7 day free trial" : "AnodeH monthly",
-            STANDARD_CENTS,
-            TRIAL_CENTS,
-            discounted,
-            TRIAL_DAYS,
-          );
+  const packageKey: PaypalPackageId = plan === "sites20" || plan === "sites10" ? plan : "month";
+  const pack = paypalPackagePlans(discounted)[packageKey];
+  const planId = await pricedPlanId(
+    token,
+    pack.keyName,
+    pack.name,
+    pack.fullCents,
+    pack.introCents,
+    discounted,
+    pack.introDays,
+  );
   if (!planId) return { error: "PayPal could not prepare the monthly plan." };
 
   const created = await paypalJson(token, "/v1/billing/subscriptions", {
