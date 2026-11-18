@@ -267,6 +267,8 @@ async function migrate(db: Client) {
     CREATE INDEX IF NOT EXISTS spam_messages_user_received ON spam_messages (user_id, received_at DESC);
   `);
   await addColumn(db, "google_ads", "currency", "TEXT NOT NULL DEFAULT ''");
+  await addColumn(db, "spam_messages", "alerted_at", "INTEGER NOT NULL DEFAULT 0");
+  await addColumn(db, "spam_messages", "junked_at", "INTEGER NOT NULL DEFAULT 0");
 
   const unsigned = await queryAll<{ id: string }>(db, "SELECT id FROM users WHERE domain_key = ''");
   for (const row of unsigned) {

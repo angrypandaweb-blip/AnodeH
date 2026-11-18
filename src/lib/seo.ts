@@ -75,20 +75,49 @@ export function pageMeta(path: string): Metadata {
   };
 }
 
+export const LOGO = `${SITE}/logo.png`;
+
 export function homeJsonLd() {
   return {
     "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    name: "AnodeH",
-    applicationCategory: "BusinessApplication",
-    operatingSystem: "Web",
-    url: SITE,
-    description: home.description,
-    offers: {
-      "@type": "Offer",
-      price: "69.00",
-      priceCurrency: "USD",
-      description: "One website. Free for 7 days, then $69 every 30 days.",
-    },
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": `${SITE}/#organization`,
+        name: "AnodeH",
+        url: SITE,
+        logo: {
+          "@type": "ImageObject",
+          url: LOGO,
+          width: 512,
+          height: 512,
+        },
+        image: LOGO,
+      },
+      {
+        "@type": "WebSite",
+        "@id": `${SITE}/#website`,
+        url: SITE,
+        name: "AnodeH",
+        publisher: { "@id": `${SITE}/#organization` },
+      },
+      {
+        "@type": "SoftwareApplication",
+        name: "AnodeH",
+        applicationCategory: "BusinessApplication",
+        operatingSystem: "Web",
+        url: SITE,
+        description: home.description,
+        image: LOGO,
+        logo: LOGO,
+        publisher: { "@id": `${SITE}/#organization` },
+        offers: {
+          "@type": "Offer",
+          price: "69.00",
+          priceCurrency: "USD",
+          description: "One website. Free for 7 days, then $69 every 30 days.",
+        },
+      },
+    ],
   };
 }

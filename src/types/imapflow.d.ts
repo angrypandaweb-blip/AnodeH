@@ -13,6 +13,12 @@ declare module "imapflow" {
     envelope?: ImapEnvelope;
   };
 
+  export type ImapMailboxInfo = {
+    path: string;
+    name?: string;
+    specialUse?: string;
+  };
+
   export class ImapFlow {
     constructor(options: {
       host: string;
@@ -23,8 +29,11 @@ declare module "imapflow" {
     });
     connect(): Promise<void>;
     logout(): Promise<void>;
+    list(): Promise<ImapMailboxInfo[]>;
+    mailboxCreate(path: string | string[]): Promise<unknown>;
     getMailboxLock(path: string): Promise<{ release(): void }>;
     search(query: Record<string, unknown>, options?: { uid?: boolean }): Promise<number[] | false>;
     fetchOne(uid: number | string, query: Record<string, unknown>, options?: { uid?: boolean }): Promise<ImapMessage | false>;
+    messageMove(range: number | string, destination: string, options?: { uid?: boolean }): Promise<unknown>;
   }
 }

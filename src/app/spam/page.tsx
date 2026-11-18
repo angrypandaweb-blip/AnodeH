@@ -18,7 +18,18 @@ function pillClass(action: string) {
 export default async function SpamPage({
   searchParams,
 }: {
-  searchParams: Promise<{ scored?: string; score?: string; action?: string; saved?: string; synced?: string; n?: string; disconnected?: string; error?: string }>;
+  searchParams: Promise<{
+    scored?: string;
+    score?: string;
+    action?: string;
+    saved?: string;
+    synced?: string;
+    n?: string;
+    moved?: string;
+    alerted?: string;
+    disconnected?: string;
+    error?: string;
+  }>;
 }) {
   const params = await searchParams;
   const user = await getUser();
@@ -35,7 +46,7 @@ export default async function SpamPage({
           <p className="eyebrow">Spam email</p>
           <h1>Watch the inbox the same way you watch clicks</h1>
           <p className="sub">
-            Paste a suspicious message for an instant score, or connect a mailbox with an app password so AnodeH can pull recent mail and flag phishing and spam patterns.
+            Paste a suspicious message for an instant score, or connect a mailbox so AnodeH can sync recent mail, move flagged and blocked messages to Junk, and email you an alert.
           </p>
         </div>
       </header>
@@ -44,10 +55,15 @@ export default async function SpamPage({
       {params.scored ? (
         <p className="banner">
           Scored {params.score}/100 · {params.action === "block" ? "Likely spam" : params.action === "flag" ? "Worth a look" : "Looks ordinary"}
+          {params.action === "flag" || params.action === "block" ? " · An alert was sent to your account email." : ""}
         </p>
       ) : null}
       {params.saved ? <p className="banner">Mailbox saved. Sync it to pull recent messages.</p> : null}
-      {params.synced ? <p className="banner">Synced. {params.n || 0} messages scored.</p> : null}
+      {params.synced ? (
+        <p className="banner">
+          Synced. {params.n || 0} scored · {params.moved || 0} moved to Junk · {params.alerted || 0} owner alerts
+        </p>
+      ) : null}
       {params.disconnected ? <p className="banner">Mailbox disconnected.</p> : null}
 
       <section className="metrics">
@@ -97,7 +113,7 @@ export default async function SpamPage({
       <article className="card">
         <span className="card-label">Monitor a mailbox</span>
         <p className="note">
-          Use IMAP with an app password (Gmail: imap.gmail.com, port 993). Full Gmail OAuth needs Google’s restricted-scope review, so app passwords keep this in the same AnodeH account without that wait.
+          Use IMAP (Afrihost: mail.yourdomain.co.za, port 993, full email + mailbox password). On sync, flagged and blocked messages are moved to Junk and you get an email alert. Gmail works with an app password on imap.gmail.com:993.
         </p>
         {mailbox ? (
           <>
@@ -161,6 +177,10 @@ export default async function SpamPage({
                   <div className="muted">{item.fromAddr}</div>
                   <div className="muted">{item.snippet}</div>
                   <div className="muted">{reasonText(item.reasons)}</div>
+                  <div className="muted">
+                    {item.junkedAt ? "Moved to Junk" : item.source === "imap" && item.action !== "allow" ? "Still in inbox" : ""}
+                    {item.alertedAt ? (item.junkedAt ? " · Owner alerted" : "Owner alerted") : ""}
+                  </div>
                 </div>
                 <div>
                   <span className={`pill ${pillClass(item.action)}`}>{item.score}</span>
