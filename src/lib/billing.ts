@@ -453,7 +453,8 @@ export type PaypalPackageId = "month" | "sites10" | "sites20";
 export function paypalPackagePlans(discounted: boolean) {
   return {
     month: {
-      keyName: discounted ? "trial7_free" : "month",
+      // v2 forces a fresh PayPal plan if an older cached plan had the wrong trial length.
+      keyName: discounted ? "trial7_v2" : "month",
       name: discounted ? "AnodeH 1 website - 7 day free trial" : "AnodeH monthly",
       sites: 1 as const,
       fullCents: STANDARD_CENTS,
@@ -577,6 +578,8 @@ type PayPalSubscription = {
   id?: string;
   status?: string;
   custom_id?: string;
+  start_time?: string;
+  create_time?: string;
   billing_info?: {
     next_billing_time?: string;
     last_payment?: { time?: string; amount?: { currency_code?: string; value?: string } };
@@ -587,6 +590,24 @@ function isoToSec(value?: string) {
   if (!value) return 0;
   const ms = Date.parse(value);
   return Number.isFinite(ms) ? Math.floor(ms / 1000) : 0;
+}
+
+/** Access end timestamp for a PayPal subscription snapshot. */
+export function subscriptionPeriodEnd(options: {
+  customId?: string;
+  nextBilling: number;
+  paymentTime: number;
+  paidCents: number;
+  startTime: number;
+  now: number;
+}) {
+  const unpaid = !options.paidCents || options.paidCents <= 0;
+  const oneWebsiteTrial = unpaid && (options.customId === "intro" || options.customId === "month");
+  if (oneWebsiteTrial) {
+    const start = options.startTime > 0 ? options.startTime : options.now;
+    return start + TRIAL_DAYS * DAY;
+  }
+  return options.nextBilling || (options.paymentTime > 0 && options.paidCents > 0 ? options.paymentTime + PERIOD_DAYS * DAY : 0);
 }
 
 async function applySubscription(
@@ -619,9 +640,18 @@ async function applySubscription(
     paidCents === SITES_20_CENTS ||
     paidCents === SITES_20_INTRO_CENTS;
   const nextBilling = isoToSec(subscription.billing_info?.next_billing_time);
-  const periodEnd = nextBilling || (payment?.time && paidCents > 0 ? isoToSec(payment.time) + PERIOD_DAYS * DAY : 0);
+  const startTime = isoToSec(subscription.start_time) || isoToSec(subscription.create_time);
+  const now = nowSec();
+  const periodEnd = subscriptionPeriodEnd({
+    customId: subscription.custom_id,
+    nextBilling,
+    paymentTime: isoToSec(payment?.time),
+    paidCents,
+    startTime,
+    now,
+  });
   const currencyOk = !payment || payment.amount?.currency_code === "USD";
-  if (!active || !currencyOk || !knownAmount || periodEnd <= nowSec()) {
+  if (!active || !currencyOk || !knownAmount || periodEnd <= now) {
     return {
       ok: false,
       active,
@@ -631,7 +661,10 @@ async function applySubscription(
 
   const currentPaid = Number((await setting("paid_until", owner)) || 0);
   const sites = sitesCovered(subscription.custom_id, paidCents);
-  await saveSetting("paid_until", String(Math.max(currentPaid, periodEnd)), owner);
+  // During an unpaid 1-website trial, replace any inflated paid_until instead of keeping Math.max.
+  const unpaidTrial = paidCents <= 0 && (subscription.custom_id === "intro" || subscription.custom_id === "month");
+  const paidUntil = unpaidTrial ? periodEnd : Math.max(currentPaid, periodEnd);
+  await saveSetting("paid_until", String(paidUntil), owner);
   await saveSetting("paypal_subscription", id, owner);
   await saveSetting("intro_used", "1", owner);
   await saveSetting("site_limit", String(sites), owner);

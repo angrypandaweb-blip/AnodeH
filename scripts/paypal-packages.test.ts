@@ -20,7 +20,7 @@ assert.equal(checkoutChoice("sites10"), "sites10");
 assert.equal(checkoutChoice("sites20"), "sites20");
 
 // 1 website — 7-day free trial then $69
-assert.equal(intro.month.keyName, "trial7_free");
+assert.equal(intro.month.keyName, "trial7_v2");
 assert.equal(intro.month.sites, 1);
 assert.equal(intro.month.cycles.length, 2);
 assert.equal(intro.month.cycles[0].tenure_type, "TRIAL");
