@@ -79,7 +79,9 @@ export async function saveAdsAccount(formData: FormData) {
     redirect(withError("/settings", "Enter a 10-digit Google Ads account number, like 123-456-7890."));
   }
   await execute(await getDb(), "UPDATE users SET ads_account = ? WHERE id = ?", [adsAccount, user.id]);
+  const result = await pullGoogleAds(user.id);
   refresh();
+  if (!result.ok) redirect(`/settings?saved=1&error=${encodeURIComponent(result.error)}`);
   redirect("/settings?saved=1");
 }
 

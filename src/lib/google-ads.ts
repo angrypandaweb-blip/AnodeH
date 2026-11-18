@@ -5,7 +5,6 @@ import {
   customerAccessError,
   dayTimestamp,
   googleErrorMessage,
-  isManagerAccount,
   parseCampaign,
   parseClick,
   parseCurrency,
@@ -168,41 +167,43 @@ async function remember(db: Db, userId: string, patch: { customerId?: string; lo
   );
 }
 
+export const MISSING_ADS_ACCOUNT =
+  "Enter the 10-digit Google Ads customer ID in Settings. AnodeH does not pick an account automatically.";
+
 async function resolveCustomer(
   accessToken: string,
   wanted: string,
   accessible: string[],
 ): Promise<{ ok: true; customerId: string; loginCustomerId: string } | { ok: false; error: string }> {
+  // New subscribers must enter their own Ads customer ID. Never auto-link the first accessible account.
+  if (!wanted) {
+    const listed = accessible.map((id) => normalizeAdsAccount(id) || id).join(", ");
+    return {
+      ok: false,
+      error: listed
+        ? `${MISSING_ADS_ACCOUNT} This Google login can open ${listed}.`
+        : MISSING_ADS_ACCOUNT,
+    };
+  }
+
   let reason = "";
-  if (wanted && accessible.includes(wanted)) {
+  if (accessible.includes(wanted)) {
     const direct = await adsSearch(accessToken, wanted, "SELECT customer.id, customer.manager FROM customer LIMIT 1");
     if (direct.ok) return { ok: true, customerId: wanted, loginCustomerId: "" };
     reason = direct.error;
   }
-  if (wanted) {
-    for (const managerId of accessible) {
-      if (managerId === wanted) continue;
-      const through = await adsSearch(
-        accessToken,
-        wanted,
-        "SELECT customer.id, customer.manager FROM customer LIMIT 1",
-        managerId,
-      );
-      if (through.ok) return { ok: true, customerId: wanted, loginCustomerId: managerId };
-      if (!reason) reason = through.error;
-    }
-    return { ok: false, error: customerAccessError(wanted, accessible, reason) };
+  for (const managerId of accessible) {
+    if (managerId === wanted) continue;
+    const through = await adsSearch(
+      accessToken,
+      wanted,
+      "SELECT customer.id, customer.manager FROM customer LIMIT 1",
+      managerId,
+    );
+    if (through.ok) return { ok: true, customerId: wanted, loginCustomerId: managerId };
+    if (!reason) reason = through.error;
   }
-
-  const clients: string[] = [];
-  for (const id of accessible) {
-    const probe = await adsSearch(accessToken, id, "SELECT customer.id, customer.manager FROM customer LIMIT 1");
-    if (!probe.ok) continue;
-    if (!isManagerAccount(probe.rows[0])) clients.push(id);
-  }
-  if (clients.length === 1) return { ok: true, customerId: clients[0], loginCustomerId: "" };
-  const listed = (clients.length ? clients : accessible).map((id) => normalizeAdsAccount(id) || id).join(", ");
-  return { ok: false, error: `Enter the 10-digit customer ID of the account to read. This Google login can open ${listed || "no accounts"}.` };
+  return { ok: false, error: customerAccessError(wanted, accessible, reason) };
 }
 
 function uniqueDaily(rows: ParsedDaily[]) {
@@ -296,8 +297,8 @@ export async function pullGoogleAds(userId: string) {
   }
 
   const account = await queryOne<{ ads_account: string }>(db, "SELECT ads_account FROM users WHERE id = ?", [userId]);
-  const saved = await queryOne<{ customer_id: string }>(db, "SELECT customer_id FROM google_ads WHERE user_id = ?", [userId]);
-  const wanted = (account?.ads_account || saved?.customer_id || "").replace(/\D/g, "");
+  // Only the customer ID the subscriber entered in Settings — never a previously auto-picked google_ads.customer_id.
+  const wanted = (account?.ads_account || "").replace(/\D/g, "");
   const resolved = await resolveCustomer(token.accessToken, /^\d{10}$/.test(wanted) ? wanted : "", accessible.ids);
   if (!resolved.ok) {
     await remember(db, userId, { error: resolved.error });
