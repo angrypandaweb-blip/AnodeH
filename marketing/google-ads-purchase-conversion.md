@@ -64,12 +64,18 @@ Do **not** install a second Google tag snippet that replaces the existing one.
 
 ## Verify it works
 
-1. Complete a real or test checkout that lands on `/thank-you?purchase=SOME_ID`.
-2. In Chrome, open DevTools → Network (or Tag Assistant) and confirm a conversion hit to Google with `send_to` containing `AW-18572224940/eQn1CPunubcdEKzT9pdF`.
-3. In Google Ads → Conversions → check **Recent conversions** / diagnostics (can take a few hours to show).
-4. Optional: Google Tag Assistant or Ads “Test conversion” tools against `https://anodeh.com`.
+1. Complete a real or test checkout that lands on `/thank-you?purchase=SOME_ID` (you must be logged in; unpaid accounts may still open thank-you).
+2. Or open (while logged in): `https://anodeh.com/thank-you?purchase=TEST_ID_123` — the page may auto-continue to Settings; the conversion still fires first.
+3. In Chrome DevTools → Network, filter `conversion` / `googleadservices` and confirm a hit like:
+   - `googleadservices.com/pagead/conversion/18572224940/…`
+   - `label=eQn1CPunubcdEKzT9pdF`
+4. In Console / Tag Assistant, confirm `dataLayer` has  
+   `event: conversion`, `send_to: AW-18572224940/eQn1CPunubcdEKzT9pdF`, `transaction_id: …`
+5. In Google Ads → Conversions → **Recent conversions** / diagnostics (can take a few hours to show in the UI).
 
-**Stop campaign spend until this records at least once.**
+**Local check (already done in this repo):** loading `/thank-you?purchase=test_purchase_…` with a session cookie fired the gtag conversion event and a Google `pagead/conversion/18572224940` request with the correct label.
+
+**Stop campaign spend until this records at least once in your Ads account diagnostics.**
 
 ---
 
