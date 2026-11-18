@@ -37,7 +37,7 @@ const ANSWERS: { test: RegExp; answer: AssistantAnswer }[] = [
   {
     test: /account number|customer id|ads account/,
     answer: {
-      text: "The Google Ads account number goes in Settings. It is the 10-digit customer ID, like 123-456-7890.",
+      text: "After you create an account, enter your own Google Ads customer ID in Settings. It is the 10-digit number, like 123-456-7890. AnodeH does not pick an Ads account automatically.",
       links: [{ label: "Settings", href: "/settings" }],
     },
   },

@@ -32,6 +32,9 @@ export async function GET(request: Request) {
     fail("Google did not return a refresh token. Remove AnodeH at myaccount.google.com/permissions, then connect again.");
   }
   await saveGoogleConnection(user.id, tokens.refreshToken);
+  if (!user.adsAccount) {
+    redirect("/settings?google=1");
+  }
   const pulled = await pullGoogleAds(user.id);
   if (!pulled.ok) fail(pulled.error);
   redirect("/dashboard?notice=google");
