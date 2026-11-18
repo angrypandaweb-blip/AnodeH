@@ -1,12 +1,9 @@
 import {
-  dollars,
   SITES_10_CENTS,
   SITES_10_INTRO_CENTS,
   SITES_20_CENTS,
   SITES_20_INTRO_CENTS,
-  STANDARD_CENTS,
-  type PlanQuote,
-} from "@/lib/billing";
+} from "@/lib/site-plans";
 
 export type AssistantLink = { label: string; href: string };
 
@@ -15,7 +12,22 @@ export type AssistantAnswer = {
   links: AssistantLink[];
 };
 
-export type AssistantPrices = Pick<PlanQuote, "standard" | "half10" | "sites10" | "half20" | "sites20" | "currency" | "name">;
+export type AssistantPrices = {
+  currency: string;
+  name: string;
+  standard: string;
+  half10: string;
+  sites10: string;
+  half20: string;
+  sites20: string;
+};
+
+const STANDARD_CENTS = 6900;
+
+function dollars(cents: number) {
+  const amount = cents / 100;
+  return `$${cents % 100 === 0 ? amount.toFixed(0) : amount.toFixed(2)}`;
+}
 
 export function defaultAssistantPrices(): AssistantPrices {
   return {
