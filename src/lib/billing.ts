@@ -449,6 +449,11 @@ export function subscriptionCycles(options: {
 
 export type PaypalPackageId = "month" | "sites10" | "sites20";
 
+/** Free $0 intro cycles must not require an immediate PayPal capture. */
+export function paypalPayeePreferred(introCents: number, discounted: boolean) {
+  return discounted && introCents <= 0 ? "UNRESTRICTED" : "IMMEDIATE_PAYMENT_REQUIRED";
+}
+
 /** PayPal billing plan shapes for each AnodeH package (intro and full). */
 export function paypalPackagePlans(discounted: boolean) {
   return {
@@ -568,6 +573,10 @@ async function createMonthlySubscription(
       locale: "en-US",
       shipping_preference: "NO_SHIPPING",
       user_action: "SUBSCRIBE_NOW",
+      payment_method: {
+        payer_selected: "PAYPAL",
+        payee_preferred: paypalPayeePreferred(pack.introCents, discounted),
+      },
       return_url: `${origin}/billing`,
       cancel_url: `${origin}/`,
     },
