@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Haggies AI">
+  <rect width="128" height="128" rx="28" fill="#0F172A"/>
+  <!-- Left pillar -->
+  <path d="M34 28 L54 28 L54 100 L34 100 Z" fill="#1E293B"/>
+  <!-- Right pillar -->
+  <path d="M74 28 L94 28 L94 100 L74 100 Z" fill="#1E293B"/>
+  <!-- Circuit crossbar -->
+  <rect x="42" y="58" width="44" height="10" rx="2" fill="#0D9488"/>
+  <!-- Center node -->
+  <circle cx="64" cy="63" r="8" fill="#0D9488"/>
+  <circle cx="64" cy="63" r="3.5" fill="#F8FAFC"/>
+  <!-- Branch node -->
+  <rect x="61.5" y="71" width="5" height="12" fill="#0D9488"/>
+  <circle cx="64" cy="86" r="5" fill="#0D9488"/>
+  <!-- Focus accents -->
+  <path d="M42 58 L50 63 L42 68 Z" fill="#F8FAFC"/>
+  <path d="M86 58 L78 63 L86 68 Z" fill="#F8FAFC"/>
+</svg>
