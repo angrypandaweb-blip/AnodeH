@@ -4,6 +4,8 @@ Market AnodeH as **Google Ads click protection + spam email monitoring**.
 Final URL: `https://anodeh.com`  
 Conversion already on site: purchase tag `AW-18572224940` / `eQn1CPunubcdEKzT9pdF` (thank-you / PayPal success).
 
+**Start here for click-by-click UI steps:** [`google-ads-step-by-step.md`](./google-ads-step-by-step.md)  
+
 Country lists and hard excludes: see [`google-ads-countries.md`](./google-ads-countries.md).  
 Paste-ready RSAs per tier: see [`google-ads-COPY.md`](./google-ads-COPY.md).
 

@@ -4,6 +4,8 @@ AnodeH sells **Google Ads click protection + spam email monitoring** (`https://a
 
 **Different countries get different tiers** — separate campaigns, budgets, and copy. Do not mix US CPC with India CPC in one campaign.
 
+**UI walkthrough:** [`google-ads-step-by-step.md`](./google-ads-step-by-step.md)
+
 | Tier | Markets | Full setup |
 | --- | --- | --- |
 | T1 Core English | ZA, US, GB, AU, CA, IE, NZ, SG | [`google-ads-global.md`](./google-ads-global.md) · copy in [`google-ads-COPY.md`](./google-ads-COPY.md) |
