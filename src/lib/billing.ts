@@ -421,15 +421,23 @@ async function paypalProductId(token: string) {
   return created.payload.id;
 }
 
+export type PaypalBillingCycle = {
+  frequency: { interval_unit: "DAY"; interval_count: number };
+  tenure_type: "TRIAL" | "REGULAR";
+  sequence: number;
+  total_cycles: number;
+  pricing_scheme?: { fixed_price: { value: string; currency_code: string } };
+};
+
 export function subscriptionCycles(options: {
   fullCents: number;
   introCents: number;
   introDays: number;
   discounted: boolean;
-}) {
-  const regular = {
-    frequency: { interval_unit: "DAY" as const, interval_count: PERIOD_DAYS },
-    tenure_type: "REGULAR" as const,
+}): PaypalBillingCycle[] {
+  const regular: PaypalBillingCycle = {
+    frequency: { interval_unit: "DAY", interval_count: PERIOD_DAYS },
+    tenure_type: "REGULAR",
     sequence: options.discounted ? 2 : 1,
     total_cycles: 0,
     pricing_scheme: { fixed_price: { value: usd(options.fullCents), currency_code: "USD" } },
@@ -437,21 +445,15 @@ export function subscriptionCycles(options: {
   if (!options.discounted) return [regular];
   // PayPal: a free trial cycle does not require pricing_scheme. Sending value "0.00"
   // can leave the approve page spinning on genericError/RETRY.
-  const trial =
-    options.introCents > 0
-      ? {
-          frequency: { interval_unit: "DAY" as const, interval_count: options.introDays },
-          tenure_type: "TRIAL" as const,
-          sequence: 1,
-          total_cycles: 1,
-          pricing_scheme: { fixed_price: { value: usd(options.introCents), currency_code: "USD" } },
-        }
-      : {
-          frequency: { interval_unit: "DAY" as const, interval_count: options.introDays },
-          tenure_type: "TRIAL" as const,
-          sequence: 1,
-          total_cycles: 1,
-        };
+  const trial: PaypalBillingCycle = {
+    frequency: { interval_unit: "DAY", interval_count: options.introDays },
+    tenure_type: "TRIAL",
+    sequence: 1,
+    total_cycles: 1,
+    ...(options.introCents > 0
+      ? { pricing_scheme: { fixed_price: { value: usd(options.introCents), currency_code: "USD" } } }
+      : {}),
+  };
   return [trial, regular];
 }
 
