@@ -30,7 +30,7 @@ export const searchPages = [
     path: "/terms",
     title: "Terms",
     description:
-      "Terms for an AnodeH plan. The first 30 days are half price. After that PayPal charges the regular price every 30 days until you cancel.",
+      "Terms for an AnodeH plan. One website has a 7-day free trial, then PayPal charges every 30 days until you cancel.",
   },
   {
     path: "/support",
@@ -47,7 +47,7 @@ export const searchPages = [
     path: "/register",
     title: "Create an account",
     description:
-      "Create an AnodeH account for 1, 10, or 20 websites. The first 30 days are half price, then PayPal bills every 30 days.",
+      "Create an AnodeH account for 1, 10, or 20 websites. One website has a 7-day free trial, then PayPal bills every 30 days.",
   },
 ] as const;
 
@@ -115,7 +115,7 @@ export function homeJsonLd() {
           "@type": "Offer",
           price: "69.00",
           priceCurrency: "USD",
-          description: "One website. The first 30 days are $34.50, then $69 every 30 days.",
+          description: "One website. Free for 7 days, then $69 every 30 days.",
         },
       },
     ],

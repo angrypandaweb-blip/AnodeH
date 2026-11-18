@@ -1,6 +1,6 @@
 import { Mark } from "@/components/Mark";
 import { pageMeta } from "@/lib/seo";
-import { dollars, INTRO_CENTS, SITES_10_CENTS, SITES_10_INTRO_CENTS, SITES_20_CENTS, SITES_20_INTRO_CENTS, STANDARD_CENTS } from "@/lib/billing";
+import { dollars, SITES_10_CENTS, SITES_10_INTRO_CENTS, SITES_20_CENTS, SITES_20_INTRO_CENTS, STANDARD_CENTS, TRIAL_DAYS } from "@/lib/billing";
 
 export const metadata = pageMeta("/terms");
 
@@ -28,8 +28,8 @@ export default function TermsPage() {
 
         <h2>Payment</h2>
         <p>
-          The first 30 days are half price: {dollars(INTRO_CENTS)} for one website, {dollars(SITES_10_INTRO_CENTS)} for ten websites, and {dollars(SITES_20_INTRO_CENTS)} for twenty websites.
-          After that PayPal deducts {dollars(STANDARD_CENTS)}, {dollars(SITES_10_CENTS)}, or {dollars(SITES_20_CENTS)} every 30 days until you cancel in PayPal.
+          One website includes a {TRIAL_DAYS}-day free trial. After the trial, PayPal deducts {dollars(STANDARD_CENTS)} every 30 days until you cancel in PayPal.
+          Ten websites are half price for the first 30 days at {dollars(SITES_10_INTRO_CENTS)}, then {dollars(SITES_10_CENTS)}. Twenty websites are half price for the first 30 days at {dollars(SITES_20_INTRO_CENTS)}, then {dollars(SITES_20_CENTS)}.
           An account shows these prices in the currency of the country saved at registration. PayPal collects the US dollar amounts.
         </p>
 

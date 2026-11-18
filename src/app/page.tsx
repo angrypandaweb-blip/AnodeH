@@ -1,6 +1,6 @@
 import { Mark } from "@/components/Mark";
 import { getUser } from "@/lib/auth";
-import { dollars, getAccess, INTRO_CENTS, quotesFor, STANDARD_CENTS, SITES_10_CENTS, SITES_10_INTRO_CENTS, SITES_20_CENTS, SITES_20_INTRO_CENTS } from "@/lib/billing";
+import { dollars, getAccess, quotesFor, STANDARD_CENTS, SITES_10_CENTS, SITES_10_INTRO_CENTS, SITES_20_CENTS, SITES_20_INTRO_CENTS } from "@/lib/billing";
 import { formatMoney, reportCurrency } from "@/lib/residence-currency";
 import { sampleCampaigns } from "@/lib/sample-campaigns";
 import { homeJsonLd, pageMeta } from "@/lib/seo";
@@ -50,7 +50,6 @@ export default async function LandingPage() {
   const awaySource = visit.name ? `Outside ${visit.name}` : "Off-target country";
   const campaigns = sampleCampaigns(visit.country);
   const rooms = [214, 96, 41];
-  const half = quote?.half ?? dollars(INTRO_CENTS);
   const standard = quote?.standard ?? dollars(STANDARD_CENTS);
   const half10 = quote?.half10 ?? dollars(SITES_10_INTRO_CENTS);
   const sites10 = quote?.sites10 ?? dollars(SITES_10_CENTS);
@@ -234,12 +233,12 @@ export default async function LandingPage() {
 
       <section id="pricing" className="band">
         <h2>Simple pricing</h2>
-        <p className="lede">The first month is half price. After that PayPal deducts the regular price every 30 days until you cancel. Ten and twenty websites are for growing businesses managing multiple websites.{currencyNote}</p>
+        <p className="lede">One website starts with a 7-day free trial, then PayPal charges the regular price every 30 days until you cancel. Ten and twenty websites are half price for the first month. Growing businesses use those for multiple websites.{currencyNote}</p>
         <div className="plans">
           <article className="offer featured">
-            <span className="offer-tag">50% off the first month</span>
+            <span className="offer-tag">7-day free trial</span>
             <h3>1 website</h3>
-            <p className="offer-price">{half}</p>
+            <p className="offer-price">Free</p>
             <p>Then {standard} every 30 days.</p>
             <a className="btn" href={monthHref}>{monthLabel}</a>
           </article>
@@ -272,7 +271,7 @@ export default async function LandingPage() {
         </details>
         <details>
           <summary>When am I charged?</summary>
-          <p>The first 30 days are half price: {half} for one website, {half10} for ten, and {half20} for twenty. After that PayPal deducts {standard}, {sites10}, or {sites20} every 30 days until you cancel.{currencyNote}</p>
+          <p>One website is free for 7 days, then PayPal deducts {standard} every 30 days until you cancel. Ten and twenty websites are half price for the first 30 days ({half10} / {half20}), then {sites10} or {sites20} every 30 days.{currencyNote}</p>
         </details>
       </section>
 

@@ -8,6 +8,7 @@ import {
   paypalLive,
   planDate,
   quotesFor,
+  TRIAL_DAYS,
 } from "@/lib/billing";
 import { getUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -40,21 +41,21 @@ export default async function BillingPage({
   const quote = await quotesFor(user?.email || "", user?.country || "");
   const ready = paymentsConfigured();
   const paypalNote = quote.currency === "USD"
-    ? `The first 30 days are half price: ${quote.half} for one website, ${quote.half10} for ten, and ${quote.half20} for twenty. Then PayPal deducts ${quote.standard}, ${quote.sites10}, or ${quote.sites20} every 30 days.`
-    : `Prices are in ${quote.name}, for the country on this account. PayPal collects US dollars. The first 30 days are half price, then the regular price every 30 days.`;
+    ? `One website is free for ${TRIAL_DAYS} days, then ${quote.standard} every 30 days. Ten and twenty websites are half price for the first month (${quote.half10} / ${quote.half20}), then ${quote.sites10} or ${quote.sites20} every 30 days.`
+    : `Prices are in ${quote.name}, for the country on this account. PayPal collects US dollars. One website is free for ${TRIAL_DAYS} days, then the regular price. Ten and twenty websites stay half price for the first month.`;
 
   return (
     <div>
       <header className="page-head">
         <div>
           <p className="eyebrow">Plan</p>
-          <h1>{access.lifetime ? "Lifetime access" : "Half price first month"}</h1>
+          <h1>{access.lifetime ? "Lifetime access" : access.introUsed ? "Monthly plan" : "7-day free trial"}</h1>
           <p className="sub">
             {access.lifetime
               ? "This account does not expire. PayPal is not needed."
               : access.introUsed
                 ? `${quote.standard} every 30 days for one website, ${quote.sites10} for ten, or ${quote.sites20} for twenty, until you cancel.`
-                : `${quote.half} for one website, ${quote.half10} for ten, or ${quote.half20} for twenty. Then the regular price every 30 days until you cancel.`}
+                : `One website is free for ${TRIAL_DAYS} days, then ${quote.standard} every 30 days. Ten and twenty websites are ${quote.half10} / ${quote.half20} for the first month.`}
           </p>
         </div>
       </header>
@@ -82,11 +83,11 @@ export default async function BillingPage({
           </>
         ) : (
           <>
-            <h2 style={{ marginTop: 10 }}>Protection starts when you pay</h2>
+            <h2 style={{ marginTop: 10 }}>Protection starts when you subscribe</h2>
             <p className="note">
               {access.introUsed
-                ? `The half-price month has been used. Continue at ${quote.standard} for one website, ${quote.sites10} for ten, or ${quote.sites20} for twenty, every 30 days.`
-                : `The first 30 days are half price. Then PayPal deducts the regular price every 30 days until you cancel.`}
+                ? `The intro offer has been used. Continue at ${quote.standard} for one website, ${quote.sites10} for ten, or ${quote.sites20} for twenty, every 30 days.`
+                : `One website includes a ${TRIAL_DAYS}-day free trial. PayPal then charges the regular price every 30 days until you cancel.`}
             </p>
           </>
         )}
@@ -109,13 +110,13 @@ export default async function BillingPage({
       <section className="plans">
         <article className="card">
           <span className="card-label">1 website</span>
-          <p className="price">{access.introUsed ? quote.standard : quote.half}</p>
+          <p className="price">{access.introUsed ? quote.standard : "Free"}</p>
           <p className="note">
             {access.introUsed
               ? `${quote.standard} every 30 days until you cancel.`
-              : `${quote.half} for the first 30 days, then ${quote.standard} every 30 days until you cancel.`}
+              : `Free for ${TRIAL_DAYS} days, then ${quote.standard} every 30 days until you cancel.`}
           </p>
-          <PayPalCheckout plan="month" label="Subscribe with PayPal" />
+          <PayPalCheckout plan="month" label={access.introUsed ? "Subscribe with PayPal" : "Start free trial"} />
         </article>
 
         <article className="card">

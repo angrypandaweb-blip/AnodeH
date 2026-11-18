@@ -16,7 +16,7 @@ const ANSWERS: { test: RegExp; answer: AssistantAnswer }[] = [
   {
     test: /price|pricing|plan|cost|how much|\$|paypal|month|annual|year/,
     answer: {
-      text: "Every plan is half price for the first 30 days, then the regular price. One website is $34.50, then $69 every 30 days. Ten websites are $94.50, then $189 every 30 days. Twenty websites are $144.50, then $289 every 30 days. PayPal deducts that until you cancel. The page shows those prices in the visitor’s currency. PayPal collects the US dollar amount.",
+      text: "One website is free for 7 days, then $69 every 30 days. Ten websites are $94.50 for the first 30 days, then $189. Twenty websites are $144.50 for the first 30 days, then $289. PayPal starts the subscription and charges after the intro until you cancel. The page shows those prices in the visitor’s currency. PayPal collects the US dollar amount.",
       links: [{ label: "Plans", href: "/billing" }],
     },
   },

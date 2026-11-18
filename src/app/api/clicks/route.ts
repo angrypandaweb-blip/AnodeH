@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     const access = await getAccess(owner.id);
     if (access.status === "unpaid") {
       return reply(
-        { error: "Plan unpaid. The first 30 days are half price, then $69, $189, or $289 every 30 days." },
+        { error: "Plan unpaid. One website is free for 7 days, then $69 every 30 days. Ten and twenty websites are half price first, then $189 or $289." },
         402,
       );
     }
