@@ -427,20 +427,54 @@ export async function syncSpamMailbox(
   }
 }
 
-export async function syncAllSpamMailboxes() {
+/** How often connected mailboxes are polled in the background. */
+export const SPAM_SYNC_INTERVAL_SEC = 5 * 60;
+
+export async function syncSpamMailboxIfStale(
+  userId: string,
+  maxAgeSec = SPAM_SYNC_INTERVAL_SEC,
+): Promise<
+  | { ok: true; skipped: true; checked: number; saved: number; moved: number; alerted: number }
+  | { ok: true; skipped: false; checked: number; saved: number; moved: number; alerted: number }
+  | { ok: false; error: string }
+> {
+  const mailbox = await getSpamMailbox(userId);
+  if (!mailbox) return { ok: false, error: "Connect a mailbox first." };
+  const age = Math.floor(Date.now() / 1000) - (mailbox.syncedAt || 0);
+  if (mailbox.syncedAt > 0 && age < maxAgeSec) {
+    return { ok: true, skipped: true, checked: 0, saved: 0, moved: 0, alerted: 0 };
+  }
+  const result = await syncSpamMailbox(userId);
+  if (!result.ok) return result;
+  return { ...result, skipped: false };
+}
+
+export async function syncAllSpamMailboxes(options?: { maxAgeSec?: number }) {
+  const maxAgeSec = options?.maxAgeSec;
   const db = await getDb();
   const people = await queryAll<{ user_id: string }>(db, "SELECT user_id FROM spam_mailboxes");
   let ok = 0;
   let failed = 0;
+  let skipped = 0;
   let moved = 0;
   let alerted = 0;
   for (const person of people) {
-    const result = await syncSpamMailbox(person.user_id);
-    if (result.ok) {
+    const result =
+      typeof maxAgeSec === "number"
+        ? await syncSpamMailboxIfStale(person.user_id, maxAgeSec)
+        : await syncSpamMailbox(person.user_id);
+    if (!result.ok) {
+      failed += 1;
+      continue;
+    }
+    if ("skipped" in result && result.skipped) {
+      skipped += 1;
       ok += 1;
-      moved += result.moved;
-      alerted += result.alerted;
-    } else failed += 1;
+      continue;
+    }
+    ok += 1;
+    moved += result.moved;
+    alerted += result.alerted;
   }
-  return { ok, failed, total: people.length, moved, alerted };
+  return { ok, failed, skipped, total: people.length, moved, alerted };
 }

@@ -514,6 +514,15 @@ export async function syncSpamMailboxAction() {
   redirect(`/spam?synced=1&n=${result.saved}&moved=${result.moved}&alerted=${result.alerted}`);
 }
 
+export async function syncSpamMailboxIfStaleAction() {
+  const user = await getUser();
+  if (!user) return { ok: false as const, error: "Sign in to sync." };
+  const { syncSpamMailboxIfStale } = await import("@/lib/spam-mail");
+  const result = await syncSpamMailboxIfStale(user.id);
+  if (result.ok && !result.skipped) refresh();
+  return result;
+}
+
 export async function disconnectSpamMailboxAction() {
   const user = await getUser();
   if (!user) redirect("/login?next=/spam");

@@ -1,8 +1,9 @@
 import { disconnectSpamMailboxAction, saveSpamMailboxAction, scoreSpamPaste, syncSpamMailboxAction } from "@/app/actions";
+import { SpamAutoSync } from "@/components/SpamAutoSync";
 import { getUser } from "@/lib/auth";
 import { when } from "@/lib/format";
 import { placeFor } from "@/lib/residence-currency";
-import { getSpamMailbox, listSpamMessages } from "@/lib/spam-mail";
+import { getSpamMailbox, listSpamMessages, SPAM_SYNC_INTERVAL_SEC, syncSpamMailboxIfStale } from "@/lib/spam-mail";
 import { reasonText, SPAM_REASON_LABELS } from "@/lib/spam-score";
 import { noIndex } from "@/lib/seo";
 
@@ -35,6 +36,7 @@ export default async function SpamPage({
   const params = await searchParams;
   const user = await getUser();
   const place = placeFor(user?.country || "", user?.email || "");
+  if (user) await syncSpamMailboxIfStale(user.id).catch(() => undefined);
   const [messages, mailbox] = await Promise.all([
     user ? listSpamMessages(user.id) : Promise.resolve([]),
     user ? getSpamMailbox(user.id) : Promise.resolve(null),
@@ -42,21 +44,23 @@ export default async function SpamPage({
   const risky = messages.filter((item) => item.action !== "allow");
   const lastSynced =
     mailbox?.syncedAt && mailbox.syncedAt > 0 ? when(mailbox.syncedAt, place.timeZone) : "";
+  const syncMinutes = Math.max(1, Math.round(SPAM_SYNC_INTERVAL_SEC / 60));
 
   return (
     <div>
+      {mailbox ? <SpamAutoSync intervalSec={60} /> : null}
       <header className="page-head">
         <div>
           <p className="eyebrow">Spam email</p>
           <h1>Watch the inbox the same way you watch clicks</h1>
           <p className="sub">
-            Paste a suspicious message for an instant score, or connect a mailbox so AnodeH can sync recent mail, move flagged and blocked messages to Junk, and email you an alert.
+            Paste a suspicious message for an instant score, or connect a mailbox so AnodeH can sync recent mail, move flagged and blocked messages to Junk, and email you an alert. Connected mailboxes refresh about every {syncMinutes} minutes on their own.
           </p>
           <p className="note" style={{ marginTop: 8 }}>
             {lastSynced
-              ? `Last synced ${lastSynced}`
+              ? `Last synced ${lastSynced} · auto every ${syncMinutes} min`
               : mailbox
-                ? "Mailbox connected · not synced yet"
+                ? "Mailbox connected · syncing automatically"
                 : "No mailbox synced yet"}
           </p>
         </div>
@@ -124,7 +128,7 @@ export default async function SpamPage({
       <article className="card">
         <span className="card-label">Monitor a mailbox</span>
         <p className="note">
-          Use IMAP (Afrihost: mail.yourdomain.co.za, port 993, full email + mailbox password). On sync, flagged and blocked messages are moved to Junk and you get an email alert. Gmail works with an app password on imap.gmail.com:993.
+          Use IMAP (Afrihost: mail.yourdomain.co.za, port 993, full email + mailbox password). AnodeH polls about every {syncMinutes} minutes, moves flagged and blocked messages to Junk, and emails you an alert. Gmail works with an app password on imap.gmail.com:993.
         </p>
         {mailbox ? (
           <>
@@ -133,7 +137,9 @@ export default async function SpamPage({
               {mailbox.lastError ? `. Last error: ${mailbox.lastError}` : "."}
             </p>
             <p className="note">
-              {lastSynced ? `Last synced ${lastSynced}.` : "Last synced: not yet. Use Sync now to pull recent mail."}
+              {lastSynced
+                ? `Last synced ${lastSynced}. Auto-sync runs about every ${syncMinutes} minutes; use Sync now to refresh immediately.`
+                : "Last synced: not yet. Auto-sync will start shortly, or use Sync now."}
             </p>
             <div className="hero-actions">
               <form action={syncSpamMailboxAction}>

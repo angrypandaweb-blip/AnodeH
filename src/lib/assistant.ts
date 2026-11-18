@@ -72,7 +72,7 @@ const ANSWERS: { test: RegExp; answer: AssistantAnswer }[] = [
   {
     test: /spam|phishing|inbox|email threat|junk mail/,
     answer: {
-      text: "Spam email monitoring lives in the same AnodeH account. Paste a message for a score, or connect IMAP so recent mail is scored. Flagged and blocked mailbox messages are moved to Junk, and you get an email alert.",
+      text: "Spam email monitoring lives in the same AnodeH account. Paste a message for a score, or connect IMAP so recent mail is scored. Connected mailboxes sync about every 5 minutes on their own. Flagged and blocked mailbox messages are moved to Junk, and you get an email alert.",
       links: [{ label: "Spam email", href: "/spam" }],
     },
   },
