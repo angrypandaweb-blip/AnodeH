@@ -1,7 +1,8 @@
-import { getAccess } from "@/lib/billing";
+import { getAccess, quotesFor } from "@/lib/billing";
 import { getDb, queryOne } from "@/lib/db";
 import { parseIncoming, recordClick } from "@/lib/engine";
 import { lookupIpSource } from "@/lib/ip-source";
+import { placeFor } from "@/lib/residence-currency";
 
 export const dynamic = "force-dynamic";
 
@@ -32,13 +33,20 @@ export async function POST(request: Request) {
     }
 
     const db = await getDb();
-    const owner = await queryOne<{ id: string }>(db, "SELECT id FROM users WHERE domain_key = ?", [String(body.key || "")]);
+    const owner = await queryOne<{ id: string; email: string; country: string }>(
+      db,
+      "SELECT id, email, country FROM users WHERE domain_key = ?",
+      [String(body.key || "")],
+    );
     if (!owner) return reply({ error: "Unknown domain key." }, 401);
 
     const access = await getAccess(owner.id);
     if (access.status === "unpaid") {
+      const quote = await quotesFor(owner.email, placeFor(owner.country || "", owner.email).country);
       return reply(
-        { error: "Plan unpaid. One website is free for 7 days, then $69 every 30 days. Ten and twenty websites are half price first, then $189 or $289." },
+        {
+          error: `Plan unpaid. One website is free for 7 days, then ${quote.standard} every 30 days. Ten websites are ${quote.half10} first, then ${quote.sites10}. Twenty websites are ${quote.half20} first, then ${quote.sites20}.`,
+        },
         402,
       );
     }

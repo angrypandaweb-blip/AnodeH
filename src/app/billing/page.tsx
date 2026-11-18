@@ -11,6 +11,7 @@ import {
   TRIAL_DAYS,
 } from "@/lib/billing";
 import { getUser } from "@/lib/auth";
+import { placeFor } from "@/lib/residence-currency";
 import { redirect } from "next/navigation";
 import { noIndex } from "@/lib/seo";
 
@@ -38,7 +39,7 @@ export default async function BillingPage({
 
   const user = await getUser();
   const access = await getAccess();
-  const quote = await quotesFor(user?.email || "", user?.country || "");
+  const quote = await quotesFor(user?.email || "", placeFor(user?.country || "", user?.email || "").country);
   const ready = paymentsConfigured();
   const paypalNote = quote.currency === "USD"
     ? `One website is free for ${TRIAL_DAYS} days, then ${quote.standard} every 30 days. Ten and twenty websites are half price for the first month (${quote.half10} / ${quote.half20}), then ${quote.sites10} or ${quote.sites20} every 30 days.`

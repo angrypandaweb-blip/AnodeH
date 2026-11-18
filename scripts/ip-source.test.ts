@@ -25,14 +25,37 @@ assert.equal(actionForChannel("block", "organic"), "flag");
 assert.equal(actionForChannel("block", "paid"), "block");
 assert.equal(actionForChannel("flag", "organic"), "flag");
 assert.match(assistantReply("Do you block organic searches?").text, /not blocked/);
-assert.match(assistantReply("How much is the plan?").text, /\$34\.50/);
+assert.match(assistantReply("How much is the plan?").text, /free for 7 days/);
 assert.match(assistantReply("How much is the plan?").text, /\$69/);
 assert.match(assistantReply("How much is the plan?").text, /\$94\.50/);
 assert.match(assistantReply("How much is the plan?").text, /\$189/);
 assert.match(assistantReply("How much is the plan?").text, /\$144\.50/);
 assert.match(assistantReply("How much is the plan?").text, /\$289/);
 assert.doesNotMatch(assistantReply("How much is the plan?").text, /\$759/);
-assert.doesNotMatch(assistantReply("How much is the plan?").text, /free for 7 days/);
+assert.match(
+  assistantReply("How much is the plan?", {
+    currency: "ZAR",
+    name: "South African rand",
+    standard: "R 1 242",
+    half10: "R 1 701",
+    sites10: "R 3 402",
+    half20: "R 2 601",
+    sites20: "R 5 202",
+  }).text,
+  /R 1 242/,
+);
+assert.doesNotMatch(
+  assistantReply("How much is the plan?", {
+    currency: "ZAR",
+    name: "South African rand",
+    standard: "R 1 242",
+    half10: "R 1 701",
+    sites10: "R 3 402",
+    half20: "R 2 601",
+    sites20: "R 5 202",
+  }).text,
+  /\$69/,
+);
 const shopify = assistantReply("How do I paste the script on Shopify?");
 assert.match(shopify.text, /theme\.liquid/);
 assert.match(shopify.text, /WordPress/);

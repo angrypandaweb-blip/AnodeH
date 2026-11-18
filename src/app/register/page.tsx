@@ -1,8 +1,8 @@
 import { RegisterForm } from "@/components/RegisterForm";
 import { Mark } from "@/components/Mark";
 import { safePlan } from "@/lib/auth";
-import { dollars, INTRO_CENTS, SITES_10_CENTS, SITES_10_INTRO_CENTS, SITES_20_CENTS, SITES_20_INTRO_CENTS, STANDARD_CENTS } from "@/lib/billing";
-import { allUsdRates, convertUsdCents, countryChoices, currencyForCountry, formatMoney } from "@/lib/residence-currency";
+import { INTRO_CENTS, SITES_10_CENTS, SITES_10_INTRO_CENTS, SITES_20_CENTS, SITES_20_INTRO_CENTS, STANDARD_CENTS, quotesFor } from "@/lib/billing";
+import { allUsdRates, convertUsdCents, countryChoices, currencyForCountry, formatMoney, rateOrFallback } from "@/lib/residence-currency";
 import { recaptchaSiteKey } from "@/lib/recaptcha";
 import { pageMeta } from "@/lib/seo";
 import { visitorIp, visitorPlace } from "@/lib/visitor-country";
@@ -12,8 +12,8 @@ export const dynamic = "force-dynamic";
 export const metadata = pageMeta("/register");
 
 function quote(cents: number, currency: string, rates: Record<string, number>) {
-  const rate = currency === "USD" ? 1 : rates[currency];
-  if (!rate) return { currency: "USD", text: dollars(cents) };
+  const rate = rateOrFallback(currency, currency === "USD" ? 1 : rates[currency]);
+  if (!rate) return { currency: "USD", text: formatMoney(convertUsdCents(cents, 1), "USD") };
   return { currency, text: formatMoney(convertUsdCents(cents, rate), currency) };
 }
 
@@ -49,14 +49,15 @@ export default async function RegisterPage({
       sites20: sites20.text,
     };
   }
+  const seeded = (place.country && quotes[place.country]) || quotes.US || (await quotesFor("", place.country || "US"));
   const fallback = {
-    currency: "USD",
-    half: dollars(INTRO_CENTS),
-    standard: dollars(STANDARD_CENTS),
-    half10: dollars(SITES_10_INTRO_CENTS),
-    sites10: dollars(SITES_10_CENTS),
-    half20: dollars(SITES_20_INTRO_CENTS),
-    sites20: dollars(SITES_20_CENTS),
+    currency: seeded.currency,
+    half: seeded.half,
+    standard: seeded.standard,
+    half10: seeded.half10,
+    sites10: seeded.sites10,
+    half20: seeded.half20,
+    sites20: seeded.sites20,
   };
 
   return (

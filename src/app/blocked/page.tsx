@@ -1,5 +1,5 @@
 import { Mark } from "@/components/Mark";
-import { dollars, quotesFor, SITES_10_CENTS, SITES_10_INTRO_CENTS, SITES_20_CENTS, SITES_20_INTRO_CENTS, STANDARD_CENTS } from "@/lib/billing";
+import { quotesFor } from "@/lib/billing";
 import { pageMeta } from "@/lib/seo";
 import { visitorCountry } from "@/lib/visitor-country";
 
@@ -18,11 +18,11 @@ const CAUGHT = [
 
 export default async function BlockedPage() {
   const quote = await quotesFor("", await visitorCountry());
-  const standard = quote.standard || dollars(STANDARD_CENTS);
-  const half10 = quote.half10 || dollars(SITES_10_INTRO_CENTS);
-  const sites10 = quote.sites10 || dollars(SITES_10_CENTS);
-  const half20 = quote.half20 || dollars(SITES_20_INTRO_CENTS);
-  const sites20 = quote.sites20 || dollars(SITES_20_CENTS);
+  const standard = quote.standard;
+  const half10 = quote.half10;
+  const sites10 = quote.sites10;
+  const half20 = quote.half20;
+  const sites20 = quote.sites20;
   const local = quote.currency === "USD" ? "" : ` Prices are in ${quote.name}. PayPal collects US dollars.`;
 
   return (
