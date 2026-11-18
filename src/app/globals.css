@@ -495,7 +495,7 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 .threat-grid p, .benefit-grid p, .offer p { margin: 0; color: var(--cc-muted); }
 .offer.featured { border: 2px solid var(--cc-orange); box-shadow: 0 10px 30px rgba(255, 106, 0, 0.12); }
 .offer-tag { display: inline-block; background: #fff1e6; color: #c2410c; border-radius: 999px; padding: 4px 8px; font-size: 12px; font-weight: 600; margin-bottom: 8px; }
-.offer-price { font-size: 42px; font-weight: 700; letter-spacing: -0.04em; margin: 8px 0; color: var(--cc-ink); }
+.offer-price { font-size: clamp(28px, 5vw, 42px); font-weight: 700; letter-spacing: -0.04em; margin: 8px 0; color: var(--cc-ink); line-height: 1.1; }
 .offer-price s { font-size: 18px; color: var(--cc-muted); font-weight: 500; margin-left: 6px; }
 .offer .btn { margin-top: 16px; }
 .faq { max-width: 760px; margin: 0 auto; }
