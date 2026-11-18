@@ -1,6 +1,6 @@
 # Google Ads for anodeh.com — South Africa only
 
-Use this when advertising AnodeH to South African Google Ads buyers.
+Advertise AnodeH as **Google Ads click protection + spam email monitoring** to South African buyers.
 
 ## Campaign goal
 
@@ -29,10 +29,11 @@ If conversion volume is still low, start with **Maximize clicks** or **Maximize 
 
 - Final URL: `https://anodeh.com`
 - Prefer landing on `/` or `/register?plan=month` (1 website free trial)
+- Optional: `/#spam` when the search is about inbox / phishing
 
 ## Keywords (starter)
 
-Exact / phrase ideas:
+### Click protection
 
 - `"google ads click fraud"`
 - `"invalid clicks google ads"`
@@ -40,14 +41,59 @@ Exact / phrase ideas:
 - `"google ads bot traffic"`
 - `"click fraud protection"`
 
-Add negatives: free, jobs, what is an anode, music, lyrics, download.
+### Spam email (same campaign or a second ad group)
 
-## Ad copy angles
+- `"spam email monitoring"`
+- `"phishing email protection business"`
+- `"block spam emails business"`
+- `"imap spam filter"`
+- `"email junk alerts"`
 
-- Headline: Block Google Ads clicks that never buy
-- Headline: Protect your Google Ads budget
-- Description: AnodeH scores invalid traffic and writes exclusions. 7-day free trial for 1 website.
-- CTA path: anodeh.com
+Add negatives: free, jobs, what is an anode, music, lyrics, download, gmail tutorial, outlook how to.
+
+## Paste-ready Responsive Search Ad
+
+Pin or rotate these. Stay within Google limits (headlines ≤30 chars, descriptions ≤90).
+
+### Headlines
+
+1. Block Fake Google Ads Clicks
+2. Stop Click Fraud Waste
+3. Protect Your Ads Budget
+4. Spam Email Monitoring Too
+5. Ads + Inbox Protection
+6. 7-Day Free Trial
+7. AnodeH for Google Ads
+8. Score Invalid Traffic
+9. Junk Mail Alerts Included
+10. Made for SA Businesses
+
+### Descriptions
+
+1. AnodeH scores bad Google Ads clicks and writes exclusions. Spam email monitoring included. Try 7 days free.
+2. One account: block click fraud on Google Ads and watch your mailbox for phishing. South Africa ready.
+3. Invalid traffic off your budget. Flagged spam moved to Junk with owner alerts. Start free for 7 days.
+
+### Paths (display URL)
+
+- `anodeh.com` / `click-protection`
+- `anodeh.com` / `spam-email`
+
+### Final URL
+
+`https://anodeh.com`
+
+## Ad group split (recommended)
+
+1. **Click fraud** — keywords above under click protection; RSA headlines 1–3, 6–8
+2. **Spam email** — spam keywords; RSA headlines 4–6, 9; final URL `https://anodeh.com/#spam` or `/`
+
+Shared sitelinks:
+
+- Pricing → `https://anodeh.com/#pricing`
+- Spam email → `https://anodeh.com/#spam`
+- Free trial → `https://anodeh.com/register?plan=month`
+- How it works → `https://anodeh.com/#preview`
 
 ## Budget
 
@@ -57,5 +103,6 @@ Start small, South Africa only, Search + conversion tracking. Scale after CPA is
 
 - [ ] Conversion tag fires on successful PayPal subscribe / thank-you
 - [ ] Location = South Africa, presence only
-- [ ] Landing page shows 7-day free trial for 1 website
+- [ ] Landing page shows 7-day free trial **and** spam email monitoring
 - [ ] Display Network off on the first campaign
+- [ ] At least one RSA mentions both ads protection and spam email
