@@ -1,15 +1,17 @@
 import Script from "next/script";
 import { PURCHASE_SEND_TO } from "@/lib/google-conversion";
 
-export function PurchaseConversion({ transactionId }: { transactionId: string }) {
+/** Event snippet for Purchase conversion page — place right after the Google tag. */
+export function PurchaseConversion({ transactionId = "" }: { transactionId?: string }) {
+  const id = JSON.stringify(transactionId);
   return (
-    <Script id="google-ads-purchase" strategy="afterInteractive">
+    <Script id="google-ads-purchase" strategy="beforeInteractive">
       {`
         window.dataLayer = window.dataLayer || [];
         function gtag(){dataLayer.push(arguments);}
         gtag('event', 'conversion', {
           'send_to': '${PURCHASE_SEND_TO}',
-          'transaction_id': '${transactionId}'
+          'transaction_id': ${id}
         });
       `}
     </Script>
