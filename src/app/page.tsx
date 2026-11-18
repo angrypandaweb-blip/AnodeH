@@ -28,7 +28,7 @@ const BENEFITS = [
 
 const SPAM_FEATURES = [
   { title: "Score suspicious mail", body: "Paste a message and AnodeH returns a score with a plain reason, the same way it scores a click." },
-  { title: "Sync a mailbox", body: "Connect IMAP once. AnodeH checks recent mail, flags phishing patterns, and moves junk out of the inbox." },
+  { title: "Sync a mailbox", body: "Connect IMAP once. AnodeH checks recent mail about every 5 minutes, flags phishing patterns, and moves junk out of the inbox." },
   { title: "Alert the owner", body: "When a message is flagged or blocked, AnodeH emails the account owner so the inbox is not left alone." },
 ];
 
