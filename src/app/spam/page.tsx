@@ -1,6 +1,7 @@
 import { disconnectSpamMailboxAction, saveSpamMailboxAction, scoreSpamPaste, syncSpamMailboxAction } from "@/app/actions";
 import { getUser } from "@/lib/auth";
-import { planDate } from "@/lib/billing";
+import { when } from "@/lib/format";
+import { placeFor } from "@/lib/residence-currency";
 import { getSpamMailbox, listSpamMessages } from "@/lib/spam-mail";
 import { reasonText, SPAM_REASON_LABELS } from "@/lib/spam-score";
 import { noIndex } from "@/lib/seo";
@@ -33,11 +34,14 @@ export default async function SpamPage({
 }) {
   const params = await searchParams;
   const user = await getUser();
+  const place = placeFor(user?.country || "", user?.email || "");
   const [messages, mailbox] = await Promise.all([
     user ? listSpamMessages(user.id) : Promise.resolve([]),
     user ? getSpamMailbox(user.id) : Promise.resolve(null),
   ]);
   const risky = messages.filter((item) => item.action !== "allow");
+  const lastSynced =
+    mailbox?.syncedAt && mailbox.syncedAt > 0 ? when(mailbox.syncedAt, place.timeZone) : "";
 
   return (
     <div>
@@ -47,6 +51,13 @@ export default async function SpamPage({
           <h1>Watch the inbox the same way you watch clicks</h1>
           <p className="sub">
             Paste a suspicious message for an instant score, or connect a mailbox so AnodeH can sync recent mail, move flagged and blocked messages to Junk, and email you an alert.
+          </p>
+          <p className="note" style={{ marginTop: 8 }}>
+            {lastSynced
+              ? `Last synced ${lastSynced}`
+              : mailbox
+                ? "Mailbox connected · not synced yet"
+                : "No mailbox synced yet"}
           </p>
         </div>
       </header>
@@ -80,7 +91,7 @@ export default async function SpamPage({
         <article className="metric">
           <span>Mailbox</span>
           <strong>{mailbox ? "On" : "Off"}</strong>
-          <em>{mailbox?.syncedAt ? `Last sync ${planDate(mailbox.syncedAt)}` : "Connect IMAP to monitor"}</em>
+          <em>{lastSynced ? `Last synced ${lastSynced}` : mailbox ? "Not synced yet" : "Connect IMAP to monitor"}</em>
         </article>
       </section>
 
@@ -120,6 +131,9 @@ export default async function SpamPage({
             <p className="note">
               Connected to <strong>{mailbox.user}</strong> on {mailbox.host}:{mailbox.port}
               {mailbox.lastError ? `. Last error: ${mailbox.lastError}` : "."}
+            </p>
+            <p className="note">
+              {lastSynced ? `Last synced ${lastSynced}.` : "Last synced: not yet. Use Sync now to pull recent mail."}
             </p>
             <div className="hero-actions">
               <form action={syncSpamMailboxAction}>
@@ -169,7 +183,7 @@ export default async function SpamPage({
             {messages.map((item) => (
               <div className="click-row" key={item.id}>
                 <div>
-                  <strong>{planDate(item.receivedAt)}</strong>
+                  <strong>{when(item.receivedAt, place.timeZone)}</strong>
                   <div className="muted">{item.source === "imap" ? "Mailbox" : "Pasted"}</div>
                 </div>
                 <div>

@@ -5,7 +5,7 @@ export const SITE = "https://anodeh.com";
 export const home = {
   title: "AnodeH — Block the clicks that were never going to buy",
   description:
-    "AnodeH scores each Google Ads click and writes IP exclusions for Search and Display. Datacenter, VPN, repeat, and bounce traffic stay off the budget.",
+    "AnodeH scores Google Ads clicks and spam email, writes IP exclusions for Search and Display, and alerts you when junk lands in the inbox.",
 };
 
 export const searchPages = [

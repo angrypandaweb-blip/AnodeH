@@ -26,6 +26,12 @@ const BENEFITS = [
   { title: "A week you can actually read", body: "The dashboard shows spend, invalid cost, and the latest risky clicks without making you hunt through the ad account." },
 ];
 
+const SPAM_FEATURES = [
+  { title: "Score suspicious mail", body: "Paste a message and AnodeH returns a score with a plain reason, the same way it scores a click." },
+  { title: "Sync a mailbox", body: "Connect IMAP once. AnodeH checks recent mail, flags phishing patterns, and moves junk out of the inbox." },
+  { title: "Alert the owner", body: "When a message is flagged or blocked, AnodeH emails the account owner so the inbox is not left alone." },
+];
+
 export default async function LandingPage() {
   const [access, user] = await Promise.all([getAccess(), getUser()]);
   const subscribed = access.status === "active";
@@ -68,6 +74,7 @@ export default async function LandingPage() {
         <nav className="site-nav">
           <a href="#preview">Dashboard</a>
           <a href="#threats">Threats</a>
+          <a href="#spam">Spam email</a>
           <a href="#pricing">Pricing</a>
           <a href={user ? startHref : "/login"}>{user ? "Account" : "Log in"}</a>
           <a className="btn" href={startHref}>{startLabel}</a>
@@ -75,10 +82,10 @@ export default async function LandingPage() {
       </header>
 
       <section className="hero">
-        <p className="kicker">Google Ads click protection</p>
+        <p className="kicker">Google Ads click protection · spam email monitoring</p>
         <h1>Block the clicks that were never going to buy.</h1>
         <p className="lede">
-          AnodeH scores invalid traffic on your Google Ads campaigns and writes the exclusions for you. The budget stays with people who might become customers.
+          AnodeH scores invalid traffic on your Google Ads campaigns and writes the exclusions for you. It also watches the inbox for spam and phishing, so the same account protects ads and email.
         </p>
         <div className="hero-actions">
           <a className="btn" href="#preview">See a sample</a>
@@ -231,6 +238,26 @@ export default async function LandingPage() {
         </div>
       </section>
 
+      <section id="spam" className="band">
+        <h2>Spam email monitoring included</h2>
+        <p className="lede">
+          The same AnodeH account that protects Google Ads also scores spam and phishing in your mailbox, moves junk aside, and alerts the owner.
+        </p>
+        <div className="threat-grid">
+          {SPAM_FEATURES.map((item) => (
+            <article key={item.title}>
+              <h3>{item.title}</h3>
+              <p>{item.body}</p>
+            </article>
+          ))}
+        </div>
+        <div className="hero-actions" style={{ marginTop: 28 }}>
+          <a className="btn" href={user ? "/spam" : "/register"}>
+            {user ? "Open spam email" : "Start with spam email too"}
+          </a>
+        </div>
+      </section>
+
       <section id="pricing" className="band">
         <h2>Simple pricing</h2>
         <p className="lede">One website starts with a 7-day free trial, then PayPal charges the regular price every 30 days until you cancel. Ten and twenty websites are half price for the first month. Growing businesses use those for multiple websites.{currencyNote}</p>
@@ -263,7 +290,11 @@ export default async function LandingPage() {
         <h2>Questions</h2>
         <details>
           <summary>What does AnodeH actually block?</summary>
-          <p>Datacenter clicks, VPN and proxy exits, repeated addresses, reused devices, instant bounces, and visits from outside the countries you are targeting.</p>
+          <p>Datacenter clicks, VPN and proxy exits, repeated addresses, reused devices, instant bounces, and visits from outside the countries you are targeting. For email, it scores phishing and spam patterns, can move flagged mail to Junk, and alerts the owner.</p>
+        </details>
+        <details>
+          <summary>Does AnodeH monitor spam email?</summary>
+          <p>Yes. After you subscribe, open Spam email in the account. Paste a message for an instant score, or connect IMAP so AnodeH syncs recent mail, moves flagged and blocked messages to Junk, and emails you an alert.</p>
         </details>
         <details>
           <summary>How does Performance Max work?</summary>
