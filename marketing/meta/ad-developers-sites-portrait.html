@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 1080px;
+      height: 1350px;
+      overflow: hidden;
+      font-family: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      color: #ffffff;
+      background:
+        radial-gradient(ellipse 85% 50% at 100% 0%, #ff8a33 0%, transparent 44%),
+        radial-gradient(ellipse 70% 45% at -8% 100%, #1447a8 0%, transparent 50%),
+        linear-gradient(155deg, #061833 0%, #0b3d91 48%, #082a66 100%);
+      position: relative;
+    }
+    body::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(115deg, transparent 56%, rgba(255, 106, 0, 0.22) 56%, rgba(255, 106, 0, 0.22) 60%, transparent 60%);
+      pointer-events: none;
+    }
+    .wrap {
+      position: relative;
+      z-index: 1;
+      height: 100%;
+      padding: 60px 56px 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .brand svg { width: 58px; height: 58px; display: block; }
+    .brand span {
+      font-size: 46px;
+      font-weight: 800;
+      letter-spacing: -0.045em;
+      color: #ffffff;
+    }
+    .audience {
+      margin-top: 40px;
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #ffb070;
+    }
+    h1 {
+      margin-top: 16px;
+      font-size: 56px;
+      line-height: 1.06;
+      letter-spacing: -0.045em;
+      font-weight: 800;
+      max-width: 980px;
+      color: #ffffff;
+    }
+    .lede {
+      margin-top: 18px;
+      font-size: 26px;
+      line-height: 1.35;
+      color: #c9d8ef;
+      font-weight: 600;
+      max-width: 920px;
+    }
+    .plans {
+      margin-top: 44px;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 18px;
+    }
+    .plan {
+      background: rgba(255, 255, 255, 0.08);
+      border: 2px solid rgba(255, 255, 255, 0.18);
+      border-radius: 18px;
+      padding: 28px 28px 30px;
+    }
+    .plan.hot {
+      background: #ff6a00;
+      border-color: #ff6a00;
+    }
+    .plan .tag {
+      display: block;
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #ffb070;
+      margin-bottom: 10px;
+    }
+    .plan.hot .tag { color: #ffe7d4; }
+    .plan h2 {
+      font-size: 44px;
+      line-height: 1;
+      letter-spacing: -0.04em;
+      font-weight: 800;
+    }
+    .plan .price {
+      margin-top: 14px;
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }
+    .plan .then {
+      margin-top: 10px;
+      font-size: 22px;
+      font-weight: 600;
+      color: #c9d8ef;
+    }
+    .plan.hot .then { color: #fff3ea; }
+    .note {
+      margin-top: 28px;
+      font-size: 24px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+    .cta {
+      margin-top: auto;
+      height: 124px;
+      margin-left: -56px;
+      margin-right: -56px;
+      background: #ff6a00;
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-size: 34px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      box-shadow: inset 0 8px 0 rgba(255, 255, 255, 0.12);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 1.7 20.6 5.3v6.7c0 4.8-3.5 8.2-8.6 9.9-5.1-1.7-8.6-5.1-8.6-9.9V5.3L12 1.7Z" fill="#ffffff"/>
+        <path d="M8.6 7.4v8.1l2.1-1.8 1.7 3.3 1.4-.7-1.7-3.3 2.6-.3L8.6 7.4Z" fill="#0b3d91"/>
+        <path d="M7.4 16.2 15.8 8" stroke="#ff6a00" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+      <span>AnodeH</span>
+    </div>
+    <p class="audience">For web developers &amp; agencies</p>
+    <h1>Protect every client site from fake Google Ads clicks.</h1>
+    <p class="lede">One AnodeH account. The same click protection tag on 10 or 20 websites.</p>
+    <div class="plans">
+      <div class="plan hot">
+        <span class="tag">50% off first month</span>
+        <h2>10 websites</h2>
+        <p class="price">Half price start</p>
+        <p class="then">Then full price every 30 days</p>
+      </div>
+      <div class="plan">
+        <span class="tag">50% off first month</span>
+        <h2>20 websites</h2>
+        <p class="price">Half price start</p>
+        <p class="then">Then full price every 30 days</p>
+      </div>
+    </div>
+    <p class="note">Built for developers running ads across client sites.</p>
+    <div class="cta">Start 10 or 20 websites · 50% off month 1</div>
+  </div>
+</body>
+</html>

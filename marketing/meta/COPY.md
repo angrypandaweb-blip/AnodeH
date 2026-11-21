@@ -1,17 +1,23 @@
-# AnodeH Meta ad — paste-ready copy
+# AnodeH Meta ads — paste-ready copy
 
-Upload either image under **Single image or video**, then paste the fields below.
+## A) 1 website — Subscribe (7-day free trial)
 
-## Recommended images
+### Images
 
-| File | Size | Best for |
+| File | Size | Use |
 |---|---|---|
-| `anodeh-meta-feed-square.png` | 1080×1080 | Feed (default) — sample costs in ZAR |
-| `anodeh-meta-feed-portrait.png` | 1080×1350 | Feed / Explore (more screen) — sample costs in ZAR |
-| `anodeh-meta-alt-square.jpg` | alt creative | A/B test |
-| `anodeh-meta-alt-portrait.jpg` | alt creative | A/B test |
+| `anodeh-meta-subscribe-square.png` | 1080×1080 | Default Feed |
+| `anodeh-meta-subscribe-portrait.png` | 1080×1350 | Feed / Explore |
 
-## Ad fields
+Sources: `ad-single-subscribe.html`, `ad-single-subscribe-portrait.html`
+
+### Ad fields
+
+**Headline**
+
+```
+Block clicks that never buy
+```
 
 **Primary text**
 
@@ -21,45 +27,107 @@ Stop paying for Google Ads clicks that never buy.
 AnodeH scores invalid traffic — datacenter, VPN, repeat IPs, instant bounces — and writes the exclusions for you. Keep the budget on people who might become customers.
 ```
 
-**Headline**
-
-```
-Block the clicks that were never going to buy
-```
-
-**Description**
-
-```
-First month half price. Protect Search, Display, and Performance Max.
-```
-
-**Call to action**
-
-Learn more
-
-(or Subscribe if available)
-
-**Website URL**
+**Website**
 
 ```
 https://anodeh.com
 ```
 
-**Display link** (optional)
+Or signup locked:
 
 ```
-anodeh.com
+https://anodeh.com/register?plan=month
 ```
 
-## Short primary text (if Meta truncates)
+**Call to action:** Subscribe
+
+**Description**
 
 ```
-Google Ads click protection. AnodeH blocks invalid traffic and writes the exclusions so your budget stays on real buyers. First month half price.
+7-day free trial. Protect Search, Display, and Performance Max.
 ```
+
+---
+
+## B) 10 / 20 websites — web developers & agencies
+
+Use this creative when targeting developers, agencies, or freelancers who run Google Ads across **client sites**. Offer is **50% off the first month** (correct for 10/20 plans — not the 7-day trial).
+
+### Images
+
+| File | Size | Use |
+|---|---|---|
+| `anodeh-meta-developers-sites-square.png` | 1080×1080 | Default Feed |
+| `anodeh-meta-developers-sites-portrait.png` | 1080×1350 | Feed / Explore |
+
+Sources: `ad-developers-sites.html`, `ad-developers-sites-portrait.html`
+
+### Ad fields
+
+**Headline**
+
+```
+Protect every client site
+```
+
+Alternates:
+
+```
+10 or 20 websites covered
+Client sites, one AnodeH account
+```
+
+**Primary text**
+
+```
+Web developers: stop fake Google Ads clicks across your client sites.
+
+One AnodeH account covers 10 or 20 websites — same click protection tag on each. 50% off the first month.
+```
+
+Short primary text:
+
+```
+Built for web developers and agencies. Protect 10 or 20 client websites from invalid Google Ads clicks. 50% off month one.
+```
+
+**Website** (pick one plan per ad set, or send to pricing)
+
+```
+https://anodeh.com/#pricing
+```
+
+10-website signup:
+
+```
+https://anodeh.com/register?plan=sites10
+```
+
+20-website signup:
+
+```
+https://anodeh.com/register?plan=sites20
+```
+
+**Call to action:** Subscribe (or Learn more if sending to `#pricing`)
+
+**Description**
+
+```
+50% off first month on 10 or 20 websites. For developers & agencies.
+```
+
+### Audience tips (Meta)
+
+- Interests: Web development, Web design, Digital agencies, Freelancing, Google Ads, PPC, WordPress, Shopify
+- Behaviors / job titles if available: Small business owners, Marketing agency, Web developer
+- Keep countries tight (same Tier‑1 list as other AnodeH ads)
+
+---
 
 ## Setup reminder
 
 1. Campaign objective: **Sales**
-2. Ad setup: **Create ad** → **Single image or video**
-3. Destination: `https://anodeh.com`
-4. Before scaling spend, add a Meta Pixel with CompleteRegistration + Purchase events
+2. Ad setup: **Single image or video** → **Image**
+3. Separate ad sets for 1-website vs 10/20 (different offer + URL)
+4. Before scaling, add Meta Pixel CompleteRegistration + Purchase
