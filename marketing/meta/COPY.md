@@ -43,7 +43,7 @@ AnodeH scores invalid traffic â€” datacenter, VPN, repeat IPs, instant bounces â
 Short primary text (if Meta truncates):
 
 ```
-Google Ads click protection. AnodeH blocks invalid traffic and writes the exclusions so your budget stays on real buyers. First month half price.
+Google Ads click protection. AnodeH blocks invalid traffic and writes the exclusions so your budget stays on real buyers. Start with a 7-day free trial.
 ```
 
 **Website**
@@ -67,7 +67,7 @@ Subscribe
 **Description** (if the placement shows it)
 
 ```
-First month half price. Protect Search, Display, and Performance Max.
+7-day free trial. Protect Search, Display, and Performance Max.
 ```
 
 ## Setup reminder
