@@ -1,10 +1,17 @@
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
 import { execute, getDb, queryAll, queryOne } from "@/lib/db";
-import { mediaForTopic } from "@/lib/blog-media";
+import {
+  extractHeroImage,
+  mediaForTopic,
+  mediaForTopicUnique,
+  pickUniqueImage,
+  preferredNewsImage,
+  RECENT_UNIQUE_IMAGE_WINDOW,
+  replaceHeroImage,
+} from "@/lib/blog-media";
 import {
   findRelevantBlogNews,
   newsHashtags,
-  newsImage,
   newsSlugPart,
   newsTopicId,
   renderNewsBlogHtml,
@@ -128,9 +135,45 @@ type DraftFields = Omit<BlogPost, "emailed_at" | "published_at" | "rejected_at" 
   facebook_error: string;
 };
 
-function buildDraft(topic: BlogTopic, dayKey: string): DraftFields {
+async function usedHeroImages(opts?: { excludePostId?: string; recentLimit?: number }) {
+  const limit = opts?.recentLimit;
+  const rows = limit
+    ? await queryAll<{ id: string; body_html: string }>(
+        await getDb(),
+        `SELECT id, body_html FROM blog_posts
+         WHERE status != 'rejected'
+         ORDER BY COALESCE(NULLIF(published_at, 0), created_at) DESC, created_at DESC
+         LIMIT ?`,
+        [limit],
+      )
+    : await queryAll<{ id: string; body_html: string }>(
+        await getDb(),
+        `SELECT id, body_html FROM blog_posts WHERE status != 'rejected'`,
+      );
+
+  const used = new Set<string>();
+  for (const row of rows) {
+    if (opts?.excludePostId && row.id === opts.excludePostId) continue;
+    const image = extractHeroImage(row.body_html);
+    if (image) used.add(image);
+  }
+  return used;
+}
+
+/** Images that must stay unique across the most recent posts (default last 5). */
+async function blockedImagesForNewDraft(excludePostId?: string) {
+  const recent = await usedHeroImages({
+    excludePostId,
+    recentLimit: RECENT_UNIQUE_IMAGE_WINDOW,
+  });
+  const all = await usedHeroImages({ excludePostId });
+  // Prefer avoiding every prior image; always hard-block the recent window.
+  return { recent, all };
+}
+
+function buildDraft(topic: BlogTopic, dayKey: string, usedImages: Iterable<string>): DraftFields {
   const now = Math.floor(Date.now() / 1000);
-  const media = mediaForTopic(topic.id);
+  const media = mediaForTopicUnique(topic.id, usedImages);
   return {
     id: `blog_${randomBytes(8).toString("hex")}`,
     day_key: dayKey,
@@ -156,10 +199,11 @@ function buildDraft(topic: BlogTopic, dayKey: string): DraftFields {
   };
 }
 
-function buildNewsDraft(item: BlogNewsItem, dayKey: string): DraftFields {
+function buildNewsDraft(item: BlogNewsItem, dayKey: string, usedImages: Iterable<string>): DraftFields {
   const now = Math.floor(Date.now() / 1000);
   const tags = newsHashtags(item);
-  const image = newsImage(item);
+  const preferred = preferredNewsImage(item.title, item.summary);
+  const image = pickUniqueImage(preferred, usedImages);
   const title = `${item.title.replace(/\s+/g, " ").trim()} — what it means for click protection`;
   const description = `AnodeH take on ${item.source}: ${item.title}`.slice(0, 155);
   const summary = item.summary
@@ -198,14 +242,16 @@ async function usedNewsUrls() {
   return new Set(rows.map((row) => row.source_url));
 }
 
-async function composeDailyDraft(dayKey: string): Promise<DraftFields> {
+async function composeDailyDraft(dayKey: string, excludePostId?: string): Promise<DraftFields> {
+  const blocked = await blockedImagesForNewDraft(excludePostId);
+  const used = new Set([...blocked.recent, ...blocked.all]);
   try {
     const news = await findRelevantBlogNews({ usedUrls: await usedNewsUrls() });
-    if (news) return buildNewsDraft(news, dayKey);
+    if (news) return buildNewsDraft(news, dayKey, used);
   } catch (error) {
     console.error("Blog news watch failed; falling back to topic bank.", error);
   }
-  return buildDraft(pickTopicForDay(dayKey), dayKey);
+  return buildDraft(pickTopicForDay(dayKey), dayKey, used);
 }
 
 async function insertDraft(draft: DraftFields) {
@@ -352,10 +398,13 @@ export async function prepareExtraBlogDrafts(count: number, now = Date.now()) {
     slug?: string;
   }> = [];
 
+  const batchImages = new Set<string>();
   for (let i = 1; i <= safeCount; i++) {
     const dayKey = dayKeyOffset(i, now, BLOG_TZ);
     const existing = await getPostForDay(dayKey);
     if (existing) {
+      const existingImage = extractHeroImage(existing.body_html);
+      if (existingImage) batchImages.add(existingImage);
       if (existing.status === "draft" && existing.emailed_at === 0) {
         const mailed = await emailDraft(existing);
         results.push({
@@ -382,7 +431,10 @@ export async function prepareExtraBlogDrafts(count: number, now = Date.now()) {
 
     const topic = pickUnusedTopic(used, dayIndexSafe(dayKey) + i);
     used.add(topic.id);
-    const draft = buildDraft(topic, dayKey);
+    const blocked = await blockedImagesForNewDraft();
+    const draft = buildDraft(topic, dayKey, new Set([...blocked.recent, ...blocked.all, ...batchImages]));
+    const draftImage = extractHeroImage(draft.body_html);
+    if (draftImage) batchImages.add(draftImage);
     await insertDraft(draft);
     const mailed = await emailDraft(draft);
     results.push({
@@ -427,7 +479,7 @@ export async function prepareDailyBlogDraft(now = Date.now(), opts?: { forceRese
     await insertDraft(draft);
     post = draft;
   } else if (opts?.forceResend) {
-    const refreshed = await composeDailyDraft(dayKey);
+    const refreshed = await composeDailyDraft(dayKey, post.id);
     await refreshDraft(post.id, refreshed);
     post = { ...refreshed, id: post.id, emailed_at: 0 };
   }
@@ -469,6 +521,40 @@ export async function rejectBlogPost(postId: string) {
     postId,
   ]);
   return { ok: true as const, post: { ...post, status: "rejected" as const, rejected_at: rejectedAt }, already: false as const };
+}
+
+/** Reassign hero images so the newest posts (default last 5) never share an image. */
+export async function uniquifyRecentBlogImages(limit = RECENT_UNIQUE_IMAGE_WINDOW) {
+  const safeLimit = Math.max(1, Math.min(30, Math.floor(limit)));
+  const rows = await queryAll<BlogPost>(
+    await getDb(),
+    `SELECT * FROM blog_posts
+     WHERE status != 'rejected'
+     ORDER BY COALESCE(NULLIF(published_at, 0), created_at) DESC, created_at DESC
+     LIMIT ?`,
+    [safeLimit],
+  );
+
+  const assigned = new Set<string>();
+  const updated: Array<{ id: string; slug: string; image: string }> = [];
+
+  // Oldest within the window first so newer posts keep preferred art when possible.
+  for (const post of [...rows].reverse()) {
+    const preferred = post.topic_id.startsWith("news-")
+      ? preferredNewsImage(post.title, post.summary)
+      : mediaForTopic(post.topic_id);
+    const picked = pickUniqueImage(preferred, assigned);
+    assigned.add(picked.image);
+
+    const current = extractHeroImage(post.body_html);
+    if (current === picked.image) continue;
+
+    const bodyHtml = replaceHeroImage(post.body_html, picked.image, picked.imageAlt);
+    await execute(await getDb(), "UPDATE blog_posts SET body_html = ? WHERE id = ?", [bodyHtml, post.id]);
+    updated.push({ id: post.id, slug: post.slug, image: picked.image });
+  }
+
+  return { ok: true as const, checked: rows.length, updated };
 }
 
 export async function publishBlogPost(postId: string) {

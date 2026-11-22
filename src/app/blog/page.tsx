@@ -1,7 +1,7 @@
 import { Mark } from "@/components/Mark";
 import { getUser } from "@/lib/auth";
 import { listPublishedPosts } from "@/lib/blog";
-import { mediaForTopic } from "@/lib/blog-media";
+import { mediaForPost } from "@/lib/blog-media";
 import { pageMeta } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
@@ -39,7 +39,7 @@ export default async function BlogIndexPage() {
         ) : (
           <ul className="blog-list">
             {posts.map((post) => {
-              const media = mediaForTopic(post.topic_id);
+              const media = mediaForPost(post);
               return (
                 <li key={post.id}>
                   <a href={`/blog/${post.slug}`} className="blog-card-link">
