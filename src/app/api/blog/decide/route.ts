@@ -29,9 +29,5 @@ export async function GET(request: Request) {
     published: "1",
     slug: result.post.slug,
   });
-  if (result.facebook.error) params.set("fb", result.facebook.error);
-  else if (result.facebook.postId) params.set("fb", "posted");
-  else if (result.facebook.skipped) params.set("fb", "skipped");
-
   return NextResponse.redirect(`${SITE}/blog/review?${params.toString()}`);
 }

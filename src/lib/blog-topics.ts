@@ -1,3 +1,5 @@
+import { formatHashtagLine, mediaForTopic, renderHashtagsHtml } from "@/lib/blog-media";
+
 export type BlogSection = {
   heading: string;
   paragraphs: string[];
@@ -785,8 +787,15 @@ export function dayLabel(dayKey: string) {
   }).format(new Date(`${dayKey}T12:00:00Z`));
 }
 
-export function renderBlogHtml(topic: BlogTopic, dayKey: string) {
+export function renderBlogHtml(topic: BlogTopic, dayKey: string, options?: { imageUrl?: string; imageAlt?: string; tags?: string[] }) {
+  const media = mediaForTopic(topic.id);
+  const tags = options?.tags || media.tags;
+  const imageUrl = options?.imageUrl || media.image;
+  const imageAlt = options?.imageAlt || media.imageAlt;
+
   const parts = [
+    `<figure class="blog-hero"><img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(imageAlt)}" width="1600" height="900" /></figure>`,
+    renderHashtagsHtml(tags),
     `<p>${escapeHtml(topic.summary)}</p>`,
     `<p>This post is about how AnodeH protects domains from invalid Google Ads clicks and related threats (${escapeHtml(dayLabel(dayKey))}).</p>`,
   ];
@@ -801,13 +810,22 @@ export function renderBlogHtml(topic: BlogTopic, dayKey: string) {
   parts.push(
     `<h2>Start protecting a domain</h2>`,
     `<p>Create an AnodeH account, save the domain, paste the site tag, and enter the Google Ads customer ID you want watched. <a href="/register">Create an account</a> or read more on the <a href="/">AnodeH home page</a>.</p>`,
+    renderHashtagsHtml(tags),
   );
 
   return parts.join("\n");
 }
 
-export function renderBlogText(topic: BlogTopic, dayKey: string) {
-  const lines = [topic.summary, "", `This post is about how AnodeH protects domains from invalid Google Ads clicks and related threats (${dayLabel(dayKey)}).`, ""];
+export function renderBlogText(topic: BlogTopic, dayKey: string, options?: { tags?: string[] }) {
+  const tags = options?.tags || mediaForTopic(topic.id).tags;
+  const lines = [
+    formatHashtagLine(tags),
+    "",
+    topic.summary,
+    "",
+    `This post is about how AnodeH protects domains from invalid Google Ads clicks and related threats (${dayLabel(dayKey)}).`,
+    "",
+  ];
   for (const section of topic.sections) {
     lines.push(section.heading, "");
     for (const paragraph of section.paragraphs) {
@@ -818,13 +836,12 @@ export function renderBlogText(topic: BlogTopic, dayKey: string) {
     "Start protecting a domain",
     "",
     "Create an AnodeH account, save the domain, paste the site tag, and enter the Google Ads customer ID you want watched.",
+    "",
+    formatHashtagLine(tags),
   );
   return lines.join("\n");
 }
 
-export function facebookCaption(topic: BlogTopic, url: string) {
-  return `${topic.title}\n\n${topic.summary}\n\nRead more: ${url}`;
-}
 
 function escapeHtml(value: string) {
   return value
