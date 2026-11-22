@@ -28,6 +28,7 @@ import {
   slugForDay,
   type BlogTopic,
 } from "@/lib/blog-topics";
+import { whatsappStatusEmailBlock } from "@/lib/blog-whatsapp";
 import { SUPPORT_EMAIL } from "@/lib/email-reports";
 import { notifyPublishedUrls } from "@/lib/indexing";
 import { escapeHtml, mailConfigured, sendMail } from "@/lib/mail";
@@ -308,6 +309,7 @@ export function draftApprovalLetter(post: BlogPost) {
   const approve = approveUrl(post.id);
   const reject = rejectUrl(post.id);
   const media = mediaForTopic(post.topic_id);
+  const status = whatsappStatusEmailBlock(post);
   const subject = `Approve AnodeH blog draft: ${post.title}`;
   const bodyHtml = post.body_html.replaceAll('src="/blog/', `src="${SITE}/blog/`);
   const text = [
@@ -324,7 +326,9 @@ export function draftApprovalLetter(post: BlogPost) {
     approve ? `Approve and publish: ${approve}` : "Approve link unavailable — set CRON_SECRET or BLOG_APPROVAL_SECRET.",
     reject ? `Reject: ${reject}` : "",
     "",
-    "Nothing is public until you approve. After it is live, use the share button on the post to share it (including to Facebook).",
+    status.text,
+    "",
+    "Nothing is public until you approve. After it is live, the review page and the post share buttons include this WhatsApp Status pack (and Facebook).",
     "",
     "AnodeH",
   ]
@@ -338,6 +342,7 @@ Tags: ${escapeHtml(media.tags.join(" "))}</p>
 <hr />
 ${bodyHtml}
 <hr />
+${status.html}
 <p><a href="${escapeHtml(read)}">Read on the site</a></p>
 <p>${
     approve
@@ -345,10 +350,10 @@ ${bodyHtml}
       : "Approve link unavailable — set CRON_SECRET or BLOG_APPROVAL_SECRET."
   }</p>
 ${reject ? `<p><a href="${escapeHtml(reject)}">Reject this draft</a></p>` : ""}
-<p>Nothing is public until you approve. After it is live, use the share button on the post to share it (including to Facebook).</p>
+<p>Nothing is public until you approve. After it is live, the review page and the post share buttons include this WhatsApp Status pack (and Facebook).</p>
 <p>AnodeH</p>`;
 
-  return { subject, text, html, to: blogApprovalEmail() };
+  return { subject, text, html, to: blogApprovalEmail(), whatsappStatus: status.pack };
 }
 
 async function usedTopicIds() {
