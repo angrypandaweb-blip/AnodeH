@@ -76,6 +76,7 @@ export default async function LandingPage() {
           <a href="#preview">Dashboard</a>
           <a href="#threats">Threats</a>
           <a href="#spam">Spam email</a>
+          <a href="/blog">Blog</a>
           <a href="#pricing">Pricing</a>
           <a href={user ? startHref : "/login"}>{user ? "Account" : "Log in"}</a>
           <a className="btn" href={startHref}>{startLabel}</a>
@@ -315,6 +316,7 @@ export default async function LandingPage() {
         <a href="/privacy">Privacy</a>
         <a href="/terms">Terms</a>
         <a href="/support">Support</a>
+        <a href="/blog">Blog</a>
       </footer>
     </div>
   );

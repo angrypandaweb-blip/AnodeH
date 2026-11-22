@@ -512,6 +512,21 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 .legal h2 { font-size: 20px; margin: 28px 0 8px; }
 .legal p, .legal li { color: var(--cc-muted); }
 .legal a { color: var(--cc-navy); }
+.blog-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 18px; }
+.blog-list a {
+  display: grid;
+  gap: 6px;
+  text-decoration: none;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--cc-line);
+}
+.blog-list a strong { color: var(--cc-ink); font-size: 20px; letter-spacing: -0.02em; }
+.blog-list a span { color: var(--cc-muted); }
+.blog-post .lede { max-width: 42rem; }
+.blog-body { margin-top: 28px; }
+.blog-body h2 { font-size: 22px; margin: 28px 0 8px; color: var(--cc-ink); }
+.blog-body p { color: var(--cc-muted); margin: 0 0 12px; }
+.blog-review-actions { display: flex; gap: 12px; flex-wrap: wrap; margin: 18px 0 8px; }
 
 .sr-only {
   position: absolute;

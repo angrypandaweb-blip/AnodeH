@@ -269,6 +269,27 @@ async function migrate(db: Client) {
   await addColumn(db, "google_ads", "currency", "TEXT NOT NULL DEFAULT ''");
   await addColumn(db, "spam_messages", "alerted_at", "INTEGER NOT NULL DEFAULT 0");
   await addColumn(db, "spam_messages", "junked_at", "INTEGER NOT NULL DEFAULT 0");
+  await db.executeMultiple(`
+    CREATE TABLE IF NOT EXISTS blog_posts (
+      id TEXT PRIMARY KEY,
+      day_key TEXT NOT NULL UNIQUE,
+      slug TEXT NOT NULL UNIQUE,
+      topic_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      summary TEXT NOT NULL,
+      body_html TEXT NOT NULL,
+      body_text TEXT NOT NULL,
+      status TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      emailed_at INTEGER NOT NULL DEFAULT 0,
+      published_at INTEGER NOT NULL DEFAULT 0,
+      rejected_at INTEGER NOT NULL DEFAULT 0,
+      facebook_post_id TEXT NOT NULL DEFAULT '',
+      facebook_error TEXT NOT NULL DEFAULT ''
+    );
+    CREATE INDEX IF NOT EXISTS blog_posts_status_published ON blog_posts (status, published_at DESC);
+  `);
 
   const unsigned = await queryAll<{ id: string }>(db, "SELECT id FROM users WHERE domain_key = ''");
   for (const row of unsigned) {
