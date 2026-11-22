@@ -406,7 +406,9 @@ export async function prepareExtraBlogDrafts(count: number, now = Date.now(), op
   }> = [];
 
   const batchImages = new Set<string>();
-  for (let i = 1; i <= safeCount; i++) {
+  let made = 0;
+  // Scan far enough ahead that pre-scheduled published days do not block new drafts.
+  for (let i = 1; made < safeCount && i <= 60; i++) {
     const dayKey = dayKeyOffset(i, now, BLOG_TZ);
     const existing = await getPostForDay(dayKey);
     if (existing) {
@@ -423,7 +425,10 @@ export async function prepareExtraBlogDrafts(count: number, now = Date.now(), op
           title: existing.title,
           slug: existing.slug,
         });
-        if (mailed.ok) created.push({ ...existing, emailed_at: mailed.emailedAt });
+        if (mailed.ok) {
+          created.push({ ...existing, emailed_at: mailed.emailedAt });
+          made += 1;
+        }
       } else {
         results.push({
           dayKey,
@@ -454,10 +459,11 @@ export async function prepareExtraBlogDrafts(count: number, now = Date.now(), op
       slug: draft.slug,
     });
     if (mailed.ok) created.push({ ...draft, emailed_at: mailed.emailedAt });
+    made += 1;
   }
 
   return {
-    ok: results.every((row) => row.emailed || row.reason === "already_emailed" || row.reason === "already_published"),
+    ok: created.length === safeCount,
     count: safeCount,
     emailed: created.length,
     results,
