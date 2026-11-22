@@ -1,4 +1,5 @@
 import { createHash } from "crypto";
+import { preferredNewsImage } from "@/lib/blog-media";
 
 export type BlogNewsItem = {
   id: string;
@@ -222,17 +223,8 @@ export function newsHashtags(item: BlogNewsItem) {
 }
 
 export function newsImage(item: BlogNewsItem) {
-  const hay = `${item.title} ${item.summary}`.toLowerCase();
-  if (hay.includes("phish") || hay.includes("spam") || hay.includes("email")) {
-    return { image: "/blog/blog-hero-email.jpg", imageAlt: "Inbox threats and email security news" };
-  }
-  if (hay.includes("vpn") || hay.includes("proxy") || hay.includes("bot")) {
-    return { image: "/blog/blog-hero-vpn.jpg", imageAlt: "Network and bot traffic news" };
-  }
-  if (hay.includes("datacenter") || hay.includes("server") || hay.includes("fraud")) {
-    return { image: "/blog/blog-hero-datacenter.jpg", imageAlt: "Infrastructure behind invalid ad traffic" };
-  }
-  return { image: "/blog/blog-hero-dashboard.jpg", imageAlt: "Ads and click protection industry news" };
+  // Unique news heroes; draft creation still runs these through pickUniqueImage().
+  return preferredNewsImage(item.title, item.summary);
 }
 
 function escapeHtml(value: string) {

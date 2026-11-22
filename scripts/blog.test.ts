@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { mediaForTopic } from "../src/lib/blog-media";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import {
+  __test as mediaTest,
+  extractHeroImage,
+  mediaForTopic,
+  pickUniqueImage,
+  preferredNewsImage,
+  RECENT_UNIQUE_IMAGE_WINDOW,
+  replaceHeroImage,
+} from "../src/lib/blog-media";
 import {
   dayIndex,
   dayKeyFromMs,
@@ -10,6 +18,7 @@ import {
   renderBlogText,
   slugForDay,
   topicCount,
+  BLOG_TOPICS,
 } from "../src/lib/blog-topics";
 import {
   approveUrl,
@@ -21,6 +30,7 @@ import {
 } from "../src/lib/blog";
 
 assert.ok(topicCount() >= 20, "need enough rotating topics");
+assert.equal(RECENT_UNIQUE_IMAGE_WINDOW, 5);
 
 const dayKey = dayKeyFromMs(Date.parse("2026-11-22T08:00:00Z"), "Africa/Johannesburg");
 assert.equal(dayKey, "2026-11-22");
@@ -36,6 +46,34 @@ const media = mediaForTopic(topic.id);
 assert.ok(media.tags.every((tag) => tag.startsWith("#")));
 assert.ok(media.tags.includes("#AnodeH"));
 assert.match(media.image, /^\/blog\/.+\.jpe?g$/);
+
+const topicImages = BLOG_TOPICS.map((row) => mediaForTopic(row.id).image);
+assert.equal(new Set(topicImages).size, topicImages.length, "each topic must have a unique hero image");
+for (const image of topicImages) {
+  assert.equal(existsSync(`public${image}`), true, `missing ${image}`);
+}
+
+const used = new Set<string>();
+const recentFive = BLOG_TOPICS.slice(0, 5).map((row) => {
+  const picked = pickUniqueImage(mediaForTopic(row.id), used);
+  used.add(picked.image);
+  return picked.image;
+});
+assert.equal(new Set(recentFive).size, 5, "last-five window must stay unique");
+
+const taken = mediaForTopic("daily-report-email").image;
+const fallbackPick = pickUniqueImage(mediaForTopic("daily-report-email"), [taken]);
+assert.notEqual(fallbackPick.image, taken);
+
+const newsPref = preferredNewsImage("Google Ads invalid traffic bot update", "fraud bots");
+assert.match(newsPref.image, /blog-hero-news-/);
+
+const sampleHtml = renderBlogHtml(topic, dayKey, { imageUrl: media.image, imageAlt: media.imageAlt });
+assert.equal(extractHeroImage(sampleHtml), media.image);
+const swapped = replaceHeroImage(sampleHtml, "/blog/blog-hero-news-ads.jpg", "News");
+assert.equal(extractHeroImage(swapped), "/blog/blog-hero-news-ads.jpg");
+assert.ok(mediaTest.BLOG_HERO_POOL.length >= topicCount());
+assert.ok(readdirSync("public/blog").filter((name) => name.endsWith(".jpg")).length >= topicCount());
 
 const html = renderBlogHtml(topic, dayKey);
 assert.match(html, /<h2>/);

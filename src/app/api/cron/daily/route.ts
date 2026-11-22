@@ -1,4 +1,4 @@
-import { prepareDailyBlogDraft, prepareExtraBlogDrafts } from "@/lib/blog";
+import { prepareDailyBlogDraft, prepareExtraBlogDrafts, uniquifyRecentBlogImages } from "@/lib/blog";
 import { runDailyMail } from "@/lib/email-reports";
 import { notifyDailySitemap } from "@/lib/indexing";
 import { SPAM_SYNC_INTERVAL_SEC, syncAllSpamMailboxes } from "@/lib/spam-mail";
@@ -21,5 +21,6 @@ export async function GET(request: Request) {
     notifyDailySitemap(),
   ]);
   const extras = extraBlogs > 0 ? await prepareExtraBlogDrafts(extraBlogs) : null;
-  return Response.json({ ...result, spam, blog, sitemap, extras }, { status: result.ok ? 200 : 503 });
+  const blogImages = await uniquifyRecentBlogImages();
+  return Response.json({ ...result, spam, blog, sitemap, extras, blogImages }, { status: result.ok ? 200 : 503 });
 }

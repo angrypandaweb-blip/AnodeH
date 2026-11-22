@@ -4,7 +4,7 @@ import { BlogShare } from "@/components/BlogShare";
 import { Mark } from "@/components/Mark";
 import { getUser } from "@/lib/auth";
 import { getBlogPostBySlug } from "@/lib/blog";
-import { mediaForTopic } from "@/lib/blog-media";
+import { mediaForPost } from "@/lib/blog-media";
 import { SITE } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +17,7 @@ export async function generateMetadata({
   const { slug } = await params;
   const post = await getBlogPostBySlug(slug);
   if (!post || post.status !== "published") return { robots: { index: false, follow: false } };
-  const media = mediaForTopic(post.topic_id);
+  const media = mediaForPost(post);
   const titled = `${post.title} · AnodeH`;
   const image = `${SITE}${media.image}`;
   return {
@@ -48,7 +48,7 @@ export default async function BlogPostPage({
   const [user, post] = await Promise.all([getUser(), getBlogPostBySlug(slug)]);
   if (!post || post.status !== "published") notFound();
 
-  const media = mediaForTopic(post.topic_id);
+  const media = mediaForPost(post);
   const published = post.published_at
     ? new Intl.DateTimeFormat("en-GB", {
         day: "numeric",
