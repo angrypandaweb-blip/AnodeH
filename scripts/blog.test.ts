@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { mediaForTopic } from "../src/lib/blog-media";
 import {
   dayIndex,
   dayKeyFromMs,
@@ -28,13 +29,21 @@ assert.equal(pickTopicForDay(dayKey).id, topic.id);
 assert.equal(slugForDay(dayKey, topic), `${dayKey}-${topic.id}`);
 assert.equal(dayIndex(dayKey), dayIndex("2026-11-22"));
 
+const media = mediaForTopic(topic.id);
+assert.ok(media.tags.every((tag) => tag.startsWith("#")));
+assert.ok(media.tags.includes("#AnodeH"));
+assert.match(media.image, /^\/blog\/.+\.jpe?g$/);
+
 const html = renderBlogHtml(topic, dayKey);
 assert.match(html, /<h2>/);
 assert.match(html, /AnodeH/);
+assert.match(html, /blog-hero/);
+assert.match(html, /#AnodeH/);
 assert.doesNotMatch(html, /<script/i);
 
 const text = renderBlogText(topic, dayKey);
 assert.match(text, /AnodeH/);
+assert.match(text, /#GoogleAds/);
 assert.ok(text.includes(topic.sections[0]!.heading));
 
 process.env.CRON_SECRET = "test-blog-secret";
@@ -70,6 +79,7 @@ const letter = draftApprovalLetter({
   rejected_at: 0,
   facebook_post_id: "",
   facebook_error: "",
+  source_url: "",
 });
 assert.match(letter.subject, /Approve AnodeH blog draft/);
 assert.match(letter.text, /Nothing is public until you approve/);
@@ -84,5 +94,7 @@ assert.match(share, /Copy link/);
 
 const publish = readFileSync("src/lib/blog.ts", "utf8");
 assert.doesNotMatch(publish, /postToFacebookPage/);
+assert.match(publish, /findRelevantBlogNews/);
 
 console.log("blog tests passed");
+

@@ -6,6 +6,7 @@ import {
   rejectUrl,
   verifyBlogActionToken,
 } from "@/lib/blog";
+import { mediaForTopic } from "@/lib/blog-media";
 import { pageMeta } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
@@ -111,6 +112,13 @@ export default async function BlogReviewPage({
         <p className="kicker">Draft · {post.day_key} · {post.status}</p>
         <h1>{post.title}</h1>
         <p className="lede" style={{ marginLeft: 0 }}>{post.summary}</p>
+        <p className="blog-tags">
+          {mediaForTopic(post.topic_id).tags.map((tag) => (
+            <span className="blog-tag" key={tag}>
+              {tag}
+            </span>
+          ))}
+        </p>
         {post.status === "draft" ? (
           <div className="blog-review-actions">
             {approve ? (

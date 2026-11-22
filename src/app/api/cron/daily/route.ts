@@ -10,10 +10,11 @@ export async function GET(request: Request) {
   if (!secret || header !== `Bearer ${secret}`) {
     return Response.json({ error: "Unauthorized." }, { status: 401 });
   }
+  const forceBlog = new URL(request.url).searchParams.get("forceBlog") === "1";
   const [result, spam, blog] = await Promise.all([
     runDailyMail(),
     syncAllSpamMailboxes({ maxAgeSec: SPAM_SYNC_INTERVAL_SEC }),
-    prepareDailyBlogDraft(),
+    prepareDailyBlogDraft(Date.now(), { forceResend: forceBlog }),
   ]);
   return Response.json({ ...result, spam, blog }, { status: result.ok ? 200 : 503 });
 }

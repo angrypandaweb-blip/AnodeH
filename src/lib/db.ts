@@ -290,6 +290,8 @@ async function migrate(db: Client) {
     );
     CREATE INDEX IF NOT EXISTS blog_posts_status_published ON blog_posts (status, published_at DESC);
   `);
+  await addColumn(db, "blog_posts", "source_url", "TEXT NOT NULL DEFAULT ''");
+  await execute(db, "CREATE INDEX IF NOT EXISTS blog_posts_source_url ON blog_posts (source_url)");
 
   const unsigned = await queryAll<{ id: string }>(db, "SELECT id FROM users WHERE domain_key = ''");
   for (const row of unsigned) {

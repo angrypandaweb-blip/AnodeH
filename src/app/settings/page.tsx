@@ -193,7 +193,7 @@ export default async function SettingsPage({
         <h2 style={{ marginTop: 10 }}>Receipts and the morning report</h2>
         <p className="note">
           {mailConfigured()
-            ? "A receipt goes out when PayPal confirms a payment. A click report for the previous day goes out every morning at 7:00am in your time zone. On the current host it can arrive any time in the following hour. The daily blog draft is emailed for approval before it is published."
+            ? "A receipt goes out when PayPal confirms a payment. A click report for the previous day goes out every morning at 7:00am in your time zone. On the current host it can arrive any time in the following hour. The daily blog draft is emailed for approval before it is published. Drafts prefer relevant industry news about click fraud, Google Ads traffic quality, and phishing when a fresh story is available."
             : "Receipts, the daily click report, and blog draft approval are ready. Add RESEND_API_KEY, MAIL_FROM, and CRON_SECRET on Vercel, then redeploy, before those emails can leave."}
         </p>
         {mailError ? <p className="banner warn">{mailError}</p> : null}

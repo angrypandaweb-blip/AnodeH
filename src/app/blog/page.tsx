@@ -1,6 +1,7 @@
 import { Mark } from "@/components/Mark";
 import { getUser } from "@/lib/auth";
 import { listPublishedPosts } from "@/lib/blog";
+import { mediaForTopic } from "@/lib/blog-media";
 import { pageMeta } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
@@ -37,14 +38,25 @@ export default async function BlogIndexPage() {
           <p className="note">No published posts yet. Drafts are emailed for approval before they go live.</p>
         ) : (
           <ul className="blog-list">
-            {posts.map((post) => (
-              <li key={post.id}>
-                <a href={`/blog/${post.slug}`}>
-                  <strong>{post.title}</strong>
-                  <span>{post.summary}</span>
-                </a>
-              </li>
-            ))}
+            {posts.map((post) => {
+              const media = mediaForTopic(post.topic_id);
+              return (
+                <li key={post.id}>
+                  <a href={`/blog/${post.slug}`} className="blog-card-link">
+                    <img src={media.image} alt={media.imageAlt} width={640} height={360} />
+                    <strong>{post.title}</strong>
+                    <span>{post.summary}</span>
+                    <span className="blog-tags">
+                      {media.tags.slice(0, 4).map((tag) => (
+                        <span className="blog-tag" key={tag}>
+                          {tag}
+                        </span>
+                      ))}
+                    </span>
+                  </a>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>

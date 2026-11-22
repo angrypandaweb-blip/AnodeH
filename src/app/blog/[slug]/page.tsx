@@ -4,6 +4,7 @@ import { BlogShare } from "@/components/BlogShare";
 import { Mark } from "@/components/Mark";
 import { getUser } from "@/lib/auth";
 import { getBlogPostBySlug } from "@/lib/blog";
+import { mediaForTopic } from "@/lib/blog-media";
 import { SITE } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +17,9 @@ export async function generateMetadata({
   const { slug } = await params;
   const post = await getBlogPostBySlug(slug);
   if (!post || post.status !== "published") return { robots: { index: false, follow: false } };
+  const media = mediaForTopic(post.topic_id);
   const titled = `${post.title} · AnodeH`;
+  const image = `${SITE}${media.image}`;
   return {
     title: post.title,
     description: post.description,
@@ -26,10 +29,12 @@ export async function generateMetadata({
       description: post.description,
       url: `/blog/${post.slug}`,
       type: "article",
+      images: [{ url: image, width: 1600, height: 900, alt: media.imageAlt }],
     },
     twitter: {
       title: titled,
       description: post.description,
+      images: [image],
     },
   };
 }
@@ -43,6 +48,7 @@ export default async function BlogPostPage({
   const [user, post] = await Promise.all([getUser(), getBlogPostBySlug(slug)]);
   if (!post || post.status !== "published") notFound();
 
+  const media = mediaForTopic(post.topic_id);
   const published = post.published_at
     ? new Intl.DateTimeFormat("en-GB", {
         day: "numeric",
@@ -56,6 +62,8 @@ export default async function BlogPostPage({
     "@type": "BlogPosting",
     headline: post.title,
     description: post.description,
+    image: `${SITE}${media.image}`,
+    keywords: media.tags.map((tag) => tag.replace(/^#/, "")).join(", "),
     datePublished: new Date(post.published_at * 1000).toISOString(),
     author: { "@type": "Organization", name: "AnodeH", url: SITE },
     publisher: { "@type": "Organization", name: "AnodeH", url: SITE },
@@ -84,6 +92,13 @@ export default async function BlogPostPage({
         </p>
         <h1>{post.title}</h1>
         <p className="lede" style={{ marginLeft: 0 }}>{post.summary}</p>
+        <p className="blog-tags">
+          {media.tags.map((tag) => (
+            <span className="blog-tag" key={tag}>
+              {tag}
+            </span>
+          ))}
+        </p>
         <BlogShare url={`${SITE}/blog/${post.slug}`} title={post.title} />
         <div className="blog-body" dangerouslySetInnerHTML={{ __html: post.body_html }} />
         <BlogShare url={`${SITE}/blog/${post.slug}`} title={post.title} />

@@ -1,5 +1,16 @@
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
 import { execute, getDb, queryAll, queryOne } from "@/lib/db";
+import { mediaForTopic } from "@/lib/blog-media";
+import {
+  findRelevantBlogNews,
+  newsHashtags,
+  newsImage,
+  newsSlugPart,
+  newsTopicId,
+  renderNewsBlogHtml,
+  renderNewsBlogText,
+  type BlogNewsItem,
+} from "@/lib/blog-news";
 import {
   dayKeyFromMs,
   pickTopicForDay,
@@ -31,6 +42,7 @@ export type BlogPost = {
   rejected_at: number;
   facebook_post_id: string;
   facebook_error: string;
+  source_url: string;
 };
 
 const BLOG_TZ = "Africa/Johannesburg";
@@ -105,14 +117,17 @@ export async function getPostForDay(dayKey: string) {
   return queryOne<BlogPost>(await getDb(), "SELECT * FROM blog_posts WHERE day_key = ?", [dayKey]);
 }
 
-function buildDraft(topic: BlogTopic, dayKey: string): Omit<BlogPost, "emailed_at" | "published_at" | "rejected_at" | "facebook_post_id" | "facebook_error"> & {
+type DraftFields = Omit<BlogPost, "emailed_at" | "published_at" | "rejected_at" | "facebook_post_id" | "facebook_error"> & {
   emailed_at: number;
   published_at: number;
   rejected_at: number;
   facebook_post_id: string;
   facebook_error: string;
-} {
+};
+
+function buildDraft(topic: BlogTopic, dayKey: string): DraftFields {
   const now = Math.floor(Date.now() / 1000);
+  const media = mediaForTopic(topic.id);
   return {
     id: `blog_${randomBytes(8).toString("hex")}`,
     day_key: dayKey,
@@ -121,8 +136,12 @@ function buildDraft(topic: BlogTopic, dayKey: string): Omit<BlogPost, "emailed_a
     title: topic.title,
     description: topic.description,
     summary: topic.summary,
-    body_html: renderBlogHtml(topic, dayKey),
-    body_text: renderBlogText(topic, dayKey),
+    body_html: renderBlogHtml(topic, dayKey, {
+      imageUrl: media.image,
+      imageAlt: media.imageAlt,
+      tags: media.tags,
+    }),
+    body_text: renderBlogText(topic, dayKey, { tags: media.tags }),
     status: "draft",
     created_at: now,
     emailed_at: 0,
@@ -130,20 +149,125 @@ function buildDraft(topic: BlogTopic, dayKey: string): Omit<BlogPost, "emailed_a
     rejected_at: 0,
     facebook_post_id: "",
     facebook_error: "",
+    source_url: "",
   };
+}
+
+function buildNewsDraft(item: BlogNewsItem, dayKey: string): DraftFields {
+  const now = Math.floor(Date.now() / 1000);
+  const tags = newsHashtags(item);
+  const image = newsImage(item);
+  const title = `${item.title.replace(/\s+/g, " ").trim()} — what it means for click protection`;
+  const description = `AnodeH take on ${item.source}: ${item.title}`.slice(0, 155);
+  const summary = item.summary
+    ? `News from ${item.source}: ${item.summary}`.slice(0, 220)
+    : `News from ${item.source} about traffic quality and domain protection.`;
+  return {
+    id: `blog_${randomBytes(8).toString("hex")}`,
+    day_key: dayKey,
+    slug: `${dayKey}-${newsSlugPart(item)}`,
+    topic_id: newsTopicId(item),
+    title: title.slice(0, 120),
+    description,
+    summary,
+    body_html: renderNewsBlogHtml(item, dayKey, {
+      imageUrl: image.image,
+      imageAlt: image.imageAlt,
+      tags,
+    }),
+    body_text: renderNewsBlogText(item, dayKey, tags),
+    status: "draft",
+    created_at: now,
+    emailed_at: 0,
+    published_at: 0,
+    rejected_at: 0,
+    facebook_post_id: "",
+    facebook_error: "",
+    source_url: item.url,
+  };
+}
+
+async function usedNewsUrls() {
+  const rows = await queryAll<{ source_url: string }>(
+    await getDb(),
+    "SELECT source_url FROM blog_posts WHERE source_url != ''",
+  );
+  return new Set(rows.map((row) => row.source_url));
+}
+
+async function composeDailyDraft(dayKey: string): Promise<DraftFields> {
+  try {
+    const news = await findRelevantBlogNews({ usedUrls: await usedNewsUrls() });
+    if (news) return buildNewsDraft(news, dayKey);
+  } catch (error) {
+    console.error("Blog news watch failed; falling back to topic bank.", error);
+  }
+  return buildDraft(pickTopicForDay(dayKey), dayKey);
+}
+
+async function insertDraft(draft: DraftFields) {
+  await execute(
+    await getDb(),
+    `INSERT INTO blog_posts (
+      id, day_key, slug, topic_id, title, description, summary, body_html, body_text,
+      status, created_at, emailed_at, published_at, rejected_at, facebook_post_id, facebook_error, source_url
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      draft.id,
+      draft.day_key,
+      draft.slug,
+      draft.topic_id,
+      draft.title,
+      draft.description,
+      draft.summary,
+      draft.body_html,
+      draft.body_text,
+      draft.status,
+      draft.created_at,
+      draft.emailed_at,
+      draft.published_at,
+      draft.rejected_at,
+      draft.facebook_post_id,
+      draft.facebook_error,
+      draft.source_url,
+    ],
+  );
+}
+
+async function refreshDraft(postId: string, draft: DraftFields) {
+  await execute(
+    await getDb(),
+    `UPDATE blog_posts
+     SET title = ?, description = ?, summary = ?, body_html = ?, body_text = ?, topic_id = ?, slug = ?, source_url = ?, emailed_at = 0
+     WHERE id = ?`,
+    [
+      draft.title,
+      draft.description,
+      draft.summary,
+      draft.body_html,
+      draft.body_text,
+      draft.topic_id,
+      draft.slug,
+      draft.source_url,
+      postId,
+    ],
+  );
 }
 
 export function draftApprovalLetter(post: BlogPost) {
   const read = reviewUrl(post.id);
   const approve = approveUrl(post.id);
   const reject = rejectUrl(post.id);
+  const media = mediaForTopic(post.topic_id);
   const subject = `Approve AnodeH blog draft: ${post.title}`;
+  const bodyHtml = post.body_html.replaceAll('src="/blog/', `src="${SITE}/blog/`);
   const text = [
     "A daily AnodeH blog draft is ready for your review.",
     "",
     `Title: ${post.title}`,
     `Day: ${post.day_key}`,
     `Slug: ${post.slug}`,
+    `Tags: ${media.tags.join(" ")}`,
     "",
     post.body_text,
     "",
@@ -160,9 +284,10 @@ export function draftApprovalLetter(post: BlogPost) {
 
   const html = `<p>A daily AnodeH blog draft is ready for your review.</p>
 <p><strong>${escapeHtml(post.title)}</strong><br>
-Day: ${escapeHtml(post.day_key)} · Slug: <code>${escapeHtml(post.slug)}</code></p>
+Day: ${escapeHtml(post.day_key)} · Slug: <code>${escapeHtml(post.slug)}</code><br>
+Tags: ${escapeHtml(media.tags.join(" "))}</p>
 <hr />
-${post.body_html}
+${bodyHtml}
 <hr />
 <p><a href="${escapeHtml(read)}">Read on the site</a></p>
 <p>${
@@ -178,7 +303,7 @@ ${reject ? `<p><a href="${escapeHtml(reject)}">Reject this draft</a></p>` : ""}
 }
 
 /** Create today's draft (if missing) and email it for approval. Does not publish. */
-export async function prepareDailyBlogDraft(now = Date.now()) {
+export async function prepareDailyBlogDraft(now = Date.now(), opts?: { forceResend?: boolean }) {
   const dayKey = dayKeyFromMs(now, BLOG_TZ);
   const existing = await getPostForDay(dayKey);
   if (existing?.status === "published") {
@@ -190,37 +315,16 @@ export async function prepareDailyBlogDraft(now = Date.now()) {
 
   let post = existing;
   if (!post) {
-    const topic = pickTopicForDay(dayKey);
-    const draft = buildDraft(topic, dayKey);
-    await execute(
-      await getDb(),
-      `INSERT INTO blog_posts (
-        id, day_key, slug, topic_id, title, description, summary, body_html, body_text,
-        status, created_at, emailed_at, published_at, rejected_at, facebook_post_id, facebook_error
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        draft.id,
-        draft.day_key,
-        draft.slug,
-        draft.topic_id,
-        draft.title,
-        draft.description,
-        draft.summary,
-        draft.body_html,
-        draft.body_text,
-        draft.status,
-        draft.created_at,
-        draft.emailed_at,
-        draft.published_at,
-        draft.rejected_at,
-        draft.facebook_post_id,
-        draft.facebook_error,
-      ],
-    );
+    const draft = await composeDailyDraft(dayKey);
+    await insertDraft(draft);
     post = draft;
+  } else if (opts?.forceResend) {
+    const refreshed = await composeDailyDraft(dayKey);
+    await refreshDraft(post.id, refreshed);
+    post = { ...refreshed, id: post.id, emailed_at: 0 };
   }
 
-  if (post.emailed_at > 0) {
+  if (post.emailed_at > 0 && !opts?.forceResend) {
     return { ok: true as const, dayKey, post, emailed: false, reason: "already_emailed" as const };
   }
 
