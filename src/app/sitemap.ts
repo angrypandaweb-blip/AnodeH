@@ -2,6 +2,8 @@ import type { MetadataRoute } from "next";
 import { listPublishedPosts } from "@/lib/blog";
 import { searchPages, SITE } from "@/lib/seo";
 
+export const dynamic = "force-dynamic";
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const pages = searchPages.map((page) => ({
     url: page.path === "/" ? `${SITE}/` : `${SITE}${page.path}`,
