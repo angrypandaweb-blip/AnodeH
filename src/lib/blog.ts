@@ -12,7 +12,9 @@ import {
   type BlogNewsItem,
 } from "@/lib/blog-news";
 import {
+  BLOG_TOPICS,
   dayKeyFromMs,
+  dayKeyOffset,
   pickTopicForDay,
   renderBlogHtml,
   renderBlogText,
@@ -303,6 +305,111 @@ ${reject ? `<p><a href="${escapeHtml(reject)}">Reject this draft</a></p>` : ""}
   return { subject, text, html, to: blogApprovalEmail() };
 }
 
+async function usedTopicIds() {
+  const rows = await queryAll<{ topic_id: string }>(await getDb(), "SELECT topic_id FROM blog_posts");
+  return new Set(rows.map((row) => row.topic_id));
+}
+
+function pickUnusedTopic(used: Set<string>, seed: number): BlogTopic {
+  for (let offset = 0; offset < BLOG_TOPICS.length; offset++) {
+    const topic = BLOG_TOPICS[(seed + offset) % BLOG_TOPICS.length]!;
+    if (!used.has(topic.id) && !used.has(`news-${topic.id}`)) return topic;
+  }
+  return pickTopicForDay(dayKeyOffset(seed));
+}
+
+async function emailDraft(post: BlogPost) {
+  if (!mailConfigured()) {
+    return { ok: false as const, error: "Add RESEND_API_KEY and MAIL_FROM, then redeploy.", reason: "mail_not_configured" as const };
+  }
+  if (!approvalSecret()) {
+    return {
+      ok: false as const,
+      error: "Add CRON_SECRET or BLOG_APPROVAL_SECRET, then redeploy.",
+      reason: "approval_secret_missing" as const,
+    };
+  }
+  const letter = draftApprovalLetter(post);
+  const sent = await sendMail(letter.to, letter.subject, letter.text, letter.html);
+  if (!sent.ok) return { ok: false as const, error: sent.error, reason: "mail_failed" as const, to: letter.to };
+  const emailedAt = Math.floor(Date.now() / 1000);
+  await execute(await getDb(), "UPDATE blog_posts SET emailed_at = ? WHERE id = ?", [emailedAt, post.id]);
+  return { ok: true as const, emailedAt, to: letter.to, reason: "emailed" as const };
+}
+
+/** Create N extra drafts on upcoming day keys and email each for approval. */
+export async function prepareExtraBlogDrafts(count: number, now = Date.now()) {
+  const safeCount = Math.max(0, Math.min(14, Math.floor(count)));
+  const used = await usedTopicIds();
+  const created: BlogPost[] = [];
+  const results: Array<{
+    dayKey: string;
+    emailed: boolean;
+    reason: string;
+    to?: string;
+    error?: string;
+    title?: string;
+    slug?: string;
+  }> = [];
+
+  for (let i = 1; i <= safeCount; i++) {
+    const dayKey = dayKeyOffset(i, now, BLOG_TZ);
+    const existing = await getPostForDay(dayKey);
+    if (existing) {
+      if (existing.status === "draft" && existing.emailed_at === 0) {
+        const mailed = await emailDraft(existing);
+        results.push({
+          dayKey,
+          emailed: mailed.ok,
+          reason: mailed.reason,
+          to: "to" in mailed ? mailed.to : undefined,
+          error: mailed.ok ? undefined : mailed.error,
+          title: existing.title,
+          slug: existing.slug,
+        });
+        if (mailed.ok) created.push({ ...existing, emailed_at: mailed.emailedAt });
+      } else {
+        results.push({
+          dayKey,
+          emailed: false,
+          reason: existing.status === "published" ? "already_published" : existing.emailed_at ? "already_emailed" : "exists",
+          title: existing.title,
+          slug: existing.slug,
+        });
+      }
+      continue;
+    }
+
+    const topic = pickUnusedTopic(used, dayIndexSafe(dayKey) + i);
+    used.add(topic.id);
+    const draft = buildDraft(topic, dayKey);
+    await insertDraft(draft);
+    const mailed = await emailDraft(draft);
+    results.push({
+      dayKey,
+      emailed: mailed.ok,
+      reason: mailed.reason,
+      to: "to" in mailed ? mailed.to : undefined,
+      error: mailed.ok ? undefined : mailed.error,
+      title: draft.title,
+      slug: draft.slug,
+    });
+    if (mailed.ok) created.push({ ...draft, emailed_at: mailed.emailedAt });
+  }
+
+  return {
+    ok: results.every((row) => row.emailed || row.reason === "already_emailed" || row.reason === "already_published"),
+    count: safeCount,
+    emailed: created.length,
+    results,
+  };
+}
+
+function dayIndexSafe(dayKey: string) {
+  const [year, month, day] = dayKey.split("-").map(Number);
+  return Math.floor(Date.UTC(year!, month! - 1, day!) / 86_400_000);
+}
+
 /** Create today's draft (if missing) and email it for approval. Does not publish. */
 export async function prepareDailyBlogDraft(now = Date.now(), opts?: { forceResend?: boolean }) {
   const dayKey = dayKeyFromMs(now, BLOG_TZ);
@@ -329,43 +436,24 @@ export async function prepareDailyBlogDraft(now = Date.now(), opts?: { forceRese
     return { ok: true as const, dayKey, post, emailed: false, reason: "already_emailed" as const };
   }
 
-  if (!mailConfigured()) {
+  const mailed = await emailDraft(post);
+  if (!mailed.ok) {
     return {
       ok: false as const,
       dayKey,
       post,
       emailed: false,
-      reason: "mail_not_configured" as const,
-      error: "Add RESEND_API_KEY and MAIL_FROM, then redeploy.",
+      reason: mailed.reason,
+      error: mailed.error,
     };
   }
-
-  if (!approvalSecret()) {
-    return {
-      ok: false as const,
-      dayKey,
-      post,
-      emailed: false,
-      reason: "approval_secret_missing" as const,
-      error: "Add CRON_SECRET or BLOG_APPROVAL_SECRET, then redeploy.",
-    };
-  }
-
-  const letter = draftApprovalLetter(post);
-  const sent = await sendMail(letter.to, letter.subject, letter.text, letter.html);
-  if (!sent.ok) {
-    return { ok: false as const, dayKey, post, emailed: false, reason: "mail_failed" as const, error: sent.error };
-  }
-
-  const emailedAt = Math.floor(Date.now() / 1000);
-  await execute(await getDb(), "UPDATE blog_posts SET emailed_at = ? WHERE id = ?", [emailedAt, post.id]);
   return {
     ok: true as const,
     dayKey,
-    post: { ...post, emailed_at: emailedAt },
+    post: { ...post, emailed_at: mailed.emailedAt },
     emailed: true,
     reason: "emailed" as const,
-    to: letter.to,
+    to: mailed.to,
   };
 }
 

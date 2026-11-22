@@ -763,6 +763,14 @@ export function dayKeyFromMs(now = Date.now(), timeZone = "UTC") {
   }).format(new Date(now));
 }
 
+/** Calendar day key offset from `now` in the given time zone (0 = today). */
+export function dayKeyOffset(daysAhead: number, now = Date.now(), timeZone = "UTC") {
+  const base = dayKeyFromMs(now, timeZone);
+  const [year, month, day] = base.split("-").map(Number);
+  const utc = Date.UTC(year!, month! - 1, day! + daysAhead, 12);
+  return dayKeyFromMs(utc, "UTC");
+}
+
 /** Stable day index so the same calendar day always maps to the same topic. */
 export function dayIndex(dayKey: string) {
   const [year, month, day] = dayKey.split("-").map(Number);

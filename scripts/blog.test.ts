@@ -4,6 +4,7 @@ import { mediaForTopic } from "../src/lib/blog-media";
 import {
   dayIndex,
   dayKeyFromMs,
+  dayKeyOffset,
   pickTopicForDay,
   renderBlogHtml,
   renderBlogText,
@@ -23,6 +24,8 @@ assert.ok(topicCount() >= 20, "need enough rotating topics");
 
 const dayKey = dayKeyFromMs(Date.parse("2026-11-22T08:00:00Z"), "Africa/Johannesburg");
 assert.equal(dayKey, "2026-11-22");
+assert.equal(dayKeyOffset(1, Date.parse("2026-11-22T08:00:00Z"), "Africa/Johannesburg"), "2026-11-23");
+assert.equal(dayKeyOffset(4, Date.parse("2026-11-22T08:00:00Z"), "Africa/Johannesburg"), "2026-11-26");
 
 const topic = pickTopicForDay(dayKey);
 assert.equal(pickTopicForDay(dayKey).id, topic.id);
