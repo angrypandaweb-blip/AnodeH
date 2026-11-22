@@ -154,6 +154,48 @@ export async function dailySeries() {
   return days;
 }
 
+/** Invalid click cost by day for the same 7-day window as dailySeries. */
+export async function dailyInvalidWaste() {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const start = Math.floor(now.getTime() / 1000) - 6 * 86400;
+  const { userId, site, includeUntagged, allowed } = await clickScope();
+  const hide = hideAllowed("ip", allowed);
+  const rows = await queryAll<{ ts: number; cost: number | null }>(
+    await getDb(),
+    `SELECT ts, cost FROM clicks
+     WHERE user_id = ? AND ts >= ? AND action != 'allow'${siteSql("site", site, includeUntagged)}${hide.sql}`,
+    site ? [userId, start, site, ...hide.params] : [userId, start, ...hide.params],
+  );
+  const waste = Array.from({ length: 7 }, () => 0);
+  for (const row of rows) {
+    const index = Math.floor((row.ts - start) / 86400);
+    if (index < 0 || index > 6) continue;
+    waste[index]! += Number(row.cost || 0);
+  }
+  return waste;
+}
+
+/** Primary invalid-reason counts for the pie chart. */
+export async function invalidReasonBreakdown() {
+  const since = Math.floor(Date.now() / 1000) - 7 * 86400;
+  const { userId, site, includeUntagged, allowed } = await clickScope();
+  const hide = hideAllowed("ip", allowed);
+  const rows = await queryAll<{ reasons: string }>(
+    await getDb(),
+    `SELECT reasons FROM clicks
+     WHERE user_id = ? AND ts >= ? AND action != 'allow'${siteSql("site", site, includeUntagged)}${hide.sql}`,
+    site ? [userId, since, site, ...hide.params] : [userId, since, ...hide.params],
+  );
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    const codes = reasonCodes(row.reasons).filter((code) => code && code !== "allowlisted" && code !== "genuine_session");
+    const primary = codes[0] || "other";
+    counts.set(primary, (counts.get(primary) || 0) + 1);
+  }
+  return [...counts.entries()].map(([reason, count]) => ({ reason, count }));
+}
+
 function reasonCodes(raw: string): string[] {
   try {
     const parsed = JSON.parse(raw) as unknown;
