@@ -369,7 +369,7 @@ function pickUnusedTopic(used: Set<string>, seed: number): BlogTopic {
   return pickTopicForDay(dayKeyOffset(seed));
 }
 
-async function emailDraft(post: BlogPost) {
+async function emailDraft(post: BlogPost, toOverride?: string) {
   if (!mailConfigured()) {
     return { ok: false as const, error: "Add RESEND_API_KEY and MAIL_FROM, then redeploy.", reason: "mail_not_configured" as const };
   }
@@ -381,15 +381,17 @@ async function emailDraft(post: BlogPost) {
     };
   }
   const letter = draftApprovalLetter(post);
-  const sent = await sendMail(letter.to, letter.subject, letter.text, letter.html);
-  if (!sent.ok) return { ok: false as const, error: sent.error, reason: "mail_failed" as const, to: letter.to };
+  const to =
+    toOverride && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(toOverride) ? toOverride.trim() : letter.to;
+  const sent = await sendMail(to, letter.subject, letter.text, letter.html);
+  if (!sent.ok) return { ok: false as const, error: sent.error, reason: "mail_failed" as const, to };
   const emailedAt = Math.floor(Date.now() / 1000);
   await execute(await getDb(), "UPDATE blog_posts SET emailed_at = ? WHERE id = ?", [emailedAt, post.id]);
-  return { ok: true as const, emailedAt, to: letter.to, reason: "emailed" as const };
+  return { ok: true as const, emailedAt, to, reason: "emailed" as const };
 }
 
 /** Create N extra drafts on upcoming day keys and email each for approval. */
-export async function prepareExtraBlogDrafts(count: number, now = Date.now()) {
+export async function prepareExtraBlogDrafts(count: number, now = Date.now(), opts?: { to?: string }) {
   const safeCount = Math.max(0, Math.min(14, Math.floor(count)));
   const used = await usedTopicIds();
   const created: BlogPost[] = [];
@@ -411,7 +413,7 @@ export async function prepareExtraBlogDrafts(count: number, now = Date.now()) {
       const existingImage = extractHeroImage(existing.body_html);
       if (existingImage) batchImages.add(existingImage);
       if (existing.status === "draft" && existing.emailed_at === 0) {
-        const mailed = await emailDraft(existing);
+        const mailed = await emailDraft(existing, opts?.to);
         results.push({
           dayKey,
           emailed: mailed.ok,
@@ -441,7 +443,7 @@ export async function prepareExtraBlogDrafts(count: number, now = Date.now()) {
     const draftImage = extractHeroImage(draft.body_html);
     if (draftImage) batchImages.add(draftImage);
     await insertDraft(draft);
-    const mailed = await emailDraft(draft);
+    const mailed = await emailDraft(draft, opts?.to);
     results.push({
       dayKey,
       emailed: mailed.ok,
