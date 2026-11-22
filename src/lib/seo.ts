@@ -49,6 +49,12 @@ export const searchPages = [
     description:
       "Create an AnodeH account for 1, 10, or 20 websites. One website has a 7-day free trial, then PayPal bills every 30 days.",
   },
+  {
+    path: "/blog",
+    title: "Blog",
+    description:
+      "AnodeH posts about protecting domains from invalid Google Ads clicks, IP exclusions, Performance Max, and spam email monitoring.",
+  },
 ] as const;
 
 export const noIndex: Metadata = {

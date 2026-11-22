@@ -57,7 +57,18 @@ export const metadata = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   await sendWelcomeSampleOnce().catch(() => undefined);
   const path = (await headers()).get("x-pathname") || "/";
-  const bare = path === "/" || path === "/blocked" || path === "/login" || path === "/register" || path === "/forgot-password" || path === "/reset-password" || path === "/privacy" || path === "/terms" || path === "/support";
+  const bare =
+    path === "/" ||
+    path === "/blocked" ||
+    path === "/login" ||
+    path === "/register" ||
+    path === "/forgot-password" ||
+    path === "/reset-password" ||
+    path === "/privacy" ||
+    path === "/terms" ||
+    path === "/support" ||
+    path === "/blog" ||
+    path.startsWith("/blog/");
   if (bare) {
     const [visit, guest] = await Promise.all([visitorPlace(), getUser()]);
     const country = guest ? placeFor(guest.country || "", guest.email).country : visit.country;
