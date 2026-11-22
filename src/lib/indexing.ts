@@ -1,3 +1,4 @@
+import { submitSitemapToGoogleSearchConsole } from "@/lib/google-search-console";
 import { SITE } from "@/lib/seo";
 
 /** Public IndexNow ownership key (also hosted at /{key}.txt). */
@@ -55,9 +56,22 @@ export async function submitIndexNow(urls: string[]): Promise<IndexSubmitResult>
   }
 }
 
-/** After a blog post goes live, notify search engines that support IndexNow. */
+/** After a blog post goes live, notify IndexNow and resubmit the Google sitemap. */
 export async function notifyPublishedUrls(postUrl: string) {
   const urls = [postUrl, `${SITE}/blog`, `${SITE}/sitemap.xml`];
-  const indexNow = await submitIndexNow(urls);
-  return { indexNow, urls };
+  const [indexNow, googleSitemap] = await Promise.all([
+    submitIndexNow(urls),
+    submitSitemapToGoogleSearchConsole(),
+  ]);
+  return { indexNow, googleSitemap, urls };
+}
+
+/** Daily: tell Google Search Console the sitemap is current, and ping IndexNow for the sitemap. */
+export async function notifyDailySitemap() {
+  const urls = [`${SITE}/`, `${SITE}/blog`, `${SITE}/sitemap.xml`];
+  const [googleSitemap, indexNow] = await Promise.all([
+    submitSitemapToGoogleSearchConsole(),
+    submitIndexNow(urls),
+  ]);
+  return { googleSitemap, indexNow, urls };
 }
