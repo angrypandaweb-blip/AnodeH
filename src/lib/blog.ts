@@ -20,6 +20,7 @@ import {
   type BlogTopic,
 } from "@/lib/blog-topics";
 import { SUPPORT_EMAIL } from "@/lib/email-reports";
+import { notifyPublishedUrls } from "@/lib/indexing";
 import { escapeHtml, mailConfigured, sendMail } from "@/lib/mail";
 import { SITE } from "@/lib/seo";
 
@@ -398,10 +399,20 @@ export async function publishBlogPost(postId: string) {
     postId,
   ]);
 
+  const indexing = await notifyPublishedUrls(url).catch((error) => ({
+    indexNow: {
+      ok: false as const,
+      engine: "indexnow",
+      error: error instanceof Error ? error.message : "Indexing notify failed.",
+    },
+    urls: [url],
+  }));
+
   return {
     ok: true as const,
     post: { ...post, status: "published" as const, published_at: publishedAt },
     url,
     already: false as const,
+    indexing,
   };
 }

@@ -40,7 +40,7 @@ export default async function BlogReviewPage({
           <p className="kicker">Published</p>
           <h1>{post?.title || "Post published"}</h1>
           <p className="lede" style={{ marginLeft: 0 }}>
-            The post is live on the site. Open it and use Share if you want it on Facebook or elsewhere.
+            The post is live on the site. Search engines that support IndexNow were notified automatically; Google mainly picks it up from the sitemap. Open the post and use Share if you want it on Facebook or elsewhere.
           </p>
           {post ? (
             <p>
