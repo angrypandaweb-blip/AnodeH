@@ -1,8 +1,10 @@
 import { Mark } from "@/components/Mark";
+import { SpendWatchCharts } from "@/components/SpendWatchCharts";
 import { getUser } from "@/lib/auth";
 import { getAccess, quotesFor, TRIAL_DAYS } from "@/lib/billing";
 import { formatMoney, placeFor, reportCurrency } from "@/lib/residence-currency";
 import { sampleCampaigns } from "@/lib/sample-campaigns";
+import { sampleSpendWatch } from "@/lib/spend-watch";
 import { homeJsonLd, pageMeta } from "@/lib/seo";
 import { visitorPlace, visitPlaceLabel } from "@/lib/visitor-country";
 
@@ -57,6 +59,7 @@ export default async function LandingPage() {
   const awaySource = visit.name ? `Outside ${visit.name}` : "Off-target country";
   const campaigns = sampleCampaigns(visit.country);
   const rooms = [214, 96, 41];
+  const sampleCharts = sampleSpendWatch(sample(64));
   const standard = quote.standard;
   const half10 = quote.half10;
   const sites10 = quote.sites10;
@@ -128,34 +131,8 @@ export default async function LandingPage() {
               <em>Fullest campaign 214/500</em>
             </article>
           </section>
+          <SpendWatchCharts model={sampleCharts} />
           <section className="split">
-            <article className="card">
-              <span className="card-label">Clicks by day</span>
-              <div className="chart" aria-hidden>
-                {[
-                  ["Mon", 42, 8],
-                  ["Tue", 51, 6],
-                  ["Wed", 38, 19],
-                  ["Thu", 46, 11],
-                  ["Fri", 55, 7],
-                  ["Sat", 29, 14],
-                  ["Sun", 33, 9],
-                ].map(([day, allow, bad]) => (
-                  <div className="bar-col" key={String(day)}>
-                    <span className="bar-count">{bad}</span>
-                    <div className="stack" style={{ height: Math.round(((Number(allow) + Number(bad)) / 74) * 150) }}>
-                      <div className="ok" style={{ flex: Number(allow) }} />
-                      <div className="bad" style={{ flex: Number(bad) }} />
-                    </div>
-                    <span>{day}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="legend">
-                <span><i className="swatch ok" /> Allowed</span>
-                <span><i className="swatch bad" /> Flagged or blocked</span>
-              </div>
-            </article>
             <article className="card">
               <span className="card-label">Exclusion room</span>
               <div className="capacity">
@@ -170,6 +147,12 @@ export default async function LandingPage() {
                   <span className="mono">{rooms[index]}/500</span>
                 </div>
               ))}
+            </article>
+            <article className="card">
+              <span className="card-label">Same layout in your account</span>
+              <p className="note">
+                After you subscribe, the dashboard opens with this chart layout: blocked clicks over the week, spend saved, a pie of why traffic was invalid, and the exclusion room for Search and Display.
+              </p>
             </article>
           </section>
           <article className="card preview-table">

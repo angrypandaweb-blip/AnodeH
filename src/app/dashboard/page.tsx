@@ -1,6 +1,7 @@
 import { clearAlerts } from "@/app/actions";
 import { CompanySwitch } from "@/components/CompanySwitch";
 import { LiveRefresh } from "@/components/LiveRefresh";
+import { SpendWatchCharts } from "@/components/SpendWatchCharts";
 import { getUser } from "@/lib/auth";
 import { loadCompanies } from "@/lib/companies";
 import { reasonText } from "@/lib/score";
@@ -9,7 +10,19 @@ import { clickPrice, monitoredFromAverage } from "@/lib/click-price";
 import { formatMoney, moneyInCurrency, placeFor, reportCurrency } from "@/lib/residence-currency";
 import { getPolicy } from "@/lib/engine";
 import { refreshGoogleAdsIfStale } from "@/lib/google-ads";
-import { alerts, capacity, dailySeries, googleDaily, googleLink, recentRisky, savedClickPrice, weekStats } from "@/lib/queries";
+import {
+  alerts,
+  capacity,
+  dailyInvalidWaste,
+  dailySeries,
+  googleDaily,
+  googleLink,
+  invalidReasonBreakdown,
+  recentRisky,
+  savedClickPrice,
+  weekStats,
+} from "@/lib/queries";
+import { liveSpendWatch } from "@/lib/spend-watch";
 import { noIndex } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
@@ -41,11 +54,14 @@ export default async function OverviewPage({
   const googleCost = googleDays.reduce((sum, day) => sum + day.cost_micros, 0) / 1_000_000;
   const hasGoogleTotals = googleClicksTotal > 0 || googleCost > 0;
   const stats = await weekStats();
-  const series = await dailySeries();
+  const [series, wasteByDay, breakdown] = await Promise.all([
+    dailySeries(),
+    dailyInvalidWaste(),
+    invalidReasonBreakdown(),
+  ]);
   const risky = await recentRisky();
   const caps = await capacity();
   const notes = await alerts(true);
-  const max = Math.max(1, ...series.map((day) => day.allow + day.organic + day.flagged + day.repeat));
   const notice = params.notice ? NOTICES[params.notice] : undefined;
   const n = Math.max(0, Math.min(1000, Number(params.n) || 0));
   const hottest = caps.fullest / caps.cap;
@@ -60,6 +76,19 @@ export default async function OverviewPage({
   const estimatedNote = average == null ? "estimated" : `at ${formatMoney(average, local.currency)} each`;
   const adsCurrency = /^[A-Z]{3}$/.test(link?.currency || "") ? link?.currency || "" : "";
   const googlePrice = adsCurrency ? await moneyInCurrency(googleCost, adsCurrency, local.currency) : priced(0);
+  const dayLabels = series.map((day) => dayLabel(day.ts, place.timeZone));
+  const hasWaste = wasteByDay.some((value) => value > 0);
+  const scaledWaste = hasWaste
+    ? wasteByDay
+    : series.map((day) => day.organic + day.flagged + day.repeat);
+  const charts = liveSpendWatch({
+    series,
+    dayLabels,
+    invalidTotal: stats.invalid,
+    wasteLabel: estimatedWaste,
+    wasteByDay: scaledWaste,
+    breakdown,
+  });
 
   return (
     <div>
@@ -132,35 +161,9 @@ export default async function OverviewPage({
         )}
       </section>
 
+      <SpendWatchCharts model={charts} />
+
       <section className="split">
-        <article className="card">
-          <span className="card-label">Clicks by day</span>
-          <div className="chart" aria-hidden>
-            {series.map((day) => {
-              const total = day.allow + day.organic + day.flagged + day.repeat;
-              const height = Math.max(4, Math.round((total / max) * 150));
-              const countClass = day.repeat > 0 ? "repeat" : day.organic > 0 && day.flagged === 0 ? "organic" : "";
-              return (
-                <div className="bar-col" key={day.ts}>
-                  <span className={`bar-count ${countClass}`}>{day.organic + day.flagged + day.repeat}</span>
-                  <div className="stack" style={{ height }}>
-                    <div className="ok" style={{ flex: day.allow }} />
-                    <div className="organic" style={{ flex: day.organic }} />
-                    <div className="bad" style={{ flex: day.flagged }} />
-                    <div className="repeat" style={{ flex: day.repeat }} />
-                  </div>
-                  <span>{dayLabel(day.ts, place.timeZone)}</span>
-                </div>
-              );
-            })}
-          </div>
-          <div className="legend">
-            <span><i className="swatch ok" /> Allowed</span>
-            <span><i className="swatch organic" /> Organic · free click</span>
-            <span><i className="swatch bad" /> Flagged</span>
-            <span><i className="swatch repeat" /> Paid repeat IP</span>
-          </div>
-        </article>
         <article className="card">
           <span className="card-label">Exclusion room</span>
           <div className="capacity">
@@ -184,6 +187,15 @@ export default async function OverviewPage({
               <button className="ghost" type="submit">Dismiss alerts</button>
             </form>
           ) : null}
+        </article>
+        <article className="card">
+          <span className="card-label">How to read the charts</span>
+          <p className="note">
+            Blocked clicks and saved spend use the same week as the totals above. The pie splits invalid clicks by the first reason on each visit — datacenter, VPN, repeat IP, bounce, and the rest.
+          </p>
+          <p className="note">
+            Amounts stay in {local.name}. When Google Ads is connected, paid totals still come from Ads; the charts stay focused on invalid traffic the site tag scored.
+          </p>
         </article>
       </section>
 
