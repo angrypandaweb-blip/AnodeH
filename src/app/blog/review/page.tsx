@@ -1,4 +1,5 @@
 import { Mark } from "@/components/Mark";
+import { WhatsAppStatusPack } from "@/components/WhatsAppStatusPack";
 import {
   approveUrl,
   getBlogPostById,
@@ -6,7 +7,8 @@ import {
   rejectUrl,
   verifyBlogActionToken,
 } from "@/lib/blog";
-import { mediaForTopic } from "@/lib/blog-media";
+import { mediaForPost } from "@/lib/blog-media";
+import { whatsappStatusPack } from "@/lib/blog-whatsapp";
 import { pageMeta } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +35,7 @@ export default async function BlogReviewPage({
 
   if (params.published && params.slug) {
     const post = await getBlogPostBySlug(params.slug);
+    const pack = post ? whatsappStatusPack(post) : null;
     return (
       <div className="site">
         <ReviewBar />
@@ -40,8 +43,19 @@ export default async function BlogReviewPage({
           <p className="kicker">Published</p>
           <h1>{post?.title || "Post published"}</h1>
           <p className="lede" style={{ marginLeft: 0 }}>
-            The post is live on the site. Search engines that support IndexNow were notified automatically; Google mainly picks it up from the sitemap. Open the post and use Share if you want it on Facebook or elsewhere.
+            The post is live. Search engines that support IndexNow were notified; Google mainly picks it up from the
+            sitemap. WhatsApp cannot auto-post Status from a website — use the pack below on your phone.
           </p>
+          {post && pack ? (
+            <WhatsAppStatusPack
+              caption={pack.caption}
+              imageUrl={pack.imageUrl}
+              imageAlt={pack.imageAlt}
+              chatShareUrl={pack.chatShareUrl}
+              heading="Post this to WhatsApp Status"
+              note="Save the image, open WhatsApp Status, paste the caption, and post."
+            />
+          ) : null}
           {post ? (
             <p>
               <a className="btn" href={`/blog/${post.slug}`}>
@@ -104,6 +118,8 @@ export default async function BlogReviewPage({
 
   const approve = approveUrl(post.id);
   const reject = rejectUrl(post.id);
+  const pack = whatsappStatusPack(post);
+  const tags = mediaForPost(post).tags;
 
   return (
     <div className="site">
@@ -113,7 +129,7 @@ export default async function BlogReviewPage({
         <h1>{post.title}</h1>
         <p className="lede" style={{ marginLeft: 0 }}>{post.summary}</p>
         <p className="blog-tags">
-          {mediaForTopic(post.topic_id).tags.map((tag) => (
+          {tags.map((tag) => (
             <span className="blog-tag" key={tag}>
               {tag}
             </span>
@@ -137,6 +153,18 @@ export default async function BlogReviewPage({
         ) : (
           <p className="banner warn">This draft was rejected.</p>
         )}
+        <WhatsAppStatusPack
+          caption={pack.caption}
+          imageUrl={pack.imageUrl}
+          imageAlt={pack.imageAlt}
+          chatShareUrl={pack.chatShareUrl}
+          heading={post.status === "published" ? "WhatsApp Status pack" : "WhatsApp Status pack (ready after you publish)"}
+          note={
+            post.status === "published"
+              ? "Save the image, open WhatsApp Status, paste the caption, and post."
+              : "Approve first so the link works, then post this Status from your phone. WhatsApp does not allow auto-posting Status."
+          }
+        />
         <article className="blog-body" dangerouslySetInnerHTML={{ __html: post.body_html }} />
         {post.status === "draft" ? (
           <div className="blog-review-actions">

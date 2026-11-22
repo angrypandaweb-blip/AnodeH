@@ -5,6 +5,7 @@ import { Mark } from "@/components/Mark";
 import { getUser } from "@/lib/auth";
 import { getBlogPostBySlug } from "@/lib/blog";
 import { mediaForPost } from "@/lib/blog-media";
+import { whatsappChatShareUrl } from "@/lib/blog-whatsapp";
 import { SITE } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
@@ -99,9 +100,17 @@ export default async function BlogPostPage({
             </span>
           ))}
         </p>
-        <BlogShare url={`${SITE}/blog/${post.slug}`} title={post.title} />
+        <BlogShare
+          url={`${SITE}/blog/${post.slug}`}
+          title={post.title}
+          whatsappUrl={whatsappChatShareUrl(post)}
+        />
         <div className="blog-body" dangerouslySetInnerHTML={{ __html: post.body_html }} />
-        <BlogShare url={`${SITE}/blog/${post.slug}`} title={post.title} />
+        <BlogShare
+          url={`${SITE}/blog/${post.slug}`}
+          title={post.title}
+          whatsappUrl={whatsappChatShareUrl(post)}
+        />
       </article>
 
       <footer className="site-legal">

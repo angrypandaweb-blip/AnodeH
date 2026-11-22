@@ -124,14 +124,18 @@ const letter = draftApprovalLetter({
 });
 assert.match(letter.subject, /Approve AnodeH blog draft/);
 assert.match(letter.text, /Nothing is public until you approve/);
-assert.match(letter.text, /share button/);
+assert.match(letter.text, /WhatsApp Status/);
+assert.match(letter.text, /auto-post Status/);
 assert.doesNotMatch(letter.text, /posts to Facebook when configured/);
 assert.match(letter.html, /Approve and publish/);
+assert.match(letter.html, /WhatsApp Status pack/);
 assert.equal(letter.to, "owner@anodeh.com");
+assert.ok(letter.whatsappStatus?.caption.includes(topic.title));
 
 const share = readFileSync("src/components/BlogShare.tsx", "utf8");
 assert.match(share, /facebook\.com\/sharer\/sharer\.php/);
 assert.match(share, /Copy link/);
+assert.match(share, /WhatsApp/);
 
 const publish = readFileSync("src/lib/blog.ts", "utf8");
 assert.doesNotMatch(publish, /postToFacebookPage/);

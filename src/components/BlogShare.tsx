@@ -2,10 +2,20 @@
 
 import { useEffect, useState } from "react";
 
-export function BlogShare({ url, title }: { url: string; title: string }) {
+export function BlogShare({
+  url,
+  title,
+  whatsappUrl,
+}: {
+  url: string;
+  title: string;
+  whatsappUrl?: string;
+}) {
   const [copied, setCopied] = useState(false);
   const [canNativeShare, setCanNativeShare] = useState(false);
   const facebook = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+  const whatsapp =
+    whatsappUrl || `https://wa.me/?text=${encodeURIComponent(`${title}\n\n${url}`)}`;
 
   useEffect(() => {
     setCanNativeShare(typeof navigator !== "undefined" && typeof navigator.share === "function");
@@ -36,6 +46,9 @@ export function BlogShare({ url, title }: { url: string; title: string }) {
       <div className="blog-share-actions">
         <a className="btn ghost" href={facebook} target="_blank" rel="noopener noreferrer">
           Facebook
+        </a>
+        <a className="btn ghost" href={whatsapp} target="_blank" rel="noopener noreferrer">
+          WhatsApp
         </a>
         <button type="button" className="btn ghost" onClick={copyLink}>
           {copied ? "Copied" : "Copy link"}
