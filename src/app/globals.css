@@ -527,6 +527,28 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 .blog-body h2 { font-size: 22px; margin: 28px 0 8px; color: var(--cc-ink); }
 .blog-body p { color: var(--cc-muted); margin: 0 0 12px; }
 .blog-review-actions { display: flex; gap: 12px; flex-wrap: wrap; margin: 18px 0 8px; }
+.blog-share {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0 8px;
+  padding: 14px 0;
+  border-top: 1px solid var(--cc-line);
+  border-bottom: 1px solid var(--cc-line);
+}
+.blog-share-label {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cc-muted);
+  font-weight: 600;
+}
+.blog-share-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.blog-share .btn {
+  padding: 8px 14px;
+  font-size: 14px;
+}
 
 .sr-only {
   position: absolute;

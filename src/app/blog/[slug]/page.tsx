@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { BlogShare } from "@/components/BlogShare";
 import { Mark } from "@/components/Mark";
 import { getUser } from "@/lib/auth";
 import { getBlogPostBySlug } from "@/lib/blog";
@@ -83,7 +84,9 @@ export default async function BlogPostPage({
         </p>
         <h1>{post.title}</h1>
         <p className="lede" style={{ marginLeft: 0 }}>{post.summary}</p>
+        <BlogShare url={`${SITE}/blog/${post.slug}`} title={post.title} />
         <div className="blog-body" dangerouslySetInnerHTML={{ __html: post.body_html }} />
+        <BlogShare url={`${SITE}/blog/${post.slug}`} title={post.title} />
       </article>
 
       <footer className="site-legal">

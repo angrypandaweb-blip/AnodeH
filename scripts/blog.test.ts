@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   dayIndex,
   dayKeyFromMs,
-  facebookCaption,
   pickTopicForDay,
   renderBlogHtml,
   renderBlogText,
@@ -17,7 +17,6 @@ import {
   signBlogAction,
   verifyBlogActionToken,
 } from "../src/lib/blog";
-import { facebookConfigured } from "../src/lib/facebook";
 
 assert.ok(topicCount() >= 20, "need enough rotating topics");
 
@@ -37,10 +36,6 @@ assert.doesNotMatch(html, /<script/i);
 const text = renderBlogText(topic, dayKey);
 assert.match(text, /AnodeH/);
 assert.ok(text.includes(topic.sections[0]!.heading));
-
-const caption = facebookCaption(topic, "https://anodeh.com/blog/demo");
-assert.match(caption, /Read more: https:\/\/anodeh.com\/blog\/demo/);
-assert.match(caption, new RegExp(topic.title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
 
 process.env.CRON_SECRET = "test-blog-secret";
 process.env.BLOG_APPROVAL_EMAIL = "owner@anodeh.com";
@@ -78,9 +73,16 @@ const letter = draftApprovalLetter({
 });
 assert.match(letter.subject, /Approve AnodeH blog draft/);
 assert.match(letter.text, /Nothing is public until you approve/);
+assert.match(letter.text, /share button/);
+assert.doesNotMatch(letter.text, /posts to Facebook when configured/);
 assert.match(letter.html, /Approve and publish/);
 assert.equal(letter.to, "owner@anodeh.com");
 
-assert.equal(facebookConfigured(), false);
+const share = readFileSync("src/components/BlogShare.tsx", "utf8");
+assert.match(share, /facebook\.com\/sharer\/sharer\.php/);
+assert.match(share, /Copy link/);
+
+const publish = readFileSync("src/lib/blog.ts", "utf8");
+assert.doesNotMatch(publish, /postToFacebookPage/);
 
 console.log("blog tests passed");

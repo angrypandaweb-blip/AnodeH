@@ -2,7 +2,6 @@ import { createHmac, randomBytes, timingSafeEqual } from "crypto";
 import { execute, getDb, queryAll, queryOne } from "@/lib/db";
 import {
   dayKeyFromMs,
-  facebookCaption,
   pickTopicForDay,
   renderBlogHtml,
   renderBlogText,
@@ -11,7 +10,6 @@ import {
 } from "@/lib/blog-topics";
 import { SUPPORT_EMAIL } from "@/lib/email-reports";
 import { escapeHtml, mailConfigured, sendMail } from "@/lib/mail";
-import { facebookConfigured, postToFacebookPage } from "@/lib/facebook";
 import { SITE } from "@/lib/seo";
 
 export type BlogStatus = "draft" | "published" | "rejected";
@@ -150,10 +148,10 @@ export function draftApprovalLetter(post: BlogPost) {
     post.body_text,
     "",
     `Read on the site: ${read}`,
-    approve ? `Approve and publish (also posts to Facebook when configured): ${approve}` : "Approve link unavailable — set CRON_SECRET or BLOG_APPROVAL_SECRET.",
+    approve ? `Approve and publish: ${approve}` : "Approve link unavailable — set CRON_SECRET or BLOG_APPROVAL_SECRET.",
     reject ? `Reject: ${reject}` : "",
     "",
-    "Nothing is public until you approve.",
+    "Nothing is public until you approve. After it is live, use the share button on the post to share it (including to Facebook).",
     "",
     "AnodeH",
   ]
@@ -169,11 +167,11 @@ ${post.body_html}
 <p><a href="${escapeHtml(read)}">Read on the site</a></p>
 <p>${
     approve
-      ? `<a href="${escapeHtml(approve)}"><strong>Approve and publish</strong></a> (also posts to the AnodeH Facebook page when configured)`
+      ? `<a href="${escapeHtml(approve)}"><strong>Approve and publish</strong></a>`
       : "Approve link unavailable — set CRON_SECRET or BLOG_APPROVAL_SECRET."
   }</p>
 ${reject ? `<p><a href="${escapeHtml(reject)}">Reject this draft</a></p>` : ""}
-<p>Nothing is public until you approve.</p>
+<p>Nothing is public until you approve. After it is live, use the share button on the post to share it (including to Facebook).</p>
 <p>AnodeH</p>`;
 
   return { subject, text, html, to: blogApprovalEmail() };
@@ -286,71 +284,20 @@ export async function publishBlogPost(postId: string) {
   if (post.status === "rejected") return { ok: false as const, error: "This draft was rejected." };
 
   const url = `${SITE}/blog/${post.slug}`;
-  const publishedAt = post.published_at || Math.floor(Date.now() / 1000);
-
-  if (post.status !== "published") {
-    await execute(await getDb(), "UPDATE blog_posts SET status = 'published', published_at = ? WHERE id = ?", [
-      publishedAt,
-      postId,
-    ]);
+  if (post.status === "published") {
+    return { ok: true as const, post, url, already: true as const };
   }
 
-  let facebookPostId = post.facebook_post_id;
-  let facebookError = post.facebook_error;
-  let facebookSkipped = false;
-  let facebookSkipReason = "";
-
-  if (!facebookPostId) {
-    const fb = await postToFacebookPage({
-      message: facebookCaption(
-        {
-          id: post.topic_id,
-          title: post.title,
-          description: post.description,
-          summary: post.summary,
-          sections: [],
-        },
-        url,
-      ),
-      link: url,
-    });
-
-    if (fb.ok && fb.skipped) {
-      facebookSkipped = true;
-      facebookSkipReason = fb.reason;
-      facebookError = fb.reason;
-    } else if (fb.ok) {
-      facebookPostId = fb.id;
-      facebookError = "";
-    } else {
-      facebookError = fb.error;
-    }
-
-    await execute(await getDb(), "UPDATE blog_posts SET facebook_post_id = ?, facebook_error = ? WHERE id = ?", [
-      facebookPostId,
-      facebookError,
-      postId,
-    ]);
-  }
-
-  const updated: BlogPost = {
-    ...post,
-    status: "published",
-    published_at: publishedAt,
-    facebook_post_id: facebookPostId,
-    facebook_error: facebookError,
-  };
+  const publishedAt = Math.floor(Date.now() / 1000);
+  await execute(await getDb(), "UPDATE blog_posts SET status = 'published', published_at = ? WHERE id = ?", [
+    publishedAt,
+    postId,
+  ]);
 
   return {
     ok: true as const,
-    post: updated,
+    post: { ...post, status: "published" as const, published_at: publishedAt },
     url,
-    facebook: {
-      configured: facebookConfigured(),
-      postId: facebookPostId,
-      error: facebookError,
-      skipped: facebookSkipped,
-      skipReason: facebookSkipReason,
-    },
+    already: false as const,
   };
 }

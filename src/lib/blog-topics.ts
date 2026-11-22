@@ -822,9 +822,6 @@ export function renderBlogText(topic: BlogTopic, dayKey: string) {
   return lines.join("\n");
 }
 
-export function facebookCaption(topic: BlogTopic, url: string) {
-  return `${topic.title}\n\n${topic.summary}\n\nRead more: ${url}`;
-}
 
 function escapeHtml(value: string) {
   return value

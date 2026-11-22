@@ -26,7 +26,6 @@ export default async function BlogReviewPage({
     rejected?: string;
     slug?: string;
     id?: string;
-    fb?: string;
   }>;
 }) {
   const params = await searchParams;
@@ -40,14 +39,7 @@ export default async function BlogReviewPage({
           <p className="kicker">Published</p>
           <h1>{post?.title || "Post published"}</h1>
           <p className="lede" style={{ marginLeft: 0 }}>
-            The post is live on the site
-            {params.fb === "posted"
-              ? " and was sent to the AnodeH Facebook page."
-              : params.fb === "skipped"
-                ? ". Facebook posting was skipped — add FACEBOOK_PAGE_ID and FACEBOOK_PAGE_ACCESS_TOKEN, then approve again or republish from a new draft day."
-                : params.fb
-                  ? `. Facebook returned: ${params.fb}`
-                  : "."}
+            The post is live on the site. Open it and use Share if you want it on Facebook or elsewhere.
           </p>
           {post ? (
             <p>
