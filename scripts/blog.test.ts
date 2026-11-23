@@ -23,7 +23,10 @@ import {
 import {
   approveUrl,
   blogApprovalEmail,
+  BLOG_DELIVERY_HOUR,
+  BLOG_TZ,
   draftApprovalLetter,
+  isBlogDeliveryWindow,
   rejectUrl,
   signBlogAction,
   verifyBlogActionToken,
@@ -140,6 +143,19 @@ assert.match(share, /WhatsApp/);
 const publish = readFileSync("src/lib/blog.ts", "utf8");
 assert.doesNotMatch(publish, /postToFacebookPage/);
 assert.match(publish, /findRelevantBlogNews/);
+assert.match(publish, /wait_until_7am/);
+
+assert.equal(BLOG_TZ, "Africa/Johannesburg");
+assert.equal(BLOG_DELIVERY_HOUR, 7);
+assert.equal(isBlogDeliveryWindow(Date.parse("2026-11-23T05:00:00Z")), true);
+assert.equal(isBlogDeliveryWindow(Date.parse("2026-11-23T04:59:00Z")), false);
+assert.equal(isBlogDeliveryWindow(Date.parse("2026-11-23T06:00:00Z")), false);
+
+const vercel = JSON.parse(readFileSync("vercel.json", "utf8")) as {
+  crons: Array<{ path: string; schedule: string }>;
+};
+const dailyCron = vercel.crons.find((cron) => cron.path === "/api/cron/daily");
+assert.equal(dailyCron?.schedule, "0 * * * *");
 
 console.log("blog tests passed");
 

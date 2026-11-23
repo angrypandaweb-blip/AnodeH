@@ -5,6 +5,9 @@ import { SPAM_SYNC_INTERVAL_SEC, syncAllSpamMailboxes } from "@/lib/spam-mail";
 
 export const dynamic = "force-dynamic";
 
+// Cron runs hourly; blog draft emails only during 07:00–07:59 Africa/Johannesburg.
+// Pass forceBlog=1 to bypass the delivery window.
+
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET || "";
   const header = request.headers.get("authorization") || "";

@@ -56,7 +56,21 @@ export type BlogPost = {
   source_url: string;
 };
 
-const BLOG_TZ = "Africa/Johannesburg";
+export const BLOG_TZ = "Africa/Johannesburg";
+export const BLOG_DELIVERY_HOUR = 7;
+
+export function localHourInZone(now: number, timeZone: string) {
+  const hour = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    hour: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date(now));
+  return Number(hour);
+}
+
+export function isBlogDeliveryWindow(now = Date.now()) {
+  return localHourInZone(now, BLOG_TZ) === BLOG_DELIVERY_HOUR;
+}
 
 export function blogApprovalEmail() {
   const configured = (process.env.BLOG_APPROVAL_EMAIL || "").trim();
@@ -475,7 +489,7 @@ function dayIndexSafe(dayKey: string) {
   return Math.floor(Date.UTC(year!, month! - 1, day!) / 86_400_000);
 }
 
-/** Create today's draft (if missing) and email it for approval. Does not publish. */
+/** Create today's draft (if missing) and email it for approval at 7:00 SAST. Does not publish. */
 export async function prepareDailyBlogDraft(now = Date.now(), opts?: { forceResend?: boolean }) {
   const dayKey = dayKeyFromMs(now, BLOG_TZ);
   const existing = await getPostForDay(dayKey);
@@ -499,6 +513,10 @@ export async function prepareDailyBlogDraft(now = Date.now(), opts?: { forceRese
 
   if (post.emailed_at > 0 && !opts?.forceResend) {
     return { ok: true as const, dayKey, post, emailed: false, reason: "already_emailed" as const };
+  }
+
+  if (!opts?.forceResend && !isBlogDeliveryWindow(now)) {
+    return { ok: true as const, dayKey, post, emailed: false, reason: "wait_until_7am" as const };
   }
 
   const mailed = await emailDraft(post);
