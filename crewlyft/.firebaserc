@@ -1,0 +1,12 @@
+{
+  "projects": {
+    "default": "workbridge-app-1979"
+  },
+  "targets": {
+    "workbridge-app-1979": {
+      "hosting": {
+        "www": ["crewlyft-site"]
+      }
+    }
+  }
+}
