@@ -46,22 +46,23 @@ Split US/GB when each can sustain learning; until then US+GB can share one campa
 
 | Ad group | Intent | Final URL |
 | --- | --- | --- |
-| Click fraud | Invalid / bot / fake clicks | `https://anodeh.com` |
+| Click protection | Wasted / risky Google Ads clicks | `https://anodeh.com` |
 | Spam email | Inbox / phishing monitoring | `https://anodeh.com/#spam` |
 | Brand | AnodeH | `https://anodeh.com` |
 
 ### Keywords (phrase + exact; start phrase)
 
-**Click fraud**
+**Click protection** (avoid `fraud` / `fake` / `bot` / `invalid clicks` — Google often flags Inappropriate content)
 
-- `"google ads click fraud"`
-- `"invalid clicks google ads"`
-- `"block fake clicks google ads"`
-- `"google ads bot traffic"`
-- `"click fraud protection"`
-- `"google ads invalid traffic"`
-- `[click fraud software]`
+- `"google ads click protection"`
+- `"protect google ads budget"`
+- `"wasted google ads spend"`
+- `"google ads click quality"`
+- `"reduce wasted ad spend"`
+- `"google ads ip exclusion"`
+- `"stop wasted ad clicks"`
 - `[google ads click protection]`
+- `[protect google ads spend]`
 
 **Spam email**
 
@@ -136,7 +137,7 @@ Exclude: full hard-exclude list.
 
 ### Ad groups
 
-Same as T1: Click fraud · Spam email · Brand (optional)
+Same as T1: Click protection · Spam email · Brand (optional)
 
 ---
 
