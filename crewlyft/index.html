@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>CrewLyft — Business chat, meetings, tasks &amp; timesheets</title>
-  <meta name="description" content="CrewLyft is the all-in-one work app for companies: team chat, calls, meetings, tasks, people directory and automatic timesheets. Built for teams, not friends and family." />
-  <meta name="keywords" content="CrewLyft, business chat, team chat, company app, meetings, tasks, timesheets, workplace messaging, team communication" />
+  <title>CrewLyft | Business Chat App for Teams — Meetings, Tasks &amp; Timesheets</title>
+  <meta name="description" content="CrewLyft is a business chat app for companies. Message your team, make calls, run meetings, assign tasks and track timesheets in one workplace app — not a consumer messenger." />
+  <meta name="keywords" content="CrewLyft, business chat app, team chat for work, company messaging, workplace meetings, task management, employee timesheets, team communication app" />
   <meta name="author" content="CrewLyft" />
   <meta name="robots" content="index, follow, max-image-preview:large" />
   <meta name="theme-color" content="#0b0f14" />
@@ -17,40 +17,66 @@
   <meta property="og:site_name" content="CrewLyft" />
   <meta property="og:locale" content="en_US" />
   <meta property="og:url" content="https://crewlyft.com/" />
-  <meta property="og:title" content="CrewLyft — Your whole company in one app" />
-  <meta property="og:description" content="Chats, calls, meetings, tasks, people and timesheets — built for real teams. Download CrewLyft for your phone." />
+  <meta property="og:title" content="CrewLyft | Business chat for real teams" />
+  <meta property="og:description" content="Message your team, run meetings, assign tasks and track timesheets in one business app. Download CrewLyft for your phone." />
   <meta property="og:image" content="https://crewlyft.com/brand/og-image.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="CrewLyft Business Chat logo" />
 
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="CrewLyft — Your whole company in one app" />
-  <meta name="twitter:description" content="Business chat, calls, meetings, tasks and timesheets in one app. Built for teams, not friends and family." />
+  <meta name="twitter:title" content="CrewLyft | Business chat for real teams" />
+  <meta name="twitter:description" content="Business chat, calls, meetings, tasks and timesheets in one workplace app. Built for companies, not friends and family." />
   <meta name="twitter:image" content="https://crewlyft.com/brand/og-image.png" />
   <meta name="twitter:image:alt" content="CrewLyft Business Chat logo" />
 
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    "name": "CrewLyft",
-    "applicationCategory": "BusinessApplication",
-    "operatingSystem": "Android, iOS, Web",
-    "url": "https://crewlyft.com/",
-    "image": "https://crewlyft.com/brand/og-image.png",
-    "description": "All-in-one company app for team chat, calls, meetings, tasks, people directory and automatic timesheets.",
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "USD"
-    },
-    "publisher": {
-      "@type": "Organization",
-      "name": "CrewLyft",
-      "url": "https://crewlyft.com/",
-      "logo": "https://crewlyft.com/brand/crewlyft-icon-512.png"
-    }
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://crewlyft.com/#organization",
+        "name": "CrewLyft",
+        "url": "https://crewlyft.com/",
+        "logo": "https://crewlyft.com/brand/crewlyft-icon-512.png",
+        "description": "Business chat and company workplace app for teams."
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://crewlyft.com/#website",
+        "url": "https://crewlyft.com/",
+        "name": "CrewLyft",
+        "description": "CrewLyft business chat app — meetings, tasks and timesheets for companies.",
+        "publisher": { "@id": "https://crewlyft.com/#organization" },
+        "inLanguage": "en"
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://crewlyft.com/#app",
+        "name": "CrewLyft",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Android, iOS, Web",
+        "url": "https://crewlyft.com/",
+        "image": "https://crewlyft.com/brand/og-image.png",
+        "description": "All-in-one company app for team chat, voice and video calls, meetings, tasks, people directory and automatic timesheets.",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "publisher": { "@id": "https://crewlyft.com/#organization" }
+      },
+      {
+        "@type": "WebPage",
+        "@id": "https://crewlyft.com/#webpage",
+        "url": "https://crewlyft.com/",
+        "name": "CrewLyft | Business Chat App for Teams",
+        "isPartOf": { "@id": "https://crewlyft.com/#website" },
+        "about": { "@id": "https://crewlyft.com/#app" },
+        "description": "CrewLyft is a business chat app for companies with meetings, tasks and timesheets in one place."
+      }
+    ]
   }
   </script>
 
@@ -81,9 +107,9 @@
     <section class="hero">
       <div class="hero-copy">
         <img class="hero-wordmark" src="brand/crewlyft-logo-lockup.png" alt="CrewLyft Business Chat" width="2032" height="600" />
-        <h1>Your whole company in one app</h1>
+        <h1>CrewLyft — your whole company in one app</h1>
         <p class="hero-lead">
-          Chats, calls, meetings, tasks, people and time sheets — built for teams, not for friends and family.
+          Business chat, calls, meetings, tasks, people and timesheets for real companies — built for teams, not for friends and family.
         </p>
         <div class="cta-row" id="download">
           <a class="btn btn-primary btn-lg" href="https://share.google/qLP9V4KWk9GcvWbqq" data-app-link>
