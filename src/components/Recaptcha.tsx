@@ -1,9 +1,12 @@
 "use client";
 
 import Script from "next/script";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 
-type Grecaptcha = { render: (el: HTMLElement, options: { sitekey: string }) => number };
+type Grecaptcha = {
+  render: (el: HTMLElement, options: { sitekey: string }) => number;
+  ready: (cb: () => void) => void;
+};
 
 export function Recaptcha({ siteKey }: { siteKey: string }) {
   const box = useRef<HTMLDivElement>(null);
@@ -11,18 +14,34 @@ export function Recaptcha({ siteKey }: { siteKey: string }) {
 
   function paint() {
     const grecaptcha = (window as Window & { grecaptcha?: Grecaptcha }).grecaptcha;
-    if (!box.current || painted.current || !grecaptcha) return;
-    grecaptcha.render(box.current, { sitekey: siteKey });
-    painted.current = true;
+    if (!siteKey || !box.current || !grecaptcha || painted.current) return;
+    const container = box.current;
+    grecaptcha.ready(() => {
+      if (painted.current || !container.isConnected || container.childElementCount > 0) return;
+      try {
+        grecaptcha.render(container, { sitekey: siteKey });
+        painted.current = true;
+      } catch {
+        // Already rendered (e.g. React Strict Mode remount).
+      }
+    });
   }
 
+  useEffect(() => {
+    painted.current = false;
+    paint();
+  }, [siteKey]);
+
   if (!siteKey) return null;
-  if (typeof window !== "undefined") {
-    (window as Window & { onAnodehRecaptcha?: () => void }).onAnodehRecaptcha = paint;
-  }
+
   return (
     <div className="recaptcha">
-      <Script src="https://www.google.com/recaptcha/api.js?onload=onAnodehRecaptcha&render=explicit" strategy="afterInteractive" />
+      <Script
+        id="anodeh-recaptcha"
+        src="https://www.google.com/recaptcha/api.js?render=explicit"
+        strategy="afterInteractive"
+        onReady={paint}
+      />
       <div ref={box} />
     </div>
   );
